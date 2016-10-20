@@ -12,8 +12,9 @@ import landextraction
 
 class MapWriter:
 
-    def __init__(self, data_dir, dry_run=False):
+    def __init__(self, data_dir, dry_run=False, verbose=False):
         self.dry_run = dry_run
+        self.verbose = verbose
         self.logger = logging.getLogger("mapcreator")
         self.data_dir = data_dir
         if not os.path.exists(self.data_dir):
@@ -40,8 +41,10 @@ class MapWriter:
 
         # paths are created by land extractor
 
-        osmosis_call = [configuration.OSMOSIS_PATH, '--read-pgsql']
-        osmosis_call += ['--dataset-bounding-box']
+        osmosis_call = [configuration.OSMOSIS_PATH]
+        if self.verbose:
+            osmosis_call += ['-v']
+        osmosis_call += ['--read-pgsql', '--dataset-bounding-box']
         osmosis_call += ['bottom=%.4f' % llrb[0]]
         osmosis_call += ['left=%.4f' % lllt[1]]
         osmosis_call += ['top=%.4f' % lllt[0]]
@@ -61,8 +64,11 @@ class MapWriter:
                 else:
                     subprocess.check_call(['touch', pbf_path])
             # prepare for second step
-            osmosis_call = [configuration.OSMOSIS_PATH, '--rb', pbf_path]
             self.logger.info("  Processing intermediate file: %s" % pbf_path)
+            osmosis_call = [configuration.OSMOSIS_PATH]
+            if self.verbose:
+                osmosis_call += ['-v']
+            osmosis_call += ['--rb', pbf_path]
 
         osmosis_call += ['--mw','file=%s' % map_path]
         osmosis_call += ['type=ram'] # hd type is currently unsupported
@@ -135,7 +141,7 @@ if __name__ == "__main__":
         logger.setLevel(logging.DEBUG)
 
     try:
-        mapWriter = MapWriter(args.data_path, args.dry_run)
+        mapWriter = MapWriter(args.data_path, args.dry_run, args.verbose)
         mapWriter.createMap(args.x, args.y, args.intermediate)
     except Exception as e:
         print("An error occurred:")
