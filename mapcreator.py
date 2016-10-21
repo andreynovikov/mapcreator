@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 import argparse
 import logging.config
 
@@ -38,7 +39,7 @@ class MapCreator:
                 ) AS areas
             ) AS areas
             INNER JOIN maps ON (areas.area = maps.area)
-            WHERE pct < %.2f
+            WHERE pct < %.2f AND error = false
         ) AS areas
         WHERE age(created) > interval '%s'
         ORDER BY created
@@ -64,6 +65,7 @@ class MapCreator:
                 GROUP BY area
             ) AS areas
             INNER JOIN maps ON (areas.area = maps.area)
+            WHERE error = false
         ) AS areas
         WHERE age(created) > interval '%s'
         ORDER BY created
@@ -84,7 +86,7 @@ class MapCreator:
         query = """
         SELECT * FROM (
             SELECT area, date '1970-01-01' + created * interval '1 day' AS created FROM maps
-            WHERE created > 0
+            WHERE created > 0 AND error = false
         ) AS areas
         WHERE age(created) > interval '%s'
         ORDER BY created
@@ -112,6 +114,7 @@ class MapCreator:
             return
         (x, y) = map(int, area.split('-'))
 
+        cost = time.time()
         try:
             map_path = self.mapWriter.createMap(x, y)
         except Exception as e:
@@ -120,6 +123,7 @@ class MapCreator:
             if not self.dry_run:
                 self.writeIndex(area, x, y, None, None, True)
             return
+        cost = int(time.time() - cost)
 
         date = int(os.path.getmtime(map_path) / 3600 / 24)
         size = os.path.getsize(map_path)
@@ -137,10 +141,10 @@ class MapCreator:
             except:
                 self.logger.error("Could not move created map %s to target directory" % map_path)
                 self.writeIndex(area, x, y, None, None, True)
-            self.writeIndex(area, x, y, size, date)
+            self.writeIndex(area, x, y, size, cost, date)
 
 
-    def writeIndex(self, area, x, y, size, date, error=False):
+    def writeIndex(self, area, x, y, size, cost, date, error=False):
         if error:
             with psycopg2.connect(configuration.STATS_DB_DSN) as c:
                 with c.cursor() as cur:
@@ -156,9 +160,9 @@ class MapCreator:
                 index.write((size).to_bytes(4, byteorder='big', signed=False))
             with psycopg2.connect(configuration.STATS_DB_DSN) as c:
                 with c.cursor() as cur:
-                    cur.execute("UPDATE maps SET size = %s, created = %s, error = false WHERE area = %s", (size, date, area))
+                    cur.execute("UPDATE maps SET size = %s, cost = %s, created = %s, error = false WHERE area = %s", (size, cost, date, area))
                     if cur.rowcount != 1:
-                        cur.execute("INSERT INTO maps (area, size, created) VALUES (%s, %s, %s)", (area, size, date))
+                        cur.execute("INSERT INTO maps (area, size, cost, created) VALUES (%s, %s, %s, %s)", (area, size, cost, date))
                     self.logger.debug(cur.query)
                 c.commit()
 
