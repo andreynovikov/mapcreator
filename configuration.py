@@ -9,3 +9,5 @@ TAG_MAPPING = '/var/gis/tag-mapping.xml'
 MAP_TARGET_PATH = '/var/gis/maps'
 LOGGING_PATH = '/var/log/mapcreator'
 DATA_PATH = '/var/gis/data'
+
+STATS_DB_DSN = 'dbname=gis'
