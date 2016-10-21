@@ -10,4 +10,5 @@ MAP_TARGET_PATH = '/var/gis/maps'
 LOGGING_PATH = '/var/log/mapcreator'
 DATA_PATH = '/var/gis/data'
 
+MAP_DOWNLOAD_LOG = '/var/log/nginx/maps.log'
 STATS_DB_DSN = 'dbname=gis'
