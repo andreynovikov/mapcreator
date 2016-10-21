@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import os
-import math
 import sys
 import argparse
 import subprocess
@@ -57,7 +56,7 @@ class MapWriter:
             pbf_path = self.pbf_path(x, y)
             if not os.path.exists(pbf_path):
                 self.logger.info("  Creating intermediate file: %s" % pbf_path)
-                osmosis_call += ['--wb', pbf_path]
+                osmosis_call += ['--wb', pbf_path, 'omitmetadata=true']
                 self.logger.debug("    calling: %s", " ".join(osmosis_call))
                 if not self.dry_run:
                     subprocess.check_call(osmosis_call)
@@ -95,6 +94,8 @@ class MapWriter:
         size = os.path.getsize(map_path)
         if not self.dry_run and size == 0:
             raise Exception("Resulting map file size for %s is zero, keeping old map file" % map_path)
+
+        return map_path
 
     def map_path_base(self, x, y):
         """
