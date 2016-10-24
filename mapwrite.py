@@ -22,7 +22,7 @@ class MapWriter:
         self.landExtractor = landextraction.LandExtractor(self.data_dir, self.dry_run)
         self.landExtractor.downloadLandPolygons()
 
-    def createMap(self, x, y, intermediate=False):
+    def createMap(self, x, y, intermediate=False, keep=False):
         map_path = self.map_path(x, y)
         self.logger.info("Creating map: %s" % map_path)
 
@@ -42,7 +42,7 @@ class MapWriter:
 
         osmosis_call = [configuration.OSMOSIS_PATH]
         if self.verbose:
-            osmosis_call += ['-v']
+            osmosis_call += ['-v', '1']
         osmosis_call += ['--read-pgsql', '--dataset-bounding-box']
         osmosis_call += ['bottom=%.4f' % llrb[0]]
         osmosis_call += ['left=%.4f' % lllt[1]]
@@ -91,9 +91,18 @@ class MapWriter:
         finally:
             logfile.close()
 
+        self.logger.info("Finished map: %s" % map_path)
+
         size = os.path.getsize(map_path)
         if not self.dry_run and size == 0:
             raise Exception("Resulting map file size for %s is zero, keeping old map file" % map_path)
+
+        # remove intermediate pbf file and log on success
+        if intermediate and not keep:
+            self.logger.debug("    removing intermediate file %s", pbf_path)
+            os.remove(pbf_path)
+            self.logger.debug("    removing log file %s", log_path)
+            os.remove(log_path)
 
         return map_path
 
@@ -128,6 +137,7 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--dry-run', action='store_true', help='do not generate any files')
     parser.add_argument('-v', '--verbose', action='store_true', help='enable verbose logging')
     parser.add_argument('-i', '--intermediate', action='store_true', help='create intermediate osm.pbf file')
+    parser.add_argument('-k', '--keep', action='store_true', help='do not remove intermediate osm.pbf file on success')
     parser.add_argument('x', type=int, help='tile X')
     parser.add_argument('y', type=int, help='tile Y')
     args = parser.parse_args()
@@ -143,7 +153,7 @@ if __name__ == "__main__":
 
     try:
         mapWriter = MapWriter(args.data_path, args.dry_run, args.verbose)
-        mapWriter.createMap(args.x, args.y, args.intermediate)
+        mapWriter.createMap(args.x, args.y, args.intermediate, args.keep)
     except Exception as e:
         print("An error occurred:")
         print(e)
