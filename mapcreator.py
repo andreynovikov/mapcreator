@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import argparse
+import subprocess
 import logging.config
 
 import psycopg2
@@ -39,7 +40,7 @@ class MapCreator:
                 ) AS areas
             ) AS areas
             INNER JOIN maps ON (areas.area = maps.area)
-            WHERE pct < %.2f AND error = false
+            WHERE pct < %.2f AND error = FALSE
         ) AS areas
         WHERE age(created) > interval '%s'
         ORDER BY created
@@ -65,7 +66,7 @@ class MapCreator:
                 GROUP BY area
             ) AS areas
             INNER JOIN maps ON (areas.area = maps.area)
-            WHERE error = false
+            WHERE error = FALSE
         ) AS areas
         WHERE age(created) > interval '%s'
         ORDER BY created
@@ -86,7 +87,7 @@ class MapCreator:
         query = """
         SELECT * FROM (
             SELECT area, date '1970-01-01' + created * interval '1 day' AS created FROM maps
-            WHERE created > 0 AND error = false
+            WHERE created > 0 AND error = FALSE
         ) AS areas
         WHERE age(created) > interval '%s'
         ORDER BY created
@@ -104,11 +105,11 @@ class MapCreator:
 
 
     def loop(self):
-        area = self.selectPopularMap(0.05, '7 days') or \
-               self.selectPopularMap(0.1, '14 days') or \
+        area = self.selectPopularMap(0.05, '2 weeks') or \
+               self.selectPopularMap(0.1, '1 month') or \
                self.selectPopularMap(0.5, '2 months') or \
                self.selectDownloadedMap('2 months') or \
-               self.selectAnyMap('2 months')
+               self.selectAnyMap('4 months')
         if area is None:
             self.logger.debug("No maps to create")
             return
@@ -116,12 +117,12 @@ class MapCreator:
 
         cost = time.time()
         try:
-            map_path = self.mapWriter.createMap(x, y)
+            map_path = self.mapWriter.createMap(x, y, True)
         except Exception as e:
             print("An error occurred:")
             print(e)
             if not self.dry_run:
-                self.writeIndex(area, x, y, None, None, True)
+                self.writeIndex(area, x, y, None, None, None, True)
             return
         cost = int(time.time() - cost)
 
@@ -129,7 +130,7 @@ class MapCreator:
         size = os.path.getsize(map_path)
         if not self.dry_run and size == 0:
             self.logger.error("Resulting map file size for %s is zero, keeping old map file" % map_path)
-            self.writeIndex(area, x, y, None, None, True)
+            self.writeIndex(area, x, y, None, None, None, True)
             return
 
         map_target_path = '{0:s}/{1:d}/{1:d}-{2:d}.map'.format(configuration.MAP_TARGET_PATH, x, y)
@@ -138,9 +139,11 @@ class MapCreator:
         if not self.dry_run:
             try:
                 subprocess.check_call(move_call)
-            except:
-                self.logger.error("Could not move created map %s to target directory" % map_path)
-                self.writeIndex(area, x, y, None, None, True)
+            except Exception as e:
+                print("Failed to move created map %s to target directory" % map_path)
+                print(e)
+                self.writeIndex(area, x, y, None, None, None, True)
+                return
             self.writeIndex(area, x, y, size, cost, date)
 
 
@@ -148,9 +151,9 @@ class MapCreator:
         if error:
             with psycopg2.connect(configuration.STATS_DB_DSN) as c:
                 with c.cursor() as cur:
-                    cur.execute("UPDATE maps SET error = true WHERE area = %s", (area))
+                    cur.execute("UPDATE maps SET error = %s WHERE area = %s", (error, area))
                     if cur.rowcount != 1:
-                        cur.execute("INSERT INTO maps (area, error) VALUES (%s, true)", (area))
+                        cur.execute("INSERT INTO maps (area, error) VALUES (%s, %s)", (area, error))
                     self.logger.debug(cur.query)
                 c.commit()
         else:
@@ -160,7 +163,7 @@ class MapCreator:
                 index.write((size).to_bytes(4, byteorder='big', signed=False))
             with psycopg2.connect(configuration.STATS_DB_DSN) as c:
                 with c.cursor() as cur:
-                    cur.execute("UPDATE maps SET size = %s, cost = %s, created = %s, error = false WHERE area = %s", (size, cost, date, area))
+                    cur.execute("UPDATE maps SET size = %s, cost = %s, created = %s, error = %s WHERE area = %s", (size, cost, date, error, area))
                     if cur.rowcount != 1:
                         cur.execute("INSERT INTO maps (area, size, cost, created) VALUES (%s, %s, %s, %s)", (area, size, cost, date))
                     self.logger.debug(cur.query)
@@ -189,3 +192,5 @@ if __name__ == "__main__":
     except Exception as e:
         print("An error occurred:")
         print(e)
+        import traceback
+        traceback.print_exc()
