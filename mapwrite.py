@@ -22,7 +22,7 @@ class MapWriter:
         self.landExtractor = landextraction.LandExtractor(self.data_dir, self.dry_run)
         self.landExtractor.downloadLandPolygons()
 
-    def createMap(self, x, y, intermediate=False, keep=False):
+    def createMap(self, x, y, intermediate=False, keep=False, from_file=False):
         map_path = self.map_path(x, y)
         self.logger.info("Creating map: %s" % map_path)
 
@@ -39,6 +39,8 @@ class MapWriter:
         llrb = self.landExtractor.num2deg(x+1, y+1, 7)
 
         # paths are created by land extractor
+        log_path = self.log_path(x, y)
+        logfile = open(log_path, 'a')
 
         osmosis_call = [configuration.OSMOSIS_PATH]
         if self.verbose:
@@ -52,16 +54,25 @@ class MapWriter:
         osmosis_call += ['--rx', 'file=%s' % land_path]
         osmosis_call += ['--sort', '--merge']
 
-        if intermediate:
+        if intermediate or from_file:
             pbf_path = self.pbf_path(x, y)
             if not os.path.exists(pbf_path):
                 self.logger.info("  Creating intermediate file: %s" % pbf_path)
-                osmosis_call += ['--wb', pbf_path, 'omitmetadata=true']
-                self.logger.debug("    calling: %s", " ".join(osmosis_call))
-                if not self.dry_run:
-                    subprocess.check_call(osmosis_call)
+                if from_file:
+                    osmosis_call = [configuration.OSMCONVERT_PATH, configuration.SOURCE_PBF]
+                    osmosis_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (lllt[1],llrb[0],llrb[1],lllt[0])]
+                    osmosis_call += ['--complex-ways', '-o=%s' % pbf_path]
                 else:
-                    subprocess.check_call(['touch', pbf_path])
+                    osmosis_call += ['--wb', pbf_path, 'omitmetadata=true']
+                try:
+                    self.logger.debug("    calling: %s", " ".join(osmosis_call))
+                    if not self.dry_run:
+                        subprocess.check_call(osmosis_call, stderr=logfile)
+                    else:
+                        subprocess.check_call(['touch', pbf_path])
+                except Exception as e:
+                    logfile.close()
+                    raise e
             # prepare for second step
             self.logger.info("  Processing intermediate file: %s" % pbf_path)
             osmosis_call = [configuration.OSMOSIS_PATH]
@@ -78,8 +89,6 @@ class MapWriter:
         osmosis_call += ['way-clipping=false']
         osmosis_call += ['tag-conf-file=%s' % configuration.TAG_MAPPING]
 
-        log_path = self.log_path(x, y)
-        logfile = open(log_path, 'a')
         try:
             self.logger.debug("    calling: %s", " ".join(osmosis_call))
             if not self.dry_run:
@@ -138,6 +147,7 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--verbose', action='store_true', help='enable verbose logging')
     parser.add_argument('-i', '--intermediate', action='store_true', help='create intermediate osm.pbf file')
     parser.add_argument('-k', '--keep', action='store_true', help='do not remove intermediate osm.pbf file on success')
+    parser.add_argument('-f', '--from-file', action='store_true', help='use file instead of database as data source')
     parser.add_argument('x', type=int, help='tile X')
     parser.add_argument('y', type=int, help='tile Y')
     args = parser.parse_args()
@@ -153,7 +163,7 @@ if __name__ == "__main__":
 
     try:
         mapWriter = MapWriter(args.data_path, args.dry_run, args.verbose)
-        mapWriter.createMap(args.x, args.y, args.intermediate, args.keep)
+        mapWriter.createMap(args.x, args.y, args.intermediate, args.keep, args.from_file)
     except Exception as e:
         print("An error occurred:")
         print(e)
