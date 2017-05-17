@@ -54,12 +54,33 @@ class MapWriter:
         osmosis_call += ['--rx', 'file=%s' % land_path]
         osmosis_call += ['--sort', '--merge']
 
+        mem_type = 'ram'
+
         if intermediate or from_file:
             pbf_path = self.pbf_path(x, y)
             if not os.path.exists(pbf_path):
                 self.logger.info("  Creating intermediate file: %s" % pbf_path)
                 if from_file:
-                    osmosis_call = [configuration.OSMCONVERT_PATH, configuration.SOURCE_PBF]
+                    # create upper intermediate file (z=3) to optimize processing of adjacent areas
+                    ax = x >> 4
+                    ay = y >> 4
+                    upper_pbf_path = self.pbf_path(ax, ay, 3)
+                    if not os.path.exists(upper_pbf_path) or os.path.getmtime(upper_pbf_path) < os.path.getmtime(configuration.SOURCE_PBF):
+                        upper_pbf_dir = os.path.dirname(upper_pbf_path)
+                        if not os.path.exists(upper_pbf_dir):
+                            os.makedirs(upper_pbf_dir)
+                        osmosis_call = [configuration.OSMCONVERT_PATH, configuration.SOURCE_PBF]
+                        alllt = self.landExtractor.num2deg(ax, ay, 3)
+                        allrb = self.landExtractor.num2deg(ax+1, ay+1, 3)
+                        osmosis_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (alllt[1],allrb[0],allrb[1],alllt[0])]
+                        osmosis_call += ['--complex-ways', '-o=%s' % upper_pbf_path]
+                        self.logger.debug("    calling: %s", " ".join(osmosis_call))
+                        if not self.dry_run:
+                            subprocess.check_call(osmosis_call)
+                        else:
+                            subprocess.check_call(['touch', upper_pbf_path])
+                    # extract area data from upper intermediate file
+                    osmosis_call = [configuration.OSMCONVERT_PATH, upper_pbf_path]
                     osmosis_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (lllt[1],llrb[0],llrb[1],lllt[0])]
                     osmosis_call += ['--complex-ways', '-o=%s' % pbf_path]
                 else:
@@ -75,13 +96,18 @@ class MapWriter:
                     raise e
             # prepare for second step
             self.logger.info("  Processing intermediate file: %s" % pbf_path)
+            if os.path.getsize(pbf_path) > configuration.DATA_SIZE_LIMIT:
+                mem_type = 'hd'
             osmosis_call = [configuration.OSMOSIS_PATH]
             if self.verbose:
                 osmosis_call += ['-v']
             osmosis_call += ['--rb', pbf_path]
+            if from_file:
+                osmosis_call += ['--rx', 'file=%s' % land_path]
+                osmosis_call += ['--sort', '--merge']
 
         osmosis_call += ['--mw','file=%s' % map_path]
-        osmosis_call += ['type=ram'] # hd type is currently unsupported
+        osmosis_call += ['type=%s' % mem_type] # hd type is currently unsupported
         osmosis_call += ['map-start-zoom=%s' % configuration.MAP_START_ZOOM]
         osmosis_call += ['preferred-languages=%s' % configuration.PREFERRED_LANGUAGES]
         osmosis_call += ['zoom-interval-conf=%s' % configuration.ZOOM_INTERVAL]
@@ -115,17 +141,17 @@ class MapWriter:
 
         return map_path
 
-    def map_path_base(self, x, y):
+    def map_path_base(self, x, y, z=7):
         """
         returns path to map file but without extension
         """
-        return os.path.join(self.data_dir, '7', str(x), '%d-%d' % (x, y))
+        return os.path.join(self.data_dir, str(z), str(x), '%d-%d' % (x, y))
 
-    def pbf_path(self, x, y):
+    def pbf_path(self, x, y, z=7):
         """
         returns path to intermediate pbf file
         """
-        return self.map_path_base(x, y) + ".osm.pbf"
+        return self.map_path_base(x, y, z) + ".osm.pbf"
 
     def map_path(self, x, y):
         """
