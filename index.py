@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import os.path as path
+import struct
 import psycopg2
 
 import configuration
@@ -24,7 +25,12 @@ with open(configuration.MAP_TARGET_PATH + '/index', 'wb') as f, psycopg2.connect
             else:
                 try:
                     size = path.getsize(map_path)
-                    date = int(path.getmtime(map_path) / 3600 / 24)
+                    mf = open(map_path, 'rb')
+                    mf.seek(36, 0)
+                    buf = mf.read(8)
+                    mf.close()
+                    date = int(struct.unpack(">Q", buf)[0] / 1000 / 3600 / 24)
+                    #date = int(path.getmtime(map_path) / 3600 / 24)
                 except OSError:
                     size = 0
                     date = 0
