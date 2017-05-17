@@ -29,23 +29,7 @@ class MapCreator:
 
 
     def selectPopularMap(self, percent, period):
-        query = """
-        SELECT * FROM (
-            SELECT maps.area, date '1970-01-01' + created * interval '1 day' AS created FROM (
-                SELECT area, percent_rank() OVER (ORDER BY downloads DESC) AS pct FROM (
-                    SELECT area, SUM(downloads) AS downloads FROM map_downloads
-                    --- consider only last 2 months of download statistics
-                    WHERE month >= (date_part('year', now() - interval '2 months') * 100 + date_part('month', now() - interval '2 months'))::integer
-                    GROUP BY area
-                ) AS areas
-            ) AS areas
-            INNER JOIN maps ON (areas.area = maps.area)
-            WHERE pct < %.2f AND error = FALSE
-        ) AS areas
-        WHERE age(created) > interval '%s'
-        ORDER BY created
-        LIMIT 1;
-        """
+        query = "SELECT * FROM popular_map(%.2f, interval '%s') LIMIT 1;"
         with psycopg2.connect(configuration.STATS_DB_DSN) as c:
             with c.cursor() as cur:
                 cur.execute(query % (percent, period))
@@ -58,20 +42,7 @@ class MapCreator:
 
 
     def selectDownloadedMap(self, period):
-        query = """
-        SELECT * FROM (
-            SELECT maps.area, date '1970-01-01' + created * interval '1 day' AS created FROM (
-                SELECT area FROM map_downloads
-                WHERE month >= (date_part('year', now() - interval '2 months') * 100 + date_part('month', now() - interval '2 months'))::integer
-                GROUP BY area
-            ) AS areas
-            INNER JOIN maps ON (areas.area = maps.area)
-            WHERE error = FALSE
-        ) AS areas
-        WHERE age(created) > interval '%s'
-        ORDER BY created
-        LIMIT 1;
-        """
+        query = "SELECT * FROM downloaded_map(interval '%s') LIMIT 1;"
         with psycopg2.connect(configuration.STATS_DB_DSN) as c:
             with c.cursor() as cur:
                 cur.execute(query % (period))
@@ -84,15 +55,7 @@ class MapCreator:
 
 
     def selectAnyMap(self, period):
-        query = """
-        SELECT * FROM (
-            SELECT area, date '1970-01-01' + created * interval '1 day' AS created FROM maps
-            WHERE created > 0 AND error = FALSE
-        ) AS areas
-        WHERE age(created) > interval '%s'
-        ORDER BY created
-        LIMIT 1;
-        """
+        query = "SELECT * FROM any_map(interval '%s') LIMIT 1;"
         with psycopg2.connect(configuration.STATS_DB_DSN) as c:
             with c.cursor() as cur:
                 cur.execute(query % (period))
@@ -117,7 +80,7 @@ class MapCreator:
 
         cost = time.time()
         try:
-            map_path = self.mapWriter.createMap(x, y, True)
+            map_path = self.mapWriter.createMap(x, y, True, False, True)
         except Exception as e:
             print("An error occurred:")
             print(e)
@@ -175,6 +138,7 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--data-path', default='data', help='base path for data files')
     parser.add_argument('-d', '--dry-run', action='store_true', help='do not generate any files')
     parser.add_argument('-v', '--verbose', action='store_true', help='enable verbose logging')
+    parser.add_argument('-n', '--daemonize', action='store_true', help='run as a daemon')
     args = parser.parse_args()
 
     sh = logging.StreamHandler()
@@ -185,10 +149,24 @@ if __name__ == "__main__":
     # during a dry run the console should receive all logs
     if args.dry_run or args.verbose:
         logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
 
     try:
         mapCreator = MapCreator(args.data_path, args.dry_run, args.verbose)
-        mapCreator.loop()
+        if args.daemonize:
+            import daemon
+            import lockfile
+            context = daemon.DaemonContext(
+                working_directory='/tmp/mapcreator',
+                pidfile=lockfile.FileLock('/var/run/mapcreator.pid'),
+            )
+            with context:
+                while True:
+                    mapCreator.loop()
+                    time.sleep(5)
+        else:
+            mapCreator.loop()
     except Exception as e:
         print("An error occurred:")
         print(e)
