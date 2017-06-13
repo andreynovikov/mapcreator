@@ -28,6 +28,8 @@ import configuration
 import mappings
 import landextraction
 from util.database import MTilesDatabase
+from util.osm import is_area
+
 
 DBJob = namedtuple('DBJob', ['tile', 'features'])
 
@@ -59,7 +61,7 @@ class Element():
         self.geometry = None # tile processed temporary geometry
 
     def __str__(self):
-        return "%d: %s %s\n%s\n" % (self.id, self.geom.__repr__(), str(self.area), self.mapping)
+        return "%d: %s\n%s\n%s\n" % (self.id, self.geom.__repr__(), self.tags, self.mapping)
 
     def clone(self, geom):
         return Element(self.id, geom, self.tags, self.mapping, self.label, self.area)
@@ -78,19 +80,21 @@ class OsmFilter(osmium.SimpleHandler):
         for tag in tags:
             if tag.k in mappings.tags.keys():
                 m = mappings.tags[tag.k].get('__any__', None)
-                if not m:
+                if m is None:
                     m = mappings.tags[tag.k].get(tag.v, None)
-                if m:
+                if m is not None: #empty dictionaries should be also accounted
+                    k = tag.k
+                    v = tag.v
                     if 'rewrite-key' in m or 'rewrite-value' in m:
-                        k = m.get('rewrite-key', tag.k)
-                        v = m.get('rewrite-value', tag.v)
-                        filtered_tags[k] = v
-                        renderable = renderable or m.get('render', True)
+                        k = m.get('rewrite-key', k)
+                        v = m.get('rewrite-value', v)
                         m = mappings.tags.get(k, {}).get(v, {})
-                    else:
-                        filtered_tags[tag.k] = tag.v
+                    if 'one-of' in m:
+                        if v not in m['one-of']:
+                            return False, None, None
+                    filtered_tags[k] = v
                     renderable = renderable or m.get('render', True)
-                    for k in ('transform','union','area','filter-area','buffer'):
+                    for k in ('transform','union','area','filter-area','buffer','force-line'):
                         if k in m:
                             mapping[k] = m[k]
                     if 'zoom-min' in m:
@@ -254,12 +258,16 @@ class MapWriter:
                 #print(str(element))
                 #TODO: fix geometries, do other transforms
                 #self.logger.debug("ma: %s" % element.mapping.get('area', False))
-                if isinstance(element.geom, geometry.LineString):
-                    if element.geom.coords[0] == element.geom.coords[-1]:
+                if element.mapping.get('force-line', False):
+                    if isinstance(element.geom, geometry.Polygon) or isinstance(element.geom, geometry.MultiPolygon):
+                        element.geom = element.geom.boundary
+                elif isinstance(element.geom, geometry.LineString):
+                    #TODO change to is_ring
+                    if element.geom.coords[0] == element.geom.coords[-1] and is_area(element):
                         polygon = geometry.Polygon(element.geom)
                         if polygon.is_valid:
                             element.geom = polygon
-                if element.mapping.get('area', False):
+                if element.mapping.get('calc-area', False):
                     element.area = element.geom.area
 
             self.dbQueue = queue.Queue()

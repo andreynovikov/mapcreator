@@ -21,12 +21,45 @@ tags = {
             'zoom-min': 8,
             'transform': 'filter-rings',
             'union': 'natural',
-            'area': True,
-            'filter-area': 8,
+            #TODO combine next two settings into one
+            'calc-area': True,
+            'filter-area': 2,
             'buffer': True
         },
     },
+    'place': {
+        'ocean': {},
+        'sea': {},
+        'country': {},
+        'state': {},
+        'region': {},
+        'island': {'zoom-min': 12},
+        'city': {},
+        'town': {},
+        'village': {'zoom-min': 12},
+        'hamlet': {'zoom-min': 13},
+        'suburb': {'zoom-min': 12},
+        'neighbourhood': {'zoom-min': 13},
+        'locality': {'zoom-min': 13},
+        'isolated_dwelling': {'zoom-min': 13},
+    },
+    'boundary': {
+        'administrative': {
+            'force-line': True
+        },
+    },
     'name': {
+        '__any__': {
+            'render': False
+        },
+    },
+    'admin_level': {
+        '__any__': {
+            'one-of': ['1','2','3','4','5','6'],
+            'render': False
+        },
+    },
+    'capital': {
         '__any__': {
             'render': False
         },
