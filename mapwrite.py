@@ -14,6 +14,7 @@ from functools import partial
 import pyproj
 import osmium
 import mercantile
+import numpy
 import shapely.wkb as shapelyWkb
 import shapely.speedups
 from shapely import geometry
@@ -48,20 +49,20 @@ def deep_get(dictionary, *keys):
 
 
 class Element():
-    def __init__(self, id, geom, tags, mapping=None):
+    def __init__(self, id, geom, tags, mapping=None, label=None, area=None):
         self.id = id
         self.geom = geom # original geometry
         self.tags = tags
         self.mapping = mapping
-        self.geometry = None # tile processed geometry
-        self.label = None
-        self.area = None
+        self.label = label
+        self.area = area
+        self.geometry = None # tile processed temporary geometry
 
     def __str__(self):
-        return "%d: %s\n%s\n" % (self.id, self.tags, self.mapping)
+        return "%d: %s %s\n%s\n" % (self.id, self.geom.__repr__(), str(self.area), self.mapping)
 
     def clone(self, geom):
-        return Element(self.id, geom, self.tags, self.mapping)
+        return Element(self.id, geom, self.tags, self.mapping, self.label, self.area)
 
 
 class OsmFilter(osmium.SimpleHandler):
@@ -149,12 +150,6 @@ class Tile():
         self.y = y
         self.elements = elements
         self.pixelWidth = self.INITIAL_RESOLUTION / 2 ** self.zoom
-        #bounds = mercantile.bounds(self.x, self.y, self.zoom)
-        #self.west, self.south = mercantile.xy(bounds.west, bounds.south)
-        #self.east, self.north = mercantile.xy(bounds.east, bounds.north)
-        #self.matrix = [Tile.SCALE / (self.east - self.west), 0, 0, 0, Tile.SCALE / (self.north - self.south), 0, 0, 0,
-        #               1, -self.west * Tile.SCALE / (self.east - self.west), -self.south * Tile.SCALE / (self.north - self.south), 0]
-        #print(str(self.matrix))
         bb = mercantile.xy_bounds(x, y, zoom)
         self.matrix = [Tile.SCALE / (bb.right - bb.left), 0, 0, 0, Tile.SCALE / (bb.top - bb.bottom), 0, 0, 0,
                        1, -bb.left * Tile.SCALE / (bb.right - bb.left), -bb.bottom * Tile.SCALE / (bb.top - bb.bottom), 0]
@@ -180,7 +175,7 @@ class MapWriter:
             os.makedirs(self.data_dir)
         self.simplification = 0.0
         self.landExtractor = landextraction.LandExtractor(self.data_dir, self.dry_run)
-        self.landExtractor.downloadLandPolygons()
+        #self.landExtractor.downloadLandPolygons()
         self.tileQueue = queue.Queue()
 
         try:
@@ -256,8 +251,14 @@ class MapWriter:
         has_elements = bool(elements)
         if has_elements:
             for element in elements:
-                #print(str(element.geom))
+                #print(str(element))
                 #TODO: fix geometries, do other transforms
+                #self.logger.debug("ma: %s" % element.mapping.get('area', False))
+                if isinstance(element.geom, geometry.LineString):
+                    if element.geom.coords[0] == element.geom.coords[-1]:
+                        polygon = geometry.Polygon(element.geom)
+                        if polygon.is_valid:
+                            element.geom = polygon
                 if element.mapping.get('area', False):
                     element.area = element.geom.area
 
