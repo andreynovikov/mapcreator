@@ -11,6 +11,8 @@ import logging.config
 from collections import defaultdict, namedtuple
 from functools import partial
 
+from tqdm import tqdm
+
 import pyproj
 import osmium
 import mercantile
@@ -35,10 +37,11 @@ DBJob = namedtuple('DBJob', ['tile', 'features'])
 
 wkbFactory = osmium.geom.WKBFactory()
 
-project = partial(
-        pyproj.transform,
-        pyproj.Proj(init='epsg:4326'), # source coordinate system
-        pyproj.Proj(init='epsg:3857')) # destination coordinate system
+wgs84 = pyproj.Proj(init='epsg:4326')
+mercator = pyproj.Proj(init='epsg:3857')
+
+wgs84_to_mercator = partial(pyproj.transform, wgs84, mercator)
+mercator_to_wgs84 = partial(pyproj.transform, mercator, wgs84)
 
 
 def deep_get(dictionary, *keys):
@@ -61,7 +64,9 @@ class Element():
         self.geometry = None # tile processed temporary geometry
 
     def __str__(self):
-        return "%d: %s\n%s\n%s\n" % (self.id, self.geom.__repr__(), self.tags, self.mapping)
+        #geom = transform(mercator_to_wgs84, self.geom)
+        #return "%s: %s\n%s\n%s\n" % (str(self.id), geom, self.tags, self.mapping)
+        return "%s: %s\n%s\n%s\n" % (str(self.id), self.geom.__repr__(), self.tags, self.mapping)
 
     def clone(self, geom):
         return Element(self.id, geom, self.tags, self.mapping, self.label, self.area)
@@ -112,7 +117,7 @@ class OsmFilter(osmium.SimpleHandler):
         if renderable:
             try:
                 wkb = wkbFactory.create_point(n)
-                geom = transform(project, shapelyWkb.loads(wkb, hex=True))
+                geom = transform(wgs84_to_mercator, shapelyWkb.loads(wkb, hex=True))
                 self.elements.add(Element(n.id, geom, tags, mapping))
             except Exception as e:
                 self.logger.error("%s %s" % (e, n.id))
@@ -122,7 +127,7 @@ class OsmFilter(osmium.SimpleHandler):
         if renderable:
             try:
                 wkb = wkbFactory.create_linestring(w)
-                geom = transform(project, shapelyWkb.loads(wkb, hex=True))
+                geom = transform(wgs84_to_mercator, shapelyWkb.loads(wkb, hex=True))
                 self.elements.add(Element(w.id, geom, tags, mapping))
             except Exception as e:
                 self.logger.error("%s %s" % (e, w.id))
@@ -132,7 +137,7 @@ class OsmFilter(osmium.SimpleHandler):
         if renderable:
             try:
                 wkb = wkbFactory.create_multipolygon(a)
-                geom = transform(project, shapelyWkb.loads(wkb, hex=True))
+                geom = transform(wgs84_to_mercator, shapelyWkb.loads(wkb, hex=True))
                 self.elements.add(Element(a.id, geom, tags, mapping))
             except Exception as e:
                 self.logger.error("%s %s" % (e, a.id))
@@ -181,6 +186,7 @@ class MapWriter:
         self.landExtractor = landextraction.LandExtractor(self.data_dir, self.dry_run)
         #self.landExtractor.downloadLandPolygons()
         self.tileQueue = queue.Queue()
+        self.interactive = not verbose and sys.__stdin__.isatty()
 
         try:
             # Enable C-based speedups available from 1.2.10+
@@ -199,6 +205,8 @@ class MapWriter:
 
         lllt = self.landExtractor.num2deg(x, y, 7)
         llrb = self.landExtractor.num2deg(x+1, y+1, 7)
+        #mercantile.bounds(486, 332, 10)
+        #LngLatBbox(west=-9.140625, south=53.12040528310657, east=-8.7890625, north=53.33087298301705)
 
         # paths are created by land extractor
         log_path = self.log_path(x, y)
@@ -255,7 +263,6 @@ class MapWriter:
         has_elements = bool(elements)
         if has_elements:
             for element in elements:
-                #print(str(element))
                 #TODO: fix geometries, do other transforms
                 #self.logger.debug("ma: %s" % element.mapping.get('area', False))
                 if element.mapping.get('force-line', False):
@@ -269,6 +276,14 @@ class MapWriter:
                             element.geom = polygon
                 if element.mapping.get('calc-area', False):
                     element.area = element.geom.area
+
+            if self.interactive:
+                num_tiles = 0
+                for z in range(1, 15-7):
+                    n = 4 ** z
+                    num_tiles = num_tiles + n
+                self.gen_progress = tqdm(total=num_tiles, desc="Generated", position=0)
+                self.save_progress = tqdm(total=num_tiles, desc="    Saved", position=1)
 
             self.dbQueue = queue.Queue()
             self.tileQueue = queue.Queue()
@@ -299,6 +314,9 @@ class MapWriter:
                 t.join()
             self.dbQueue.put(None)
             db_thread.join()
+
+            if self.interactive:
+                print("\n")
 
         """
         osmosis_call += ['--mw','file=%s' % map_path]
@@ -345,6 +363,8 @@ class MapWriter:
             encoded = OSciMap4.encode(job.features)
             db.putTile(job.tile.zoom, job.tile.x, job.tile.y, encoded)
             self.dbQueue.task_done()
+            if self.interactive:
+                self.save_progress.update()
         db.finish()
 
     def tileWorker(self):
@@ -354,6 +374,8 @@ class MapWriter:
                 break
             self.generateTile(tile)
             self.tileQueue.task_done()
+            if self.interactive:
+                self.gen_progress.update()
 
     def generateTile(self, tile):
         if tile.zoom > 7:
@@ -375,7 +397,7 @@ class MapWriter:
                     simple_geom = geom.simplify(tile.pixelWidth)
                     if simple_geom.is_valid:
                         geom = simple_geom
-                if 'union-key' in element.mapping:
+                if 'union-key' in element.mapping and geom.geom_type in ['LineString', 'MultiLineString', 'Polygon', 'MultiPolygon']:
                     key = element.mapping['union-key']
                     element.geometry = geom
                     unions[key].append(element)
