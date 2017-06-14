@@ -43,7 +43,27 @@ tags = {
         'locality': {'zoom-min': 13},
         'isolated_dwelling': {'zoom-min': 13},
     },
+    'landuse': {
+        'military': {},
+    },
+    'leisure': {
+        'nature_reserve': {
+            'filter-type': ['Polygon','MultiPolygon'],
+            'label': True
+        },
+        'protected_area': {
+            'filter-type': ['Polygon','MultiPolygon'],
+            'label': True
+        },
+        'national_park': {
+            'filter-type': ['Polygon','MultiPolygon'],
+            'label': True
+        },
+    },
     'boundary': {
+        'nature_reserve': {'rewrite-key': 'leisure'},
+        'protected_area': {'rewrite-key': 'leisure'},
+        'national_park': {'rewrite-key': 'leisure'},
         'administrative': {
             'force-line': True
         },

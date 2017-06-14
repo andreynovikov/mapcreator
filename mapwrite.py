@@ -21,7 +21,7 @@ import shapely.wkb as shapelyWkb
 import shapely.speedups
 from shapely import geometry
 from shapely.prepared import prep
-from shapely.ops import transform, cascaded_union, unary_union
+from shapely.ops import transform, cascaded_union, unary_union, polylabel
 from shapely.affinity import affine_transform
 
 import OSciMap4
@@ -62,6 +62,7 @@ class Element():
         self.label = label
         self.area = area
         self.geometry = None # tile processed temporary geometry
+        self.labelPosition = None # tile based label position
 
     def __str__(self):
         #geom = transform(mercator_to_wgs84, self.geom)
@@ -99,7 +100,7 @@ class OsmFilter(osmium.SimpleHandler):
                             return False, None, None
                     filtered_tags[k] = v
                     renderable = renderable or m.get('render', True)
-                    for k in ('transform','union','area','filter-area','buffer','force-line'):
+                    for k in ('transform','union','area','filter-area','buffer','force-line','label','filter-type'):
                         if k in m:
                             mapping[k] = m[k]
                     if 'zoom-min' in m:
@@ -128,6 +129,7 @@ class OsmFilter(osmium.SimpleHandler):
             try:
                 wkb = wkbFactory.create_linestring(w)
                 geom = transform(wgs84_to_mercator, shapelyWkb.loads(wkb, hex=True))
+                mapping['is_closed'] = w.is_closed()
                 self.elements.add(Element(w.id, geom, tags, mapping))
             except Exception as e:
                 self.logger.error("%s %s" % (e, w.id))
@@ -138,9 +140,11 @@ class OsmFilter(osmium.SimpleHandler):
             try:
                 wkb = wkbFactory.create_multipolygon(a)
                 geom = transform(wgs84_to_mercator, shapelyWkb.loads(wkb, hex=True))
-                self.elements.add(Element(a.id, geom, tags, mapping))
+                if not a.is_multipolygon():
+                    geom = geom[0]
+                self.elements.add(Element(a.orig_id(), geom, tags, mapping))
             except Exception as e:
-                self.logger.error("%s %s" % (e, a.id))
+                self.logger.error("%s %s" % (e, a.orig_id()))
 
     def finish(self):
         self.logger.debug("    elements: %d" % len(self.elements))
@@ -153,7 +157,7 @@ class Tile():
     SCALE = 4096
     INITIAL_RESOLUTION = CIRCUM / SIZE
 
-    def __init__(self, zoom, x, y, elements):
+    def __init__(self, zoom, x, y, elements=None):
         self.zoom = zoom
         self.x = x
         self.y = y
@@ -164,10 +168,7 @@ class Tile():
                        1, -bb.left * Tile.SCALE / (bb.right - bb.left), -bb.bottom * Tile.SCALE / (bb.top - bb.bottom), 0]
         #[Tile.SCALE / (bb.right - bb.left), 0, 0, Tile.SCALE / (bb.top - bb.bottom), -bb.left * Tile.SCALE / (bb.right - bb.left), -bb.bottom * Tile.SCALE / (bb.top - bb.bottom)]
         #print(str(self.matrix))
-
-    def bbox(x, y, zoom):
-        bb = mercantile.xy_bounds(x, y, zoom)
-        return geometry.Polygon([[bb.left, bb.bottom], [bb.left, bb.top], [bb.right, bb.top], [bb.right, bb.bottom]])
+        self.bbox = geometry.Polygon([[bb.left, bb.bottom], [bb.left, bb.top], [bb.right, bb.top], [bb.right, bb.bottom]])
 
     def __str__(self):
         return "%d/%d/%d" % (self.zoom, self.x, self.y)
@@ -259,24 +260,46 @@ class MapWriter:
         handler.apply_file(pbf_path)
         handler.finish()
 
+        # pre-process elements
+        filtered = []
+        for element in elements:
+            #TODO: fix geometries, do other transforms
+            #self.logger.debug("ma: %s" % element.mapping.get('area', False))
+            if element.mapping.get('force-line', False):
+                if isinstance(element.geom, geometry.Polygon) or isinstance(element.geom, geometry.MultiPolygon):
+                    element.geom = element.geom.boundary
+            elif isinstance(element.geom, geometry.LineString) and element.mapping.get('is_closed', False) and is_area(element):
+                polygon = geometry.Polygon(element.geom)
+                if polygon.is_valid:
+                    element.geom = polygon
+            if 'filter-type' in element.mapping:
+                if element.geom.type not in element.mapping.get('filter-type'):
+                    filtered.append(element)
+                    continue
+            if element.mapping.get('calc-area', False):
+                element.area = element.geom.area
+            if element.mapping.get('label', False):
+                if isinstance(element.geom, geometry.Polygon):
+                    element.label = polylabel(element.geom)
+                elif isinstance(element.geom, geometry.MultiPolygon):
+                    #TODO in future allow multiple polygons have their own labels
+                    area = 0
+                    polygon = None
+                    for p in element.geom:
+                        if p.area > area:
+                            area = p.area
+                            polygon = p
+                    if polygon:
+                        element.label = polylabel(polygon)
+                else:
+                    self.logger.warn("%s %s can not have label" % (str(element.id), element.geom.type))
+        for element in filtered:
+            elements.remove(element)
+        filtered = None
+
         # process map only if it contains relevant data
         has_elements = bool(elements)
         if has_elements:
-            for element in elements:
-                #TODO: fix geometries, do other transforms
-                #self.logger.debug("ma: %s" % element.mapping.get('area', False))
-                if element.mapping.get('force-line', False):
-                    if isinstance(element.geom, geometry.Polygon) or isinstance(element.geom, geometry.MultiPolygon):
-                        element.geom = element.geom.boundary
-                elif isinstance(element.geom, geometry.LineString):
-                    #TODO change to is_ring
-                    if element.geom.coords[0] == element.geom.coords[-1] and is_area(element):
-                        polygon = geometry.Polygon(element.geom)
-                        if polygon.is_valid:
-                            element.geom = polygon
-                if element.mapping.get('calc-area', False):
-                    element.area = element.geom.area
-
             if self.interactive:
                 num_tiles = 0
                 for z in range(1, 15-7):
@@ -366,6 +389,8 @@ class MapWriter:
             if self.interactive:
                 self.save_progress.update()
         db.finish()
+        if self.interactive:
+            self.save_progress.close()
 
     def tileWorker(self):
         while True:
@@ -376,6 +401,8 @@ class MapWriter:
             self.tileQueue.task_done()
             if self.interactive:
                 self.gen_progress.update()
+        if self.interactive:
+            self.gen_progress.close()
 
     def generateTile(self, tile):
         if tile.zoom > 7:
@@ -384,6 +411,7 @@ class MapWriter:
             unions = defaultdict(list)
             features = []
             pixelArea = tile.pixelWidth * tile.pixelWidth
+            prepared_clip = prep(tile.bbox)
 
             for element in tile.elements:
                 if element.mapping.get('zoom-min', 0) > tile.zoom:
@@ -403,6 +431,8 @@ class MapWriter:
                     unions[key].append(element)
                     continue
                 element.geometry = affine_transform(geom, tile.matrix)
+                if element.label and prepared_clip.contains(element.label):
+                    element.labelPosition = affine_transform(element.label, tile.matrix)
                 features.append(element)
 
             for union in unions:
@@ -434,11 +464,12 @@ class MapWriter:
             self.generateSubtiles(nx+1, ny+1, nz, tile)
 
     def generateSubtiles(self, x, y, zoom, tile):
+        subtile = Tile(zoom, x, y)
         # https://stackoverflow.com/a/43105613/488489 - indexing
-        clip = Tile.bbox(x, y, zoom)
-        prepared_clip = prep(clip)
-        elements = [element.clone(clip.intersection(element.geom)) for element in tile.elements if prepared_clip.intersects(element.geom)]
-        self.tileQueue.put(Tile(zoom, x, y, elements))
+        prepared_clip = prep(subtile.bbox)
+        elements = [element.clone(subtile.bbox.intersection(element.geom)) for element in tile.elements if prepared_clip.intersects(element.geom)]
+        subtile.elements = elements
+        self.tileQueue.put(subtile)
 
     def map_path_base(self, x, y, zoom=7):
         """
