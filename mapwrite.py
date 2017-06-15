@@ -31,6 +31,7 @@ import mappings
 import landextraction
 from util.database import MTilesDatabase
 from util.osm import is_area
+from util.filters import filter_rings
 
 
 DBJob = namedtuple('DBJob', ['tile', 'features'])
@@ -443,6 +444,9 @@ class MapWriter:
                     element.geometry = geom
                     unions[key].append(element)
                     continue
+                if 'transform' in element.mapping:
+                    if element.mapping.get('transform') == 'filter-rings':
+                        geom = filter_rings(geom, pixelArea)
                 element.geometry = affine_transform(geom, tile.matrix)
                 if element.label and prepared_clip.contains(element.label):
                     element.labelPosition = affine_transform(element.label, tile.matrix)
@@ -456,10 +460,9 @@ class MapWriter:
                 # get united tags
                 united_tags = {k: v for k, v in first.tags.items() if k in pattern}
                 # transform geometry
-                #if tile.zoom < 14:
-                #    united_geom = united_geom.simplify(tile.pixelWidth)
                 if 'transform' in first.mapping:
-                    pass
+                    if first.mapping.get('transform') == 'filter-rings':
+                        united_geom = filter_rings(united_geom, pixelArea)
                 element = Element(None, united_geom, united_tags)
                 element.geometry = affine_transform(element.geom, tile.matrix)
                 features.append(element)
