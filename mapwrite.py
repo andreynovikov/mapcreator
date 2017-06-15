@@ -280,7 +280,7 @@ class MapWriter:
                 element.area = element.geom.area
             if element.mapping.get('label', False):
                 if isinstance(element.geom, geometry.Polygon):
-                    element.label = polylabel(element.geom)
+                    element.label = polylabel(element.geom, 1.194) # pixel width at zoom 17
                 elif isinstance(element.geom, geometry.MultiPolygon):
                     #TODO in future allow multiple polygons have their own labels
                     area = 0
@@ -290,7 +290,7 @@ class MapWriter:
                             area = p.area
                             polygon = p
                     if polygon:
-                        element.label = polylabel(polygon)
+                        element.label = polylabel(polygon, 1.194)
                 else:
                     self.logger.warn("%s %s can not have label" % (str(element.id), element.geom.type))
         for element in filtered:
