@@ -100,7 +100,7 @@ class OsmFilter(osmium.SimpleHandler):
                             return False, None, None
                     filtered_tags[k] = v
                     renderable = renderable or m.get('render', True)
-                    for k in ('transform','union','area','filter-area','buffer','force-line','label','filter-type'):
+                    for k in ('transform','union','area','filter-area','buffer','force-line','label','filter-type','clip-buffer'):
                         if k in m:
                             mapping[k] = m[k]
                     if 'zoom-min' in m:
@@ -172,6 +172,19 @@ class Tile():
 
     def __str__(self):
         return "%d/%d/%d" % (self.zoom, self.x, self.y)
+
+
+class BBoxCache(defaultdict):
+    def __init__(self, tile):
+        self.tile = tile
+
+    def __missing__(self, key):
+        if key == 0:
+            bbox = self.tile.bbox
+        else:
+            bbox = self.tile.bbox.buffer(self.tile.pixelWidth * key)
+        self[key] = bbox
+        return bbox
 
 
 class MapWriter:
@@ -467,8 +480,9 @@ class MapWriter:
         subtile = Tile(zoom, x, y)
         # https://stackoverflow.com/a/43105613/488489 - indexing
         prepared_clip = prep(subtile.bbox)
-        elements = [element.clone(subtile.bbox.intersection(element.geom)) for element in tile.elements if prepared_clip.intersects(element.geom)]
-        subtile.elements = elements
+        clipCache = BBoxCache(subtile)
+        subtile.elements = [element.clone(clipCache[element.mapping.get('clip-buffer', 0)].intersection(element.geom)) \
+                            for element in tile.elements if prepared_clip.intersects(element.geom)]
         self.tileQueue.put(subtile)
 
     def map_path_base(self, x, y, zoom=7):

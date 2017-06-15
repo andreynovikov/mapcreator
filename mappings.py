@@ -49,14 +49,17 @@ tags = {
     'leisure': {
         'nature_reserve': {
             'filter-type': ['Polygon','MultiPolygon'],
+            'clip-buffer': 4,
             'label': True
         },
         'protected_area': {
             'filter-type': ['Polygon','MultiPolygon'],
+            'clip-buffer': 4,
             'label': True
         },
         'national_park': {
             'filter-type': ['Polygon','MultiPolygon'],
+            'clip-buffer': 4,
             'label': True
         },
     },
