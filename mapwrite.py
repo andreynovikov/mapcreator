@@ -21,7 +21,7 @@ import shapely.wkb as shapelyWkb
 import shapely.speedups
 from shapely import geometry
 from shapely.prepared import prep
-from shapely.ops import transform, cascaded_union, unary_union, polylabel
+from shapely.ops import transform, linemerge, cascaded_union, unary_union, polylabel
 from shapely.affinity import affine_transform
 
 import OSciMap4
@@ -107,11 +107,6 @@ class OsmFilter(osmium.SimpleHandler):
                     if 'zoom-min' in m:
                         if 'zoom-min' not in mapping or m['zoom-min'] < mapping['zoom-min']:
                             mapping['zoom-min'] = m['zoom-min']
-        # if element is subject to uniting construct union key hash in advance
-        if 'union' in mapping:
-            pattern = [x.strip() for x in mapping['union'].split(',')]
-            values = [filtered_tags[k] for k in sorted(set(pattern) & set(filtered_tags.keys()))]
-            mapping['union-key'] = hash(tuple(values))
         return renderable, filtered_tags, mapping
 
     def node(self, n):
@@ -423,6 +418,7 @@ class MapWriter:
             self.logger.debug("    generating tile %s with %d elements" % (tile, len(tile.elements)))
 
             unions = defaultdict(list)
+            merges = defaultdict(list)
             features = []
             pixelArea = tile.pixelWidth * tile.pixelWidth
             prepared_clip = prep(tile.bbox)
@@ -439,12 +435,20 @@ class MapWriter:
                     simple_geom = geom.simplify(tile.pixelWidth)
                     if simple_geom.is_valid:
                         geom = simple_geom
-                if 'union-key' in element.mapping and geom.geom_type in ['LineString', 'MultiLineString', 'Polygon', 'MultiPolygon']:
-                    key = element.mapping['union-key']
+                if 'union' in element.mapping and geom.type in ['LineString', 'MultiLineString', 'Polygon', 'MultiPolygon']:
+                    if type(element.mapping['union']) is dict:
+                        pattern = [k for k, v in element.mapping['union'].items() if tile.zoom > v]
+                    else:
+                        pattern = [x.strip() for x in element.mapping['union'].split(',')]
+                    values = [element.tags[k] for k in sorted(set(pattern) & set(element.tags.keys()))]
+                    key = hash(tuple(values))
                     element.geometry = geom
-                    unions[key].append(element)
+                    if geom.type in ['LineString', 'MultiLineString']:
+                        merges[key].append(element)
+                    else:
+                        unions[key].append(element)
                     continue
-                if 'transform' in element.mapping:
+                if tile.zoom < 14 and 'transform' in element.mapping:
                     if element.mapping.get('transform') == 'filter-rings':
                         geom = filter_rings(geom, pixelArea)
                 element.geometry = affine_transform(geom, tile.matrix)
@@ -452,17 +456,43 @@ class MapWriter:
                     element.labelPosition = affine_transform(element.label, tile.matrix)
                 features.append(element)
 
+            #TODO combine union and merge to one logical block
             for union in unions:
                 # create united geometry
                 united_geom = cascaded_union([el.geometry for el in unions[union]])
                 first = unions[union][0]
-                pattern = [x.strip() for x in first.mapping['union'].split(',')]
+                if type(first.mapping['union']) is dict:
+                    pattern = [k for k, v in first.mapping['union'].items() if tile.zoom > v]
+                else:
+                    pattern = [x.strip() for x in first.mapping['union'].split(',')]
                 # get united tags
                 united_tags = {k: v for k, v in first.tags.items() if k in pattern}
                 # transform geometry
-                if 'transform' in first.mapping:
+                if tile.zoom < 14 and 'transform' in first.mapping:
                     if first.mapping.get('transform') == 'filter-rings':
                         united_geom = filter_rings(united_geom, pixelArea)
+                element = Element(None, united_geom, united_tags)
+                element.geometry = affine_transform(element.geom, tile.matrix)
+                features.append(element)
+
+            for merge in merges:
+                # create united geometry
+                lines = []
+                for el in merges[merge]:
+                    if el.geometry.type == 'LineString':
+                        lines.append(el.geometry)
+                    else:
+                        lines.extend(el.geometry.geoms)
+                united_geom = linemerge(lines)
+                # simplify once more after merge
+                united_geom = united_geom.simplify(tile.pixelWidth)
+                first = merges[merge][0]
+                if type(first.mapping['union']) is dict:
+                    pattern = [k for k, v in first.mapping['union'].items() if tile.zoom > v]
+                else:
+                    pattern = [x.strip() for x in first.mapping['union'].split(',')]
+                # get united tags
+                united_tags = {k: v for k, v in first.tags.items() if k in pattern}
                 element = Element(None, united_geom, united_tags)
                 element.geometry = affine_transform(element.geom, tile.matrix)
                 features.append(element)

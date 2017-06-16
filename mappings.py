@@ -4,6 +4,58 @@ def bool(value):
     return 1
 
 tags = {
+    'highway': {
+        'motorway': {
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'clip-buffer': 4,
+        },
+        'motorway_link': {
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'clip-buffer': 4,
+        },
+        'trunk': {
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'clip-buffer': 4,
+        },
+        'trunk_link': {
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'clip-buffer': 4,
+        },
+        'primary': {
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'clip-buffer': 4,
+        },
+        'primary_link': {
+            'zoom-min': 12,
+            'union': 'highway,ref,name,layer',
+            'clip-buffer': 4,
+        },
+        'secondary': {
+            'zoom-min': 12,
+            'union': 'highway,ref,name,layer',
+            'clip-buffer': 4,
+        },
+        'secondary_link': {
+            'zoom-min': 12,
+            'union': 'highway,ref,name,layer',
+            'clip-buffer': 4,
+        },
+        'tertiary': {
+            'zoom-min': 12,
+            'union': 'highway,ref,name,layer',
+            'clip-buffer': 4,
+        },
+        'tertiary_link': {
+            'zoom-min': 12,
+            'union': 'highway,ref,name,layer',
+            'clip-buffer': 4,
+        },
+        'unclassified': {
+            'zoom-min': 12,
+            'union': 'highway,ref,name,layer',
+            'clip-buffer': 4,
+        }
+    },
     'landuse': {
         'forest': {
             'rewrite-key': 'natural',
@@ -18,7 +70,6 @@ tags = {
             'rewrite-value': 'wood'
         },
         'wood': {
-            'zoom-min': 8,
             'transform': 'filter-rings',
             'union': 'natural',
             #TODO combine next two settings into one
@@ -74,7 +125,17 @@ tags = {
             'force-line': True
         },
     },
+    'layer': {
+        '__any__': {
+            'render': False
+        },
+    },
     'name': {
+        '__any__': {
+            'render': False
+        },
+    },
+    'ref': {
         '__any__': {
             'render': False
         },
@@ -95,6 +156,4 @@ tags = {
 """
 transforms:
 simplify['ref','name'] - ST_SimplifyPreserveTopology(ST_Linemerge(ST_Collect(geometry)),!pixel_width!)
-filter-rings['landuse'] - filter_rings(ST_SimplifyPreserveTopology(ST_Buffer(geometry,!pixel_width!),!pixel_width!),!pixel_width!*!pixel_width!*8)
-                          filter_rings(ST_SimplifyPreserveTopology(ST_Union(geometry),               !pixel_width!),!pixel_width!*!pixel_width!*8) (ST_Buffer(geometry,!pixel_width!))
 """
