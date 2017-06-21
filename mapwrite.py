@@ -30,6 +30,7 @@ import configuration
 import mappings
 import landextraction
 from util.database import MTilesDatabase
+from util.geometry import clockwise
 from util.osm import is_area
 from util.filters import filter_rings
 
@@ -78,6 +79,7 @@ class OsmFilter(osmium.SimpleHandler):
     def __init__(self, elements, logger):
         super(OsmFilter, self).__init__()
         self.elements = elements
+        self.outlines = set()
         self.logger = logger
 
     def filter(self, tags):
@@ -122,27 +124,54 @@ class OsmFilter(osmium.SimpleHandler):
     def way(self, w):
         renderable, tags, mapping = self.filter(w.tags)
         if renderable:
+            if w.is_closed() and is_area(tags):
+                return # will get it later in area handler
+            if 'filter-type' in mapping and 'LineString' not in mapping.pop('filter-type', []):
+                return
             try:
                 wkb = wkbFactory.create_linestring(w)
                 geom = transform(wgs84_to_mercator, shapelyWkb.loads(wkb, hex=True))
-                mapping['is_closed'] = w.is_closed()
                 self.elements.add(Element(w.id, geom, tags, mapping))
             except Exception as e:
                 self.logger.error("%s %s" % (e, w.id))
 
+    def relation(self, r):
+        t = None
+        for tag in r.tags:
+            if tag.k == 'type':
+                t = tag.v
+        if t == 'building':
+            for member in r.members:
+                if member.role == 'outline':
+                    self.outlines.add(member.ref)
+
     def area(self, a):
         renderable, tags, mapping = self.filter(a.tags)
         if renderable:
+            if a.from_way() and not is_area(tags):
+                return # have added it already in ways handler
             try:
                 wkb = wkbFactory.create_multipolygon(a)
                 geom = transform(wgs84_to_mercator, shapelyWkb.loads(wkb, hex=True))
                 if not a.is_multipolygon():
-                    geom = geom[0]
+                    geom = geom[0] # simplify geometry
+                if mapping.pop('force-line', False):
+                    geom = geom.boundary
+                if 'filter-type' in mapping and geom.type not in mapping.pop('filter-type', []):
+                    return
+                geom = clockwise(geom)
                 self.elements.add(Element(a.orig_id(), geom, tags, mapping))
             except Exception as e:
                 self.logger.error("%s %s" % (e, a.orig_id()))
 
     def finish(self):
+        if self.outlines:
+            found = 0
+            for element in self.elements:
+                if element.id in self.outlines:
+                    found = found + 1
+                    element.tags['building:outline'] = 1
+            self.logger.debug("    outlined %d of %d buildings" % (found, len(self.outlines)))
         self.logger.debug("    elements: %d" % len(self.elements))
 
 
@@ -157,7 +186,7 @@ class Tile():
         self.zoom = zoom
         self.x = x
         self.y = y
-        self.elements = elements
+        self.elements = elements if elements else []
         self.pixelWidth = self.INITIAL_RESOLUTION / 2 ** self.zoom
         bb = mercantile.xy_bounds(x, y, zoom)
         self.matrix = [Tile.SCALE / (bb.right - bb.left), 0, 0, 0, Tile.SCALE / (bb.top - bb.bottom), 0, 0, 0,
@@ -188,7 +217,7 @@ class MapWriter:
     def __init__(self, data_dir, dry_run=False, verbose=False):
         self.dry_run = dry_run
         self.verbose = verbose
-        self.logger = logging.getLogger("mapcreator")
+        self.logger = logging.getLogger(__name__)
         self.data_dir = data_dir
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
@@ -270,21 +299,7 @@ class MapWriter:
         handler.finish()
 
         # pre-process elements
-        filtered = []
         for element in elements:
-            #TODO: fix geometries, do other transforms
-            #self.logger.debug("ma: %s" % element.mapping.get('area', False))
-            if element.mapping.get('force-line', False):
-                if isinstance(element.geom, geometry.Polygon) or isinstance(element.geom, geometry.MultiPolygon):
-                    element.geom = element.geom.boundary
-            elif isinstance(element.geom, geometry.LineString) and element.mapping.get('is_closed', False) and is_area(element):
-                polygon = geometry.Polygon(element.geom)
-                if polygon.is_valid:
-                    element.geom = polygon
-            if 'filter-type' in element.mapping:
-                if element.geom.type not in element.mapping.get('filter-type'):
-                    filtered.append(element)
-                    continue
             if element.mapping.get('calc-area', False):
                 element.area = element.geom.area
             if element.mapping.get('label', False):
@@ -302,9 +317,7 @@ class MapWriter:
                         element.label = polylabel(polygon, 1.194)
                 else:
                     self.logger.warn("%s %s can not have label" % (str(element.id), element.geom.type))
-        for element in filtered:
-            elements.remove(element)
-        filtered = None
+        self.logger.debug("    finished pre-processing elements")
 
         # process map only if it contains relevant data
         has_elements = bool(elements)
@@ -314,8 +327,8 @@ class MapWriter:
                 for z in range(1, 15-7):
                     n = 4 ** z
                     num_tiles = num_tiles + n
-                self.gen_progress = tqdm(total=num_tiles, desc="Generated", position=0)
-                self.save_progress = tqdm(total=num_tiles, desc="    Saved", position=1)
+                self.gen_progress = tqdm(total=num_tiles, desc="Generated", position=0, miniters=1)
+                self.save_progress = tqdm(total=num_tiles, desc="    Saved", position=1, miniters=1)
 
             self.dbQueue = queue.Queue()
             self.tileQueue = queue.Queue()
@@ -348,6 +361,8 @@ class MapWriter:
             db_thread.join()
 
             if self.interactive:
+                #self.gen_progress.close()
+                #self.save_progress.close()
                 print("\n")
 
         """
@@ -386,7 +401,8 @@ class MapWriter:
             job = self.dbQueue.get()
             if job is None:
                 break
-            self.logger.debug("    saving tile %s with %d features" % (job.tile, len(job.features)))
+            if job.features:
+                self.logger.debug("    saving tile %s with %d features" % (job.tile, len(job.features)))
             for feature in job.features:
                 #if name is not None:
                 #    putFeature(options.mbtiles_output, feature, putName(options.mbtiles_output, name))
@@ -398,8 +414,6 @@ class MapWriter:
             if self.interactive:
                 self.save_progress.update()
         db.finish()
-        if self.interactive:
-            self.save_progress.close()
 
     def tileWorker(self):
         while True:
@@ -410,18 +424,25 @@ class MapWriter:
             self.tileQueue.task_done()
             if self.interactive:
                 self.gen_progress.update()
-        if self.interactive:
-            self.gen_progress.close()
 
     def generateTile(self, tile):
         if tile.zoom > 7:
-            self.logger.debug("    generating tile %s with %d elements" % (tile, len(tile.elements)))
+            if tile.zoom == 14 and len(tile.elements) > 0:
+                self.logger.debug("    generating tile %s with %d elements" % (tile, len(tile.elements)))
 
             unions = defaultdict(list)
             merges = defaultdict(list)
             features = []
             pixelArea = tile.pixelWidth * tile.pixelWidth
             prepared_clip = prep(tile.bbox)
+
+            building_parts_geom = None
+            building_parts_prepared = None
+            if tile.zoom == 14:
+                building_parts = [element.geom for element in tile.elements if 'building:part' in element.tags and 'building' not in element.tags]
+                if building_parts:
+                    building_parts_geom = cascaded_union(building_parts)
+                    building_parts_prepared = prep(building_parts_geom)
 
             for element in tile.elements:
                 if element.mapping.get('zoom-min', 0) > tile.zoom:
@@ -435,6 +456,11 @@ class MapWriter:
                     simple_geom = geom.simplify(tile.pixelWidth)
                     if simple_geom.is_valid:
                         geom = simple_geom
+                else:
+                    if 'building' in element.tags and not 'building:outline' in element.tags and not 'building:part' in element.tags:
+                        #if building_parts_geom is None or not building_parts_prepared.intersects(element.geom) or building_parts_geom.intersection(element.geom).area == 0:
+                        if building_parts_geom is None or not building_parts_prepared.covers(element.geom):
+                            element.tags['building:part'] = element.tags['building']
                 if 'union' in element.mapping and geom.type in ['LineString', 'MultiLineString', 'Polygon', 'MultiPolygon']:
                     if type(element.mapping['union']) is dict:
                         pattern = [k for k, v in element.mapping['union'].items() if tile.zoom > v]
@@ -514,8 +540,11 @@ class MapWriter:
         # https://stackoverflow.com/a/43105613/488489 - indexing
         prepared_clip = prep(subtile.bbox)
         clipCache = BBoxCache(subtile)
-        subtile.elements = [element.clone(clipCache[element.mapping.get('clip-buffer', 0)].intersection(element.geom)) \
-                            for element in tile.elements if prepared_clip.intersects(element.geom)]
+        for element in tile.elements:
+            if prepared_clip.covers(element.geom):
+                subtile.elements.append(element)
+            elif prepared_clip.intersects(element.geom):
+                subtile.elements.append(element.clone(clipCache[element.mapping.get('clip-buffer', 0)].intersection(element.geom)))
         self.tileQueue.put(subtile)
 
     def map_path_base(self, x, y, zoom=7):
@@ -559,12 +588,9 @@ if __name__ == "__main__":
         print("Database source is currently not supported")
         exit(1)
 
+    logging.basicConfig(level=logging.ERROR, format='%(asctime)s %(levelname)s - %(message)s')
     logging.getLogger("shapely").setLevel(logging.ERROR)
-    sh = logging.StreamHandler()
-    logger = logging.getLogger("mapcreator")
-    formatter = logging.Formatter('%(asctime)s %(levelname)s - %(message)s')
-    sh.setFormatter(formatter)
-    logger.addHandler(sh)
+    logger = logging.getLogger(__name__)
     # during a dry run the console should receive all logs
     if args.dry_run or args.verbose:
         logger.setLevel(logging.DEBUG)

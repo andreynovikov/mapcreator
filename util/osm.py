@@ -1,14 +1,16 @@
-def is_area(element):
-    if not element.tags:
-        return True
+def is_area(tags):
+    if not tags:
+        return True # or False?
 
     result = True
-    for k, v in element.tags.items():
+    for k, v in tags.items():
         if k == 'area':
             if v in ['yes','y','true']:
                 return True
             if v in ['no','n','false']:
                 return False
+        if k in ['building', 'building:part']:
+            return True
         # as specified by http://wiki.openstreetmap.org/wiki/Key:area
         if k in ['aeroway','building','landuse','leisure','natural','amenity']:
             return True

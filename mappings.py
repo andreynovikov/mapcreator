@@ -125,6 +125,18 @@ tags = {
             'force-line': True
         },
     },
+    'building': {
+        '__any__': {
+            'filter-type': ['Polygon','MultiPolygon'],
+            'zoom-min': 14
+        },
+    },
+    'building:part': {
+        '__any__': {
+            'filter-type': ['Polygon','MultiPolygon'],
+            'zoom-min': 14
+        },
+    },
     'layer': {
         '__any__': {
             'render': False
@@ -151,6 +163,15 @@ tags = {
             'render': False
         },
     },
+    'height': {'__any__': {'render': False}},
+    'min_height': {'__any__': {'render': False}},
+    'building:levels': {'__any__': {'render': False}},
+    'building:min_level': {'__any__': {'render': False}},
+    'building:colour': {'__any__': {'render': False}},
+    'building:material': {'__any__': {'render': False}},
+    'roof:colour': {'__any__': {'render': False}},
+    'roof:material': {'__any__': {'render': False}},
+    'addr:housenumber': {'__any__': {'render': False}},
 }
 
 """
