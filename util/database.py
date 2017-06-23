@@ -1,6 +1,11 @@
 from os.path import exists
 from sqlite3 import connect
 
+from shapely.ops import transform
+
+from util.geometry import mercator_to_wgs84
+from util.jenkins import hashlittle
+
 class MTilesDatabase():
     def __init__(self, filename):
         self.filename = filename
@@ -15,9 +20,13 @@ class MTilesDatabase():
             self.db.execute('DELETE FROM metadata')
         except:
             self.db.execute('CREATE TABLE metadata (name TEXT, value TEXT)')
-            self.db.execute('CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB)')
-            self.db.execute('CREATE TABLE names (ref INTEGER, name TEXT)')
-            self.db.execute('CREATE TABLE features(id INTEGER, name INTEGER, lat REAL, lon REAL)')
+            self.db.execute('CREATE TABLE tiles (zoom_level INTEGER NOT NULL, tile_column INTEGER NOT NULL, tile_row INTEGER NOT NULL, tile_data BLOB NOT NULL)')
+            self.db.execute('CREATE TABLE names (ref INTEGER NOT NULL, name TEXT NOT NULL)')
+            self.db.execute('CREATE TABLE features(id INTEGER NOT NULL, name INTEGER NOT NULL, lat REAL, lon REAL)')
+            self.db.execute('CREATE UNIQUE INDEX coord ON tiles (zoom_level, tile_column, tile_row)')
+            self.db.execute('CREATE UNIQUE INDEX property ON metadata (name)')
+            self.db.execute('CREATE UNIQUE INDEX name_ref ON names (ref)')
+            self.db.execute('CREATE UNIQUE INDEX feature_ref ON features (id, name)')
 
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('name', name))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('type', type))
@@ -33,13 +42,7 @@ class MTilesDatabase():
 
     def finish(self):
         self.db.commit()
-        try:
-            self.db.execute('CREATE UNIQUE INDEX coord ON tiles (zoom_level, tile_column, tile_row)')
-            self.db.execute('CREATE UNIQUE INDEX property ON metadata (name)')
-            self.db.execute('CREATE UNIQUE INDEX name_ref ON names (ref)')
-            self.db.execute('CREATE UNIQUE INDEX feature_ref ON features (id)')
-        except:
-            self.db.execute('VACUUM')
+        self.db.execute('VACUUM')
         self.db.close()
         self.db = None
 
@@ -58,11 +61,18 @@ class MTilesDatabase():
         self.db.commit()
         return h
 
-    def putFeature(self, feature, h):
-        if not feature.id:
-            return
-        lat = feature.get('properties').get('label_latitude')
-        lon = feature.get('properties').get('label_longitude')
+    def putFeature(self, feature):
+        h = self.putName(feature.tags.get('name', None))
+        lat = None
+        lon = None
+        if feature.label:
+            geom = transform(mercator_to_wgs84, feature.label)
+            lat = geom.y
+            lon = geom.x
+        elif feature.geom.type == 'Point':
+            geom = transform(mercator_to_wgs84, feature.geom)
+            lat = geom.y
+            lon = geom.x
         q = 'REPLACE INTO features (id, name, lat, lon) VALUES (?, ?, ?, ?)'
-        self.db.execute(q, (id, h, lat, lon))
+        self.db.execute(q, (feature.id, h, lat, lon))
         self.db.commit()

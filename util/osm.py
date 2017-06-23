@@ -1,3 +1,25 @@
+def boolean(value):
+    if value is None or value.strip().lower() in ('false', 'no', '0', 'undefined'):
+        return 0
+    return 1
+
+
+def direction(value):
+    """
+    Preprocessor for one-way directions.
+    Converts `yes`, `true` and `1` to ``1`` for one-ways in the direction  of the way,
+    `-1` to ``-1`` for one-way ways against the direction of the way and ``0`` for all
+    other values.
+    """
+    if value is not None:
+        value = value.strip().lower()
+        if value in ('yes', 'true', '1'):
+            return 1
+        if value == '-1':
+            return -1
+    return 0
+
+
 def is_area(tags):
     if not tags:
         return True # or False?
@@ -5,10 +27,7 @@ def is_area(tags):
     result = True
     for k, v in tags.items():
         if k == 'area':
-            if v in ['yes','y','true']:
-                return True
-            if v in ['no','n','false']:
-                return False
+            return (v == 1)
         if k in ['building', 'building:part']:
             return True
         # as specified by http://wiki.openstreetmap.org/wiki/Key:area

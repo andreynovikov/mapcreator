@@ -1,5 +1,15 @@
+from functools import partial
+
+import pyproj
 from shapely import geometry
 from shapely.geometry.polygon import orient
+
+
+wgs84 = pyproj.Proj(init='epsg:4326')
+mercator = pyproj.Proj(init='epsg:3857')
+
+wgs84_to_mercator = partial(pyproj.transform, wgs84, mercator)
+mercator_to_wgs84 = partial(pyproj.transform, mercator, wgs84)
 
 
 def clockwise(geom):
