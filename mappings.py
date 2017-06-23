@@ -119,6 +119,19 @@ tags = {
             'buffer': 2,
             'transform': 'filter-rings'
         },
+        'cemetery': {
+            'zoom-min': 11,
+            'calc-area': True,
+            'filter-area': 8
+        },
+        'basin': {
+            'calc-area': True,
+            'filter-area': 2
+        },
+        'reservoir': {
+            'calc-area': True,
+            'filter-area': 2
+        },
     },
     'natural': {
         'forest': {
@@ -132,6 +145,30 @@ tags = {
             'filter-area': 2,
             'buffer': 1
         },
+        'marsh': {
+            'zoom-min': 10,
+            'calc-area': True,
+            'filter-area': 8
+        },
+        'wetland': {
+            'zoom-min': 10,
+            'calc-area': True,
+            'filter-area': 8
+        },
+        'water': {
+            'calc-area': True,
+            'filter-area': 2
+        },
+    },
+    'waterway': {
+        'riverbank': {
+            'calc-area': True,
+            'filter-area': 2
+        },
+        'dock': {
+            'calc-area': True,
+            'filter-area': 2
+        }
     },
     'place': {
         'ocean': {},
@@ -153,6 +190,22 @@ tags = {
         'nature_reserve': {'rewrite-key': 'landuse'},
         'protected_area': {'rewrite-key': 'landuse'},
         'national_park': {'rewrite-key': 'landuse'},
+        'dog_park': {'zoom-min': 14},
+        'park': {'zoom-min': 14},
+        'playground': {'zoom-min': 14, 'label': True},
+        'sports_centre': {'zoom-min': 14},
+        'water_park': {'zoom-min': 14},
+    },
+    'amenity': {
+        'university': {'zoom-min': 14, 'label': True},
+        'school': {'zoom-min': 14, 'label': True},
+        'college': {'zoom-min': 14, 'label': True},
+        'kindergarten': {'zoom-min': 14, 'label': True},
+        'hospital': {'zoom-min': 14, 'label': True},
+        'place_of_worship': {'zoom-min': 14, 'label': True},
+    },
+    'tourism': {
+        'zoo': {'zoom-min': 14, 'label': True},
     },
     'boundary': {
         'nature_reserve': {'rewrite-key': 'landuse'},
