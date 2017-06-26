@@ -4,6 +4,13 @@ def boolean(value):
     return 1
 
 
+def integer(value):
+    try:
+        return int(value)
+    except:
+        return None
+
+
 def direction(value):
     """
     Preprocessor for one-way directions.
