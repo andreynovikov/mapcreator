@@ -1,5 +1,10 @@
 from util import osm
 
+DEFAULT_AREA = {
+    'zoom-min': 12,
+    'calc-area': True,
+    'filter-area': 8
+}
 
 # default clip-buffer = 4
 
@@ -88,6 +93,58 @@ tags = {
             'zoom-min': 14,
             'clip-buffer': 8,
         },
+        'bridleway': {
+            'zoom-min': 14
+        },
+        'cycleway': {
+            'zoom-min': 14
+        },
+        'path': {
+            'zoom-min': 14
+        },
+        'footway': {
+            'zoom-min': 14
+        },
+        'steps': {
+            'zoom-min': 14
+        },
+        'traffic_signals': {
+            'zoom-min': 14
+        },
+        'bus_stop': {
+            'zoom-min': 14
+        },
+    },
+    'railway': {
+        'rail': {'zoom-min': 12},
+        'tram': {'zoom-min': 14},
+        'light_rail': {'zoom-min': 14},
+        'monorail': {'zoom-min': 14},
+        'miniature': {'zoom-min': 14},
+        'subway': {'zoom-min': 14},
+        'narrow_gauge': {'zoom-min': 14},
+        'preserved': {'zoom-min': 14},
+        'funicular': {'zoom-min': 14},
+        'monorail': {'zoom-min': 14},
+        'disused': {'zoom-min': 14},
+        'abandoned': {'zoom-min': 14},
+        'preserved': {'zoom-min': 14},
+        'station': {'zoom-min': 14},
+        'platform': {'zoom-min': 14},
+        'halt': {'zoom-min': 14},
+        'tram_stop': {'zoom-min': 14},
+        'crossing': {'zoom-min': 14},
+        'level_crossing': {'zoom-min': 14},
+        'subway_entrance': {'zoom-min': 14},
+    },
+    'aeroway': {
+        'aerodrome': {},
+        'heliport': {
+            'zoom-min': 12
+        },
+        'helipad': {
+            'zoom-min': 14
+        },
     },
     'landuse': {
         'forest': {
@@ -119,6 +176,31 @@ tags = {
             'buffer': 2,
             'transform': 'filter-rings'
         },
+        'residential': {
+            'zoom-min': 10,
+            'calc-area': True,
+            'filter-area': 8
+        },
+        'retail': {
+            'zoom-min': 10,
+            'calc-area': True,
+            'filter-area': 8
+        },
+        'commercial': {
+            'zoom-min': 10,
+            'calc-area': True,
+            'filter-area': 8
+        },
+        'industrial': {
+            'zoom-min': 10,
+            'calc-area': True,
+            'filter-area': 8
+        },
+        'village_green': DEFAULT_AREA,
+        'recreation_ground': DEFAULT_AREA,
+        'allotments': DEFAULT_AREA,
+        'quarry': DEFAULT_AREA,
+        'farmyard': DEFAULT_AREA,
         'cemetery': {
             'zoom-min': 11,
             'calc-area': True,
@@ -132,6 +214,12 @@ tags = {
             'calc-area': True,
             'filter-area': 2
         },
+        'meadow': DEFAULT_AREA,
+        'grass': DEFAULT_AREA,
+        'vineyard': DEFAULT_AREA,
+        'farmland': DEFAULT_AREA,
+        'greenhouse_horticulture': DEFAULT_AREA,
+        'plant_nursery': DEFAULT_AREA,
     },
     'natural': {
         'forest': {
@@ -159,6 +247,37 @@ tags = {
             'calc-area': True,
             'filter-area': 2
         },
+        'grassland': DEFAULT_AREA,
+        'scrub': {
+            'zoom-min': 10,
+            'calc-area': True,
+            'filter-area': 8
+        },
+        'scree': {
+            'zoom-min': 10,
+            'calc-area': True,
+            'filter-area': 8
+        },
+        'shingle': DEFAULT_AREA,
+        'sand': DEFAULT_AREA,
+        'beach': {
+            'zoom-min': 10,
+            'calc-area': True,
+            'filter-area': 8
+        },
+        'mud': DEFAULT_AREA,
+        'glacier': {
+            'zoom-min': 8,
+            'calc-area': True,
+            'filter-area': 8
+        },
+        'cliff': {'zoom-min': 13},
+        'volcano': {'zoom-min': 13},
+        'peak': {'zoom-min': 13},
+        'cave_entrance': {'zoom-min': 14},
+        'spring': {'zoom-min': 13},
+        'tree': {'zoom-min': 14},
+        'mountain_pass': {'zoom-min': 14},
     },
     'waterway': {
         'riverbank': {
@@ -168,7 +287,13 @@ tags = {
         'dock': {
             'calc-area': True,
             'filter-area': 2
-        }
+        },
+        'river': {'zoom-min': 10},
+        'canal': {'zoom-min': 10},
+        'dam': {'zoom-min': 12},
+        'stream': {'zoom-min': 13},
+        'drain': {'zoom-min': 14},
+        'ditch': {'zoom-min': 14},
     },
     'place': {
         'ocean': {},
@@ -177,8 +302,8 @@ tags = {
         'state': {},
         'region': {},
         'island': {'zoom-min': 12},
-        'city': {},
-        'town': {},
+        'city': {'filter-type': ['Point']},
+        'town': {'filter-type': ['Point']},
         'village': {'zoom-min': 12},
         'hamlet': {'zoom-min': 13},
         'suburb': {'zoom-min': 12},
@@ -190,6 +315,11 @@ tags = {
         'nature_reserve': {'rewrite-key': 'landuse'},
         'protected_area': {'rewrite-key': 'landuse'},
         'national_park': {'rewrite-key': 'landuse'},
+        'garden': DEFAULT_AREA,
+        'golf_course': DEFAULT_AREA,
+        'pitch': DEFAULT_AREA,
+        'stadium': DEFAULT_AREA,
+        'common': DEFAULT_AREA,
         'dog_park': {'zoom-min': 14},
         'park': {'zoom-min': 14},
         'playground': {'zoom-min': 14, 'label': True},
@@ -203,8 +333,10 @@ tags = {
         'kindergarten': {'zoom-min': 14, 'label': True},
         'hospital': {'zoom-min': 14, 'label': True},
         'place_of_worship': {'zoom-min': 14, 'label': True},
+        'fountain': {'zoom-min': 14, 'label': True},
     },
     'tourism': {
+        'picnic_site': DEFAULT_AREA,
         'zoo': {'zoom-min': 14, 'label': True},
     },
     'boundary': {
@@ -226,6 +358,30 @@ tags = {
             'filter-type': ['Polygon','MultiPolygon'],
             'zoom-min': 14
         },
+    },
+    'barrier': {
+        'ditch': {'zoom-min': 14},
+        'block': {'zoom-min': 14},
+        'bollard': {'zoom-min': 14},
+        'border_control': {'zoom-min': 13},
+        'chain': {'zoom-min': 14},
+        'cycle_barrier': {'zoom-min': 14},
+        'gate': {'zoom-min': 14},
+        'lift_gate': {'zoom-min': 14},
+        'toll_booth': {'zoom-min': 14},
+        'yes': {'zoom-min': 14},
+        'city_wall': {'zoom-min': 13},
+        'fence': {'zoom-min': 14},
+        'hedge': {'zoom-min': 14},
+        'retaining_wall': {'zoom-min': 14},
+        'wall': {'zoom-min': 14},
+    },
+    'man_made': {
+        'tower': {'zoom-min': 14},
+    },
+    'power': {
+        'line': {'zoom-min': 14},
+        'tower': {'zoom-min': 14},
     },
     'area': {
         '__any__': {
@@ -282,6 +438,13 @@ tags = {
     },
     'capital': {
         '__any__': {
+            'adjust': osm.integer,
+            'render': False
+        },
+    },
+    'population': {
+        '__any__': {
+            'adjust': osm.integer,
             'render': False
         },
     },
@@ -289,6 +452,8 @@ tags = {
     'access': {'__any__': {'render': False}},
     'service': {'__any__': {'render': False}},
     'tracktype': {'__any__': {'render': False}},
+    'station': {'__any__': {'render': False}},
+    'ele': {'__any__': {'render': False}},
     'height': {'__any__': {'render': False}},
     'min_height': {'__any__': {'render': False}},
     'building:levels': {'__any__': {'render': False}},
