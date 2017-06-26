@@ -62,14 +62,14 @@ class MTilesDatabase():
         return h
 
     def putFeature(self, feature):
-        h = self.putName(feature.tags.get('name', None))
+        h = self.putName(feature.name)
         lat = None
         lon = None
         if feature.label:
             geom = transform(mercator_to_wgs84, feature.label)
             lat = geom.y
             lon = geom.x
-        elif feature.geom.type == 'Point':
+        elif feature.geom == 'Point':
             geom = transform(mercator_to_wgs84, feature.geom)
             lat = geom.y
             lon = geom.x

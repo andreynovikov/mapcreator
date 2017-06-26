@@ -34,6 +34,8 @@ from util.filters import filter_rings
 
 
 DBJob = namedtuple('DBJob', ['tile', 'features'])
+Feature = namedtuple('Feature', ['geometry', 'tags', 'label', 'name'])
+Name = namedtuple('Name', ['id', 'name', 'label', 'geom'])
 
 wkbFactory = osmium.geom.WKBFactory()
 
@@ -56,7 +58,6 @@ class Element():
         self.label = label
         self.area = area
         self.geometry = None # tile processed temporary geometry
-        self.labelPosition = None # tile based label position
 
     def __str__(self):
         #geom = transform(mercator_to_wgs84, self.geom)
@@ -92,9 +93,11 @@ class OsmFilter(osmium.SimpleHandler):
                         m = mappings.tags.get(k, {}).get(v, {})
                     if 'one-of' in m:
                         if v not in m['one-of']:
-                            return False, None, None
+                            continue
                     if 'adjust' in m:
                         v = m['adjust'](v)
+                    if v is None:
+                        continue
                     filtered_tags[k] = v
                     renderable = renderable or m.get('render', True)
                     for k in ('transform','union','calc-area','filter-area','buffer','force-line','label','filter-type','clip-buffer'):
@@ -185,9 +188,10 @@ class Tile():
         self.elements = elements if elements else []
         self.pixelWidth = self.INITIAL_RESOLUTION / 2 ** self.zoom
         bb = mercantile.xy_bounds(x, y, zoom)
-        self.matrix = [Tile.SCALE / (bb.right - bb.left), 0, 0, 0, Tile.SCALE / (bb.top - bb.bottom), 0, 0, 0,
-                       1, -bb.left * Tile.SCALE / (bb.right - bb.left), -bb.bottom * Tile.SCALE / (bb.top - bb.bottom), 0]
-        #[Tile.SCALE / (bb.right - bb.left), 0, 0, Tile.SCALE / (bb.top - bb.bottom), -bb.left * Tile.SCALE / (bb.right - bb.left), -bb.bottom * Tile.SCALE / (bb.top - bb.bottom)]
+        #self.matrix = [Tile.SCALE / (bb.right - bb.left), 0, 0, 0, Tile.SCALE / (bb.top - bb.bottom), 0, 0, 0,
+        #               1, -bb.left * Tile.SCALE / (bb.right - bb.left), -bb.bottom * Tile.SCALE / (bb.top - bb.bottom), 0]
+        self.matrix = [Tile.SCALE / (bb.right - bb.left), 0, 0,
+                       Tile.SCALE / (bb.top - bb.bottom), -bb.left * Tile.SCALE / (bb.right - bb.left), -bb.bottom * Tile.SCALE / (bb.top - bb.bottom)]
         #print(str(self.matrix))
         self.bbox = geometry.Polygon([[bb.left, bb.bottom], [bb.left, bb.top], [bb.right, bb.top], [bb.right, bb.bottom]])
 
@@ -441,10 +445,8 @@ class MapWriter:
             if job.features:
                 self.logger.debug("    saving tile %s with %d features" % (job.tile, len(job.features)))
             for feature in job.features:
-                if feature.id and 'name' in feature.tags:
-                    db.putFeature(feature)
-                    feature.tags.pop('name', None)
-                    feature.tags['id'] = feature.id
+                if feature.name is not None:
+                    db.putFeature(feature.name)
             encoded = OSciMap4.encode(job.features)
             db.putTile(job.tile.zoom, job.tile.x, job.tile.y, encoded)
             self.dbQueue.task_done()
@@ -514,10 +516,15 @@ class MapWriter:
                 if tile.zoom < 14 and 'transform' in element.mapping:
                     if element.mapping.get('transform') == 'filter-rings':
                         geom = filter_rings(geom, pixelArea)
-                element.geometry = affine_transform(geom, tile.matrix)
+                geometry = affine_transform(geom, tile.matrix)
+                name = None
+                if 'name' in element.tags:
+                    name = Name(element.id, element.tags.pop('name', None), element.label, element.geom)
+                    element.tags['id'] = element.id
+                label = None
                 if element.label and prepared_clip.contains(element.label):
-                    element.labelPosition = affine_transform(element.label, tile.matrix)
-                features.append(element)
+                    label = affine_transform(element.label, tile.matrix)
+                features.append(Feature(geometry, element.tags, label, name))
 
             #TODO combine union and merge to one logical block
             for union in unions:
@@ -534,18 +541,14 @@ class MapWriter:
                 if tile.zoom < 14 and 'transform' in first.mapping:
                     if first.mapping.get('transform') == 'filter-rings':
                         united_geom = filter_rings(united_geom, pixelArea)
-                element = Element(None, united_geom, united_tags)
-                element.geometry = affine_transform(element.geom, tile.matrix)
-                features.append(element)
+                geometry = affine_transform(united_geom, tile.matrix)
+                features.append(Feature(geometry, united_tags, None, None))
 
             for merge in merges:
                 first = merges[merge][0]
-                id = first.id
                 # create united geometry
                 lines = []
                 for el in merges[merge]:
-                    if el.id < id:
-                        id = el.id
                     if el.geometry.type == 'LineString':
                         lines.append(el.geometry)
                     else:
@@ -559,9 +562,12 @@ class MapWriter:
                     pattern = [x.strip() for x in first.mapping['union'].split(',')]
                 # get united tags
                 united_tags = {k: v for k, v in first.tags.items() if k in pattern}
-                element = Element(id, united_geom, united_tags)
-                element.geometry = affine_transform(element.geom, tile.matrix)
-                features.append(element)
+                geometry = affine_transform(united_geom, tile.matrix)
+                name = None
+                if 'name' in united_tags:
+                    name = Name(first.id, first.tags.pop('name', None), None, None)
+                    first.tags['id'] = first.id
+                features.append(Feature(geometry, united_tags, None, name))
 
             self.dbQueue.put(DBJob(tile, features))
 
