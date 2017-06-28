@@ -3,8 +3,8 @@
 import os
 import sys
 import math
-import queue
 import threading
+import multiprocessing
 import argparse
 import subprocess
 import logging.config
@@ -33,9 +33,9 @@ from util.osm import is_area
 from util.filters import filter_rings
 
 
-DBJob = namedtuple('DBJob', ['tile', 'features'])
-Feature = namedtuple('Feature', ['geometry', 'tags', 'label', 'name'])
-Name = namedtuple('Name', ['id', 'name', 'label', 'geom'])
+ProcessJob = namedtuple('ProcessJob', ['id', 'wkb', 'tags', 'mapping', 'simple_polygon'])
+DBJob = namedtuple('DBJob', ['zoom', 'x', 'y', 'features'])
+Feature = namedtuple('Feature', ['geometry', 'tags', 'label'])
 
 wkbFactory = osmium.geom.WKBFactory()
 
@@ -108,31 +108,45 @@ class OsmFilter(osmium.SimpleHandler):
                             mapping['zoom-min'] = m['zoom-min']
         return renderable, filtered_tags, mapping
 
-    def node(self, n):
-        renderable, tags, mapping = self.filter(n.tags)
+    def process(self, t, o):
+        renderable, tags, mapping = self.filter(o.tags)
         if renderable:
-            if 'filter-type' in mapping and 'Point' not in mapping.pop('filter-type', []):
-                return
+            if t > 1:
+                area = is_area(tags)
+                if t == 2 and o.is_closed() and area:
+                    return # will get it later in area handler
+                if t == 3 and o.from_way() and not area:
+                    return # have added it already in ways handler
             try:
-                wkb = wkbFactory.create_point(n)
+                if t == 1:
+                    id = o.id
+                    wkb = wkbFactory.create_point(o)
+                if t == 2:
+                    id = o.id
+                    wkb = wkbFactory.create_linestring(o)
+                if t == 3:
+                    id = o.orig_id()
+                    wkb = wkbFactory.create_multipolygon(o)
                 geom = transform(wgs84_to_mercator, shapelyWkb.loads(wkb, hex=True))
-                self.elements.add(Element(n.id, geom, tags, mapping))
+                if t == 3 and not o.is_multipolygon():
+                    geom = geom[0] # simplify geometry
+                if mapping.pop('force-line', False) and geom.type in ['Polygon', 'MultiPolygon']:
+                    geom = geom.boundary
+                if 'filter-type' in mapping and geom.type not in mapping.pop('filter-type', []):
+                    return
+                geom = clockwise(geom)
+                self.elements.append(Element(id, geom, tags, mapping))
             except Exception as e:
-                self.logger.error("%s %s" % (e, n.id))
+                self.logger.error("%s %s" % (e, id))
+
+    def node(self, n):
+        self.process(1, n)
 
     def way(self, w):
-        renderable, tags, mapping = self.filter(w.tags)
-        if renderable:
-            if w.is_closed() and is_area(tags):
-                return # will get it later in area handler
-            if 'filter-type' in mapping and 'LineString' not in mapping.pop('filter-type', []):
-                return
-            try:
-                wkb = wkbFactory.create_linestring(w)
-                geom = transform(wgs84_to_mercator, shapelyWkb.loads(wkb, hex=True))
-                self.elements.add(Element(w.id, geom, tags, mapping))
-            except Exception as e:
-                self.logger.error("%s %s" % (e, w.id))
+        self.process(2, w)
+
+    def area(self, a):
+        self.process(3, a)
 
     def relation(self, r):
         t = None
@@ -143,25 +157,6 @@ class OsmFilter(osmium.SimpleHandler):
             for member in r.members:
                 if member.role == 'outline':
                     self.outlines.add(member.ref)
-
-    def area(self, a):
-        renderable, tags, mapping = self.filter(a.tags)
-        if renderable:
-            if a.from_way() and not is_area(tags):
-                return # have added it already in ways handler
-            try:
-                wkb = wkbFactory.create_multipolygon(a)
-                geom = transform(wgs84_to_mercator, shapelyWkb.loads(wkb, hex=True))
-                if not a.is_multipolygon():
-                    geom = geom[0] # simplify geometry
-                if mapping.pop('force-line', False):
-                    geom = geom.boundary
-                if 'filter-type' in mapping and geom.type not in mapping.pop('filter-type', []):
-                    return
-                geom = clockwise(geom)
-                self.elements.add(Element(a.orig_id(), geom, tags, mapping))
-            except Exception as e:
-                self.logger.error("%s %s" % (e, a.orig_id()))
 
     def finish(self):
         if self.outlines:
@@ -212,6 +207,29 @@ class BBoxCache(defaultdict):
         return bbox
 
 
+def process_element(geom, mapping):
+    label = None
+    if mapping.get('label', False):
+        if geom.type == 'Polygon':
+            label = polylabel(geom, 1.194) # pixel width at zoom 17
+        elif geom.type == 'MultiPolygon':
+            #TODO in future allow multiple polygons have their own labels
+            area = 0
+            polygon = None
+            for p in geom:
+                if p.area > area:
+                    area = p.area
+                    polygon = p
+            if polygon:
+                label = polylabel(polygon, 1.194)
+        else:
+            pass
+    area = None
+    if mapping.get('calc-area', False):
+        area = geom.area
+    return (area, label)
+
+
 class MapWriter:
 
     def __init__(self, data_dir, dry_run=False, verbose=False):
@@ -224,7 +242,6 @@ class MapWriter:
         self.simplification = 0.0
         self.landExtractor = landextraction.LandExtractor(self.data_dir, self.dry_run)
         #self.landExtractor.downloadLandPolygons()
-        self.tileQueue = queue.Queue()
         self.interactive = not verbose and sys.__stdin__.isatty()
 
         try:
@@ -293,7 +310,7 @@ class MapWriter:
 
         self.logger.info("  Processing file: %s" % pbf_path)
 
-        elements = set()
+        elements = []
         handler = OsmFilter(elements, self.logger)
         handler.apply_file(pbf_path)
         handler.finish()
@@ -301,39 +318,32 @@ class MapWriter:
         # process map only if it contains relevant data
         has_elements = bool(elements)
         if has_elements:
-            worker_threads = []
+            self.db = MTilesDatabase(map_path)
+            self.db.create("%d-%d" % (x, y), 'baselayer', '1', 'maptrek')
+
             num_worker_threads = len(os.sched_getaffinity(0))
             self.logger.debug("    number of threads: %d" % num_worker_threads)
-
-            self.labelQueue = queue.Queue()
-
-            for i in range(num_worker_threads):
-                t = threading.Thread(target=self.labelWorker)
-                t.start()
-                worker_threads.append(t)
+            worker_threads = []
+            pool = multiprocessing.Pool(num_worker_threads)
 
             if self.interactive:
-                self.proc_progress = tqdm(total=len(elements), desc="Processed", miniters=100, maxinterval=1.0)
+                self.proc_progress = tqdm(total=len(elements), desc="Processed", maxinterval=1.0)
 
             # pre-process elements
-            for element in elements:
-                if element.mapping.get('calc-area', False):
-                    element.area = element.geom.area
-                if element.mapping.get('label', False):
-                    self.labelQueue.put(element)
-                elif self.interactive:
-                    self.proc_progress.update()
-
-            if self.interactive:
-                self.proc_progress.miniters = 1
-
-            # block until all tasks are done
-            self.labelQueue.join()
-            # stop workers
-            for i in range(num_worker_threads):
-                self.labelQueue.put(None)
-            for t in worker_threads:
-                t.join()
+            for idx, element in enumerate(elements):
+                def process_result(result, index=idx):
+                    el = elements[index]
+                    area, label = result
+                    el.area = area
+                    el.label = label
+                    if 'name' in element.tags:
+                        el.tags['id'] = el.id
+                        self.db.putFeature(el.id, el.tags.pop('name', None), el.label, el.geom)
+                    if self.interactive:
+                        self.proc_progress.update()
+                pool.apply_async(process_element, [element.geom, element.mapping], callback=process_result)
+            pool.close()
+            pool.join()
 
             if self.interactive:
                 self.proc_progress.close()
@@ -345,43 +355,42 @@ class MapWriter:
                 for z in range(1, 15-7):
                     n = 4 ** z
                     num_tiles = num_tiles + n
-                self.gen_progress = tqdm(total=num_tiles, desc="Generated", position=0, miniters=1)
-                self.save_progress = tqdm(total=num_tiles, desc="    Saved", position=1, miniters=1)
+                self.gen_progress = tqdm(total=num_tiles, desc="Generated")
 
-            self.dbQueue = queue.Queue()
-            self.tileQueue = queue.Queue()
+            tile_queue = multiprocessing.JoinableQueue()
+            db_queue = multiprocessing.JoinableQueue()
 
-            db_thread = threading.Thread(target=self.dbWorker, kwargs={'map_path': map_path, 'map_name': "%d-%d" % (x, y)})
+            db_thread = threading.Thread(target=self.dbWorker, args=(db_queue,))
             db_thread.start()
 
-            worker_threads = []
-            # leave one thread for saving tiles
-            if num_worker_threads > 1:
-                num_worker_threads = num_worker_threads - 1
+            processes = []
             for i in range(num_worker_threads):
-                t = threading.Thread(target=self.tileWorker)
-                t.start()
-                worker_threads.append(t)
+                p = multiprocessing.Process(target=self.tileWorker, args=(tile_queue, db_queue))
+                p.start()
+                processes.append(p)
 
             tile = Tile(7, x, y, elements)
-            self.tileQueue.put(tile)
+            tile_queue.put(tile)
 
             # block until all tasks are done
-            self.tileQueue.join()
-            self.dbQueue.join()
+            tile_queue.join()
+            db_queue.join()
 
             # stop workers
             for i in range(num_worker_threads):
-                self.tileQueue.put(None)
-            for t in worker_threads:
-                t.join()
-            self.dbQueue.put(None)
+                tile_queue.put(None)
+            for p in processes:
+                p.join()
+            db_queue.put(None)
             db_thread.join()
 
+            tile_queue.close()
+            db_queue.close()
+
+            self.db.finish()
+
             if self.interactive:
-                #self.gen_progress.close()
-                #self.save_progress.close()
-                print("\n")
+                self.gen_progress.close()
 
         """
         osmosis_call += ['--mw','file=%s' % map_path]
@@ -412,62 +421,32 @@ class MapWriter:
         else:
             return None
 
-    def labelWorker(self):
+    def dbWorker(self, queue):
         while True:
-            element = self.labelQueue.get()
-            if element is None:
-                break
-            if isinstance(element.geom, geometry.Polygon):
-                element.label = polylabel(element.geom, 1.194) # pixel width at zoom 17
-            elif isinstance(element.geom, geometry.MultiPolygon):
-                #TODO in future allow multiple polygons have their own labels
-                area = 0
-                polygon = None
-                for p in element.geom:
-                    if p.area > area:
-                        area = p.area
-                        polygon = p
-                if polygon:
-                    element.label = polylabel(polygon, 1.194)
-            else:
-                pass
-            self.labelQueue.task_done()
-            if self.interactive:
-                self.proc_progress.update()
-
-    def dbWorker(self, map_path=None, map_name=None):
-        db = MTilesDatabase(map_path)
-        db.create(map_name, 'baselayer', '1', 'maptrek')
-        while True:
-            job = self.dbQueue.get()
+            job = queue.get()
             if job is None:
+                queue.task_done()
                 break
-            if job.features:
-                self.logger.debug("    saving tile %s with %d features" % (job.tile, len(job.features)))
-            for feature in job.features:
-                if feature.name is not None:
-                    db.putFeature(feature.name)
-            encoded = OSciMap4.encode(job.features)
-            db.putTile(job.tile.zoom, job.tile.x, job.tile.y, encoded)
-            self.dbQueue.task_done()
-            if self.interactive:
-                self.save_progress.update()
-        db.finish()
-
-    def tileWorker(self):
-        while True:
-            tile = self.tileQueue.get()
-            if tile is None:
-                break
-            self.generateTile(tile)
-            self.tileQueue.task_done()
+            self.db.putTile(job.zoom, job.x, job.y, job.features)
+            queue.task_done()
             if self.interactive:
                 self.gen_progress.update()
 
+    def tileWorker(self, tile_queue, db_queue):
+        self.tileQueue = tile_queue
+        self.dbQueue = db_queue
+        while True:
+            tile = tile_queue.get()
+            if tile is None:
+                tile_queue.task_done()
+                break
+            self.generateTile(tile)
+            tile_queue.task_done()
+
     def generateTile(self, tile):
         if tile.zoom > 7:
-            #if tile.zoom == 14 and len(tile.elements) > 0:
-            #    self.logger.debug("    generating tile %s with %d elements" % (tile, len(tile.elements)))
+            if len(tile.elements) > 0:
+                self.logger.debug("    generating tile %s with %d elements" % (tile, len(tile.elements)))
 
             unions = defaultdict(list)
             merges = defaultdict(list)
@@ -517,14 +496,10 @@ class MapWriter:
                     if element.mapping.get('transform') == 'filter-rings':
                         geom = filter_rings(geom, pixelArea)
                 geometry = affine_transform(geom, tile.matrix)
-                name = None
-                if 'name' in element.tags:
-                    name = Name(element.id, element.tags.pop('name', None), element.label, element.geom)
-                    element.tags['id'] = element.id
                 label = None
                 if element.label and prepared_clip.contains(element.label):
                     label = affine_transform(element.label, tile.matrix)
-                features.append(Feature(geometry, element.tags, label, name))
+                features.append(Feature(geometry, element.tags, label))
 
             #TODO combine union and merge to one logical block
             for union in unions:
@@ -542,7 +517,7 @@ class MapWriter:
                     if first.mapping.get('transform') == 'filter-rings':
                         united_geom = filter_rings(united_geom, pixelArea)
                 geometry = affine_transform(united_geom, tile.matrix)
-                features.append(Feature(geometry, united_tags, None, None))
+                features.append(Feature(geometry, united_tags, None))
 
             for merge in merges:
                 first = merges[merge][0]
@@ -562,14 +537,13 @@ class MapWriter:
                     pattern = [x.strip() for x in first.mapping['union'].split(',')]
                 # get united tags
                 united_tags = {k: v for k, v in first.tags.items() if k in pattern}
+                if 'id' in first.tags:
+                    united_tags['id'] = first['id']
                 geometry = affine_transform(united_geom, tile.matrix)
-                name = None
-                if 'name' in united_tags:
-                    name = Name(first.id, first.tags.pop('name', None), None, None)
-                    first.tags['id'] = first.id
-                features.append(Feature(geometry, united_tags, None, name))
+                features.append(Feature(geometry, united_tags, None))
 
-            self.dbQueue.put(DBJob(tile, features))
+            encoded = OSciMap4.encode(features)
+            self.dbQueue.put(DBJob(tile.zoom, tile.x, tile.y, encoded))
 
         # propagate elements to lower zoom
         if tile.zoom < 14:

@@ -12,7 +12,7 @@ class MTilesDatabase():
         self.namehashes = []
 
     def create(self, name, type, version, format, bounds=None):
-        self.db = connect(self.filename)
+        self.db = connect(self.filename, check_same_thread=False)
         # check if database already exists
         try:
             self.db.execute('SELECT name, value FROM metadata LIMIT 1')
@@ -61,18 +61,18 @@ class MTilesDatabase():
         self.db.commit()
         return h
 
-    def putFeature(self, feature):
-        h = self.putName(feature.name)
+    def putFeature(self, id, name, label, geometry):
+        h = self.putName(name)
         lat = None
         lon = None
-        if feature.label:
-            geom = transform(mercator_to_wgs84, feature.label)
+        if label:
+            geom = transform(mercator_to_wgs84, label)
             lat = geom.y
             lon = geom.x
-        elif feature.geom == 'Point':
-            geom = transform(mercator_to_wgs84, feature.geom)
+        elif geometry.type == 'Point':
+            geom = transform(mercator_to_wgs84, geometry)
             lat = geom.y
             lon = geom.x
         q = 'REPLACE INTO features (id, name, lat, lon) VALUES (?, ?, ?, ?)'
-        self.db.execute(q, (feature.id, h, lat, lon))
+        self.db.execute(q, (id, h, lat, lon))
         self.db.commit()
