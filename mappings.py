@@ -6,6 +6,18 @@ DEFAULT_AREA = {
     'filter-area': 8
 }
 
+DEFAULT_LABELED_AREA = {
+    'zoom-min': 12,
+    'calc-area': True,
+    'filter-area': 8,
+    'label': True
+}
+
+DEFAULT_PLACE = {
+    'zoom-min': 14,
+    'label': True
+}
+
 # default clip-buffer = 4
 
 tags = {
@@ -322,22 +334,77 @@ tags = {
         'common': DEFAULT_AREA,
         'dog_park': {'zoom-min': 14},
         'park': {'zoom-min': 14},
-        'playground': {'zoom-min': 14, 'label': True},
+        'playground': DEFAULT_PLACE,
         'sports_centre': {'zoom-min': 14},
         'water_park': {'zoom-min': 14},
     },
     'amenity': {
-        'university': {'zoom-min': 14, 'label': True},
-        'school': {'zoom-min': 14, 'label': True},
-        'college': {'zoom-min': 14, 'label': True},
-        'kindergarten': {'zoom-min': 14, 'label': True},
-        'hospital': {'zoom-min': 14, 'label': True},
-        'place_of_worship': {'zoom-min': 14, 'label': True},
-        'fountain': {'zoom-min': 14, 'label': True},
+        'university': DEFAULT_PLACE,
+        'school': DEFAULT_PLACE,
+        'college': DEFAULT_PLACE,
+        'kindergarten': DEFAULT_PLACE,
+        'hospital': DEFAULT_PLACE,
+        'place_of_worship': DEFAULT_PLACE,
+        'fountain': DEFAULT_PLACE,
+        'drinking_water': DEFAULT_PLACE,
+        'police': DEFAULT_PLACE,
+        'fire_station': DEFAULT_PLACE,
+        'pharmacy': DEFAULT_PLACE,
+        'doctors': DEFAULT_PLACE,
+        'veterinary': DEFAULT_PLACE,
+        'cafe': DEFAULT_PLACE,
+        'pub': DEFAULT_PLACE,
+        'bar': DEFAULT_PLACE,
+        'fast_food': DEFAULT_PLACE,
+        'restaurant': DEFAULT_PLACE,
+        'bank': DEFAULT_PLACE,
+        'atm': DEFAULT_PLACE,
+        'bus_station': DEFAULT_PLACE,
+        'fuel': DEFAULT_PLACE,
+        'post_office': DEFAULT_PLACE,
+        'theatre': DEFAULT_PLACE,
+        'cinema': DEFAULT_PLACE,
+        'shelter': DEFAULT_PLACE,
+        'bicycle_rental': DEFAULT_PLACE,
+        'telephone': DEFAULT_PLACE,
+        'parking': DEFAULT_PLACE,
+        'post_box': DEFAULT_PLACE,
+        'library': DEFAULT_PLACE,
+        'car_repair': {'rewrite-key': 'shop'},
+        'toilets': DEFAULT_PLACE
+    },
+    'shop': {
+        'bakery': DEFAULT_PLACE,
+        'hairdresser': DEFAULT_PLACE,
+        'supermarket': DEFAULT_PLACE,
+        'doityourself': DEFAULT_PLACE,
+        'mall': DEFAULT_PLACE,
+        'pet': DEFAULT_PLACE,
+        'car': DEFAULT_PLACE,
+        'car_repair': DEFAULT_PLACE
     },
     'tourism': {
-        'picnic_site': DEFAULT_AREA,
-        'zoo': {'zoom-min': 14, 'label': True},
+        'picnic_site': DEFAULT_LABELED_AREA,
+        'zoo': DEFAULT_LABELED_AREA,
+        'wilderness_hut': DEFAULT_PLACE,
+        'alpine_hut': DEFAULT_PLACE,
+        'camp_site': DEFAULT_PLACE,
+        'caravan_site': DEFAULT_PLACE,
+        'guest_house': DEFAULT_PLACE,
+        'motel': DEFAULT_PLACE,
+        'hostel': DEFAULT_PLACE,
+        'hotel': DEFAULT_PLACE,
+        'attraction': DEFAULT_PLACE,
+        'viewpoint': DEFAULT_PLACE,
+        'museum': DEFAULT_PLACE,
+        'information': DEFAULT_PLACE,
+        'artwork': {'zoom-min': 14}
+    },
+    'historic': {
+        'memorial': DEFAULT_PLACE,
+        'castle': DEFAULT_PLACE,
+        'ruins': DEFAULT_PLACE,
+        'monument': DEFAULT_PLACE
     },
     'boundary': {
         'nature_reserve': {'rewrite-key': 'landuse'},
@@ -378,6 +445,9 @@ tags = {
     },
     'man_made': {
         'tower': {'zoom-min': 14},
+    },
+    'mountain_pass': {
+        'yes': {'zoom-min': 13},
     },
     'power': {
         'line': {'zoom-min': 14},
@@ -450,9 +520,11 @@ tags = {
     },
     'ref': {'__any__': {'render': False}},
     'access': {'__any__': {'render': False}},
+    'fee': {'__any__': {'render': False}},
     'service': {'__any__': {'render': False}},
     'tracktype': {'__any__': {'render': False}},
     'station': {'__any__': {'render': False}},
+    'religion': {'__any__': {'render': False}},
     'ele': {'__any__': {'render': False}},
     'height': {'__any__': {'render': False}},
     'min_height': {'__any__': {'render': False}},
