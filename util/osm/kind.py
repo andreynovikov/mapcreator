@@ -36,6 +36,8 @@ def get_kind(tags):
 def _tag_kind(k, v):
     if v is None:
         return 0
+    if not isinstance(v, str):
+        return 0
 
     key = k.lower()
     value = v.lower()

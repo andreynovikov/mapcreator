@@ -332,6 +332,7 @@ class MapWriter:
             if self.interactive:
                 self.proc_progress = tqdm(total=len(elements), desc="Processed", maxinterval=1.0)
 
+            results = []
             # pre-process elements
             for idx, element in enumerate(elements):
                 def process_result(result, index=idx):
@@ -342,9 +343,10 @@ class MapWriter:
                         self.db.putFeature(el.id, el.tags.pop('name', None), el.kind, el.label, el.geom)
                     if self.interactive:
                         self.proc_progress.update()
-                pool.apply_async(process_element, [element.geom, element.tags, element.mapping], callback=process_result)
+                results.append(pool.apply_async(process_element, [element.geom, element.tags, element.mapping], callback=process_result))
             pool.close()
-            pool.join()
+            for r in results:
+                r.get()
 
             if self.interactive:
                 self.proc_progress.close()
