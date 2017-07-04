@@ -150,13 +150,13 @@ tags = {
         'subway_entrance': {'zoom-min': 14},
     },
     'aeroway': {
-        'aerodrome': {},
-        'heliport': {
-            'zoom-min': 12
-        },
-        'helipad': {
-            'zoom-min': 14
-        },
+        'aerodrome': {'zoom-min': 7, 'label': True},
+        'heliport': {'zoom-min': 12, 'label': True},
+        'runway': {'zoom-min': 11, 'label': True},
+        'taxiway': {'zoom-min': 12, 'label': True},
+        'helipad': {'zoom-min': 13, 'label': True},
+        'apron': {'zoom-min': 14},
+        'terminal': {'zoom-min': 14},
     },
     'landuse': {
         'forest': {
@@ -406,6 +406,14 @@ tags = {
         'ruins': DEFAULT_PLACE,
         'monument': DEFAULT_PLACE
     },
+    'route': {
+        'ferry': {'zoom-min': 12},
+    },
+    'piste:type': {
+        'downhill': {'zoom-min': 13},
+        'nordic': {'zoom-min': 13},
+        'sled': {'zoom-min': 13},
+    },
     'boundary': {
         'nature_reserve': {'rewrite-key': 'landuse'},
         'protected_area': {'rewrite-key': 'landuse'},
@@ -518,11 +526,24 @@ tags = {
             'render': False
         },
     },
+    'piste:difficulty': {
+        '__any__': {
+            'one-of': ['novice','easy','intermediate','advanced','expert','freeride'],
+            'render': False
+        }
+    },
+    'tracktype': {
+        '__any__': {
+            'one-of': ['grade1','grade2','grade3','grade4','grade5'],
+            'render': False
+        }
+    },
     'ref': {'__any__': {'render': False}},
+    'iata': {'__any__': {'render': False}},
+    'icao': {'__any__': {'render': False}},
     'access': {'__any__': {'render': False}},
     'fee': {'__any__': {'render': False}},
     'service': {'__any__': {'render': False}},
-    'tracktype': {'__any__': {'render': False}},
     'station': {'__any__': {'render': False}},
     'religion': {'__any__': {'render': False}},
     'ele': {'__any__': {'render': False}},
