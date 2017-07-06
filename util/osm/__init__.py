@@ -1,7 +1,7 @@
 def boolean(value):
     if value is None or value.strip().lower() in ('false', 'no', '0', 'undefined'):
-        return 0
-    return 1
+        return 'no'
+    return 'yes'
 
 
 def integer(value):
