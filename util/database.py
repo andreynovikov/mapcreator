@@ -6,13 +6,18 @@ from shapely.ops import transform
 from util.geometry import mercator_to_wgs84
 from util.jenkins import hashlittle
 
+
 class MTilesDatabase():
+
     def __init__(self, filename):
         self.filename = filename
         self.namehashes = []
 
+
     def create(self, name, type, version, format, bounds=None):
         self.db = connect(self.filename, check_same_thread=False)
+        self.db.execute('PRAGMA journal_mode = OFF')
+        self.db.execute('PRAGMA synchronous = NORMAL')
         # check if database already exists
         try:
             self.db.execute('SELECT name, value FROM metadata LIMIT 1')
@@ -40,17 +45,23 @@ class MTilesDatabase():
         self.db.commit()
         self.db.text_factory = bytes
 
+
+    def commit(self):
+        self.db.commit()
+
+
     def finish(self):
         self.db.commit()
         self.db.execute('VACUUM')
         self.db.close()
         self.db = None
 
+
     def putTile(self, zoom, x, y, content):
         tile_row = (2**zoom - 1) - y # Hello, Paul Ramsey.
         q = 'REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)'
         self.db.execute(q, (zoom, x, tile_row, memoryview(content)))
-        self.db.commit()
+
 
     def putName(self, name):
         h = hashlittle(name)
@@ -58,8 +69,8 @@ class MTilesDatabase():
             return h
         q = 'REPLACE INTO names (ref, name) VALUES (?, ?)'
         self.db.execute(q, (h, name))
-        self.db.commit()
         return h
+
 
     def putFeature(self, id, name, kind, label, geometry):
         h = self.putName(name)
@@ -75,4 +86,3 @@ class MTilesDatabase():
             lon = geom.x
         q = 'REPLACE INTO features (id, name, kind, lat, lon) VALUES (?, ?, ?, ?, ?)'
         self.db.execute(q, (id, h, kind, lat, lon))
-        self.db.commit()

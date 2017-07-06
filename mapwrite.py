@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import os
 import sys
@@ -198,11 +198,9 @@ class Tile():
         self.elements = elements if elements else []
         self.pixelWidth = self.INITIAL_RESOLUTION / 2 ** self.zoom
         bb = mercantile.xy_bounds(x, y, zoom)
-        #self.matrix = [Tile.SCALE / (bb.right - bb.left), 0, 0, 0, Tile.SCALE / (bb.top - bb.bottom), 0, 0, 0,
-        #               1, -bb.left * Tile.SCALE / (bb.right - bb.left), -bb.bottom * Tile.SCALE / (bb.top - bb.bottom), 0]
         self.matrix = [Tile.SCALE / (bb.right - bb.left), 0, 0,
-                       Tile.SCALE / (bb.top - bb.bottom), -bb.left * Tile.SCALE / (bb.right - bb.left), -bb.bottom * Tile.SCALE / (bb.top - bb.bottom)]
-        #print(str(self.matrix))
+                       Tile.SCALE / (bb.top - bb.bottom), -bb.left * Tile.SCALE / (bb.right - bb.left),
+                       -bb.bottom * Tile.SCALE / (bb.top - bb.bottom)]
         self.bbox = geometry.Polygon([[bb.left, bb.bottom], [bb.left, bb.top], [bb.right, bb.top], [bb.right, bb.bottom]])
 
     def __str__(self):
@@ -397,6 +395,8 @@ class MapWriter:
             tile = Tile(7, x, y, elements)
             tile_queue.put(tile)
 
+            self.db.commit()
+
             # block until all tasks are done
             tile_queue.join()
             db_queue.join()
@@ -465,7 +465,10 @@ class MapWriter:
             if tile is None:
                 tile_queue.task_done()
                 break
-            self.generateTile(tile)
+            try:
+                self.generateTile(tile)
+            except Exception as e:
+                self.logger.error("Error generating tile %s: %s" % (tile, e))
             tile_queue.task_done()
 
     def generateTile(self, tile):
