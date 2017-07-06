@@ -18,7 +18,7 @@ class OsmFilter(osmium.SimpleHandler):
         self.mapped = {}
         self.values = {}
 
-    def filter(self, tags):
+    def filter(self, id, tags):
         filtered_tags = {}
         renderable = False
         for tag in tags:
@@ -53,17 +53,18 @@ class OsmFilter(osmium.SimpleHandler):
                         self.mapped[mapping] = self.mapped.get(mapping, 0) + 1
         if renderable:
             for k, v in filtered_tags.items():
-                if k not in ['addr:housenumber', 'name', 'ref', 'height', 'min_height', 'building:levels', 'building:min_level']:
+                if k not in ['addr:housenumber', 'name', 'ref', 'height', 'min_height', 'building:levels', 'building:min_level',
+                             'building:colour', 'building:material', 'roof:colour', 'roof:material']:
                     self.values[v] = self.values.get(v, 0) + 1
 
     def node(self, n):
-        self.filter(n.tags)
+        self.filter(n.id, n.tags)
 
     def way(self, w):
-        self.filter(w.tags)
+        self.filter(w.id, w.tags)
 
     def relation(self, r):
-        self.filter(r.tags)
+        self.filter(r.id, r.tags)
 
 
 class MapStatistics:
