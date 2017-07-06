@@ -31,12 +31,13 @@ from util.database import MTilesDatabase
 from util.geometry import wgs84_to_mercator, mercator_to_wgs84, clockwise
 from util.osm import is_area
 from util.osm.kind import get_kind
+from util.osm.buildings import get_building_properties
 from util.filters import filter_rings
 
 
 ProcessJob = namedtuple('ProcessJob', ['id', 'wkb', 'tags', 'mapping', 'simple_polygon'])
 DBJob = namedtuple('DBJob', ['zoom', 'x', 'y', 'features'])
-Feature = namedtuple('Feature', ['geometry', 'tags', 'kind', 'label'])
+Feature = namedtuple('Feature', ['geometry', 'tags', 'kind', 'label', 'height', 'min_height', 'building_color', 'roof_color'])
 
 wkbFactory = osmium.geom.WKBFactory()
 
@@ -51,14 +52,18 @@ def deep_get(dictionary, *keys):
 
 
 class Element():
-    def __init__(self, id, geom, tags, mapping=None, label=None, area=None, kind=None):
+    def __init__(self, id, geom, tags, mapping=None):
         self.id = id
         self.geom = geom # original geometry
         self.tags = tags
         self.mapping = mapping
-        self.label = label
-        self.area = area
-        self.kind = kind
+        self.label = None
+        self.area = None
+        self.kind = None
+        self.height = None
+        self.min_height = None
+        self.building_color = None
+        self.roof_color = None
         self.geometry = None # tile processed temporary geometry
 
     def __str__(self):
@@ -67,7 +72,15 @@ class Element():
         return "%s: %s\n%s\n%s\n" % (str(self.id), self.geom.__repr__(), self.tags, self.mapping)
 
     def clone(self, geom):
-        return Element(self.id, geom, self.tags, self.mapping, self.label, self.area, self.kind)
+        el = Element(self.id, geom, self.tags, self.mapping)
+        el.label = self.label
+        el.area = self.area
+        el.kind = self.kind
+        el.height = self.height
+        el.min_height = self.min_height
+        el.building_color = self.building_color
+        el.roof_color = self.roof_color
+        return el
 
 
 class OsmFilter(osmium.SimpleHandler):
@@ -211,6 +224,7 @@ class BBoxCache(defaultdict):
 
 def process_element(geom, tags, mapping):
     kind = get_kind(tags)
+    height, min_height, color, roof_color = get_building_properties(tags)
     label = None
     if mapping.get('label', False):
         if geom.type == 'Polygon':
@@ -230,7 +244,7 @@ def process_element(geom, tags, mapping):
     area = None
     if mapping.get('calc-area', False):
         area = geom.area
-    return (kind, area, label)
+    return (kind, area, label, height, min_height, color, roof_color)
 
 
 class MapWriter:
@@ -337,7 +351,15 @@ class MapWriter:
             for idx, element in enumerate(elements):
                 def process_result(result, index=idx):
                     el = elements[index]
-                    el.kind, el.area, el.label = result
+                    el.kind, el.area, el.label, el.height, el.min_height, el.building_color, el.roof_color = result
+                    el.tags.pop('height', None)
+                    el.tags.pop('min_height', None)
+                    el.tags.pop('building:levels', None)
+                    el.tags.pop('building:min_level', None)
+                    el.tags.pop('building:colour', None)
+                    el.tags.pop('building:material', None)
+                    el.tags.pop('roof:colour', None)
+                    el.tags.pop('roof:material', None)
                     if 'name' in el.tags:
                         el.tags['id'] = el.id
                         self.db.putFeature(el.id, el.tags.pop('name', None), el.kind, el.label, el.geom)
@@ -502,7 +524,7 @@ class MapWriter:
                 label = None
                 if element.label and prepared_clip.contains(element.label):
                     label = affine_transform(element.label, tile.matrix)
-                features.append(Feature(geometry, element.tags, element.kind, label))
+                features.append(Feature(geometry, element.tags, element.kind, label, element.height, element.min_height, element.building_color, element.roof_color))
 
             #TODO combine union and merge to one logical block
             for union in unions:
@@ -520,7 +542,7 @@ class MapWriter:
                     if first.mapping.get('transform') == 'filter-rings':
                         united_geom = filter_rings(united_geom, pixelArea)
                 geometry = affine_transform(united_geom, tile.matrix)
-                features.append(Feature(geometry, united_tags, None, None))
+                features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
 
             for merge in merges:
                 first = merges[merge][0]
@@ -543,7 +565,7 @@ class MapWriter:
                 if 'id' in first.tags:
                     united_tags['id'] = first.tags['id']
                 geometry = affine_transform(united_geom, tile.matrix)
-                features.append(Feature(geometry, united_tags, None, None))
+                features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
 
             encoded = OSciMap4.encode(features)
             self.dbQueue.put(DBJob(tile.zoom, tile.x, tile.y, encoded))
