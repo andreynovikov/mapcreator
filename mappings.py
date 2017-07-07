@@ -425,13 +425,15 @@ tags = {
     'building': {
         '__any__': {
             'filter-type': ['Polygon','MultiPolygon'],
-            'zoom-min': 14
+            'zoom-min': 14,
+            'clip-buffer': 0
         },
     },
     'building:part': {
         '__any__': {
             'filter-type': ['Polygon','MultiPolygon'],
-            'zoom-min': 14
+            'zoom-min': 14,
+            'clip-buffer': 0
         },
     },
     'barrier': {

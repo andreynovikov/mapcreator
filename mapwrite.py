@@ -222,6 +222,7 @@ class BBoxCache(defaultdict):
 
 def process_element(geom, tags, mapping):
     kind = get_kind(tags)
+    #TODO process only if kind is building
     height, min_height, color, roof_color = get_building_properties(tags)
     label = None
     if mapping.get('label', False):
