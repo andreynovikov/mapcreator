@@ -115,7 +115,7 @@ class OsmFilter(osmium.SimpleHandler):
                         continue
                     filtered_tags[k] = v
                     renderable = renderable or m.get('render', True)
-                    for k in ('transform','union','calc-area','filter-area','buffer','force-line','label','filter-type','clip-buffer'):
+                    for k in ('transform','union','calc-area','filter-area','buffer','enlarge','force-line','label','filter-type','clip-buffer'):
                         if k in m:
                             mapping[k] = m[k]
                     if 'zoom-min' in m:
@@ -495,6 +495,8 @@ class MapWriter:
                     if simple_geom.is_valid:
                         geom = simple_geom
                 else:
+                    if 'enlarge' in element.mapping:
+                        geom = geom.buffer(tile.pixelWidth * element.mapping.get('enlarge', 1))
                     if 'building' in element.tags and not 'building:outline' in element.tags and not 'building:part' in element.tags:
                         #if building_parts_geom is None or not building_parts_prepared.intersects(element.geom) or building_parts_geom.intersection(element.geom).area == 0:
                         if building_parts_geom is None or not building_parts_prepared.covers(element.geom):
@@ -578,7 +580,7 @@ class MapWriter:
     def generateSubtiles(self, x, y, zoom, tile):
         subtile = Tile(zoom, x, y)
         # https://stackoverflow.com/a/43105613/488489 - indexing
-        prepared_clip = prep(subtile.bbox)
+        prepared_clip = prep(subtile.bbox.buffer(1.194 * 4))
         clipCache = BBoxCache(subtile)
         for element in tile.elements:
             if prepared_clip.covers(element.geom):
