@@ -471,18 +471,21 @@ tags = {
         '__any__': {
             'render': False
         },
+        '__strip__': True
     },
     'name': {
         '__any__': {
             'label': True,
             'render': False
         },
+        '__strip__': True
     },
     'addr:housenumber': {
         '__any__': {
             'label': True,
             'render': False
-        }
+        },
+        '__strip__': True
     },
     'tunnel': {
         '__any__': {
@@ -547,12 +550,12 @@ tags = {
     'station': {'__any__': {'render': False}},
     'religion': {'__any__': {'render': False}},
     'ele': {'__any__': {'render': False}},
-    'height': {'__any__': {'render': False}},
-    'min_height': {'__any__': {'render': False}},
-    'building:levels': {'__any__': {'render': False}},
-    'building:min_level': {'__any__': {'render': False}},
-    'building:colour': {'__any__': {'render': False}},
-    'building:material': {'__any__': {'render': False}},
-    'roof:colour': {'__any__': {'render': False}},
-    'roof:material': {'__any__': {'render': False}},
+    'height': {'__any__': {'render': False}, '__strip__': True},
+    'min_height': {'__any__': {'render': False}, '__strip__': True},
+    'building:levels': {'__any__': {'render': False}, '__strip__': True},
+    'building:min_level': {'__any__': {'render': False}, '__strip__': True},
+    'building:colour': {'__any__': {'render': False}, '__strip__': True},
+    'building:material': {'__any__': {'render': False}, '__strip__': True},
+    'roof:colour': {'__any__': {'render': False}, '__strip__': True},
+    'roof:material': {'__any__': {'render': False}, '__strip__': True},
 }

@@ -350,17 +350,9 @@ class MapWriter:
                 def process_result(result, index=idx):
                     el = elements[index]
                     el.kind, el.area, el.label, el.height, el.min_height, el.building_color, el.roof_color = result
-                    el.tags.pop('height', None)
-                    el.tags.pop('min_height', None)
-                    el.tags.pop('building:levels', None)
-                    el.tags.pop('building:min_level', None)
-                    el.tags.pop('building:colour', None)
-                    el.tags.pop('building:material', None)
-                    el.tags.pop('roof:colour', None)
-                    el.tags.pop('roof:material', None)
                     if 'name' in el.tags:
                         el.tags['id'] = el.id
-                        self.db.putFeature(el.id, el.tags.pop('name', None), el.kind, el.label, el.geom)
+                        self.db.putFeature(el.id, el.tags['name'], el.kind, el.label, el.geom)
                     if self.interactive:
                         self.proc_progress.update()
                 results.append(pool.apply_async(process_element, [element.geom, element.tags, element.mapping], callback=process_result))
@@ -468,7 +460,7 @@ class MapWriter:
             try:
                 self.generateTile(tile)
             except Exception as e:
-                self.logger.error("Error generating tile %s: %s" % (tile, e))
+                self.logger.exception("Error generating tile %s" % tile)
             tile_queue.task_done()
 
     def generateTile(self, tile):
@@ -570,7 +562,7 @@ class MapWriter:
                 geometry = affine_transform(united_geom, tile.matrix)
                 features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
 
-            encoded = OSciMap4.encode(features)
+            encoded = OSciMap4.encode(features, mappings.tags)
             self.dbQueue.put(DBJob(tile.zoom, tile.x, tile.y, encoded))
 
         # propagate elements to lower zoom
@@ -647,5 +639,4 @@ if __name__ == "__main__":
         mapWriter = MapWriter(args.data_path, args.dry_run, args.verbose)
         mapWriter.createMap(args.x, args.y, args.intermediate, args.keep, args.from_file)
     except Exception as e:
-        print("An error occurred:")
-        print(e)
+        logger.exception("An error occurred:")
