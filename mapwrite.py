@@ -22,11 +22,10 @@ from shapely.prepared import prep
 from shapely.ops import transform, linemerge, cascaded_union, unary_union, polylabel
 from shapely.affinity import affine_transform
 
-import OSciMap4
-
 import configuration
 import mappings
 import landextraction
+from encoder import encode
 from util.database import MTilesDatabase
 from util.geometry import wgs84_to_mercator, mercator_to_wgs84, clockwise
 from util.osm import is_area
@@ -565,7 +564,7 @@ class MapWriter:
                 geometry = affine_transform(united_geom, tile.matrix)
                 features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
 
-            encoded = OSciMap4.encode(features, mappings.tags)
+            encoded = encode(features, mappings.tags)
             self.dbQueue.put(DBJob(tile.zoom, tile.x, tile.y, encoded))
 
         # propagate elements to lower zoom
