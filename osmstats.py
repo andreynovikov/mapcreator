@@ -53,7 +53,8 @@ class OsmFilter(osmium.SimpleHandler):
                         self.mapped[mapping] = self.mapped.get(mapping, 0) + 1
         if renderable:
             for k, v in filtered_tags.items():
-                if k not in ['addr:housenumber', 'name', 'ref', 'height', 'min_height', 'building:levels', 'building:min_level',
+                if k not in ['addr:housenumber', 'name', 'ref', 'ele', 'iata', 'icao',
+                             'height', 'min_height', 'building:levels', 'building:min_level',
                              'building:colour', 'building:material', 'roof:colour', 'roof:material']:
                     self.values[v] = self.values.get(v, 0) + 1
 
