@@ -26,7 +26,7 @@ function process {
 	echo "Failed to unzip ${zip}" >&2
 	return
     fi
-    args=('-D' '-s' '3857' '-W' 'UTF-8' '-g' 'the_geom')
+    args=('-D' '-s' '4326' '-W' 'UTF-8' '-g' 'geom')
     (( created == 0 )) && args+=( '-d' )
     (( created == 1 )) && args+=( '-a' )
     created=1
