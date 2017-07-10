@@ -1,12 +1,12 @@
 import logging
 from numbers import Number
 
-import TileData_pb2
+from . import TileData_pb2
 
-from GeomEncoder import GeomEncoder
-from StaticVals import staticValues
-from StaticKeys import staticKeys
-from TagRewrite import fixTag
+from . import GeomEncoder
+from . import StaticVals
+from . import StaticKeys
+from . import TagRewrite
 
 # custom keys/values start at attrib_offset
 attrib_offset = 256
@@ -28,7 +28,7 @@ class VectorTile:
     """
     """
     def __init__(self, extents, mappings):
-        self.geomencoder = GeomEncoder(extents)
+        self.geomencoder = GeomEncoder.GeomEncoder(extents)
         self.mappings = mappings
 
         # TODO count to sort by number of occurrences
@@ -41,8 +41,8 @@ class VectorTile:
         self.tagdict = {}
         self.num_tags = 0
 
-        self.out = TileData_v4_pb2.Data()
-        self.out.version = 4
+        self.out = TileData_pb2.Data()
+        self.out.version = 1
 
 
     def complete(self):
@@ -96,7 +96,7 @@ class VectorTile:
 
             tag = str(k), str(v)
 
-            tag = fixTag(tag)
+            tag = TagRewrite.fixTag(tag)
 
             if tag is None:
                 continue
@@ -198,8 +198,8 @@ class VectorTile:
         return None
 
     def getKeyId(self, key):
-        if key in staticKeys:
-            return staticKeys[key]
+        if key in StaticKeys.staticKeys:
+            return StaticKeys.staticKeys[key]
 
         if key in self.keydict:
             return self.keydict[key]
@@ -212,8 +212,8 @@ class VectorTile:
         return r
 
     def getAttribId(self, var):
-        if var in staticValues:
-            return staticValues[var]
+        if var in StaticVals.staticValues:
+            return StaticVals.staticValues[var]
 
         if var in self.valdict:
             return self.valdict[var]

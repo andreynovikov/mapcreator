@@ -174,7 +174,7 @@ class GeomEncoder:
             dimensions = 2
         else:
             dimensions = 3
-       
+
         geotype = geotype & 0x1FFFFFFF
         # Despatch to a method on the type id.
         if geotype in self._typemap:
@@ -183,7 +183,7 @@ class GeomEncoder:
             raise ExceptionWKBParser('Error type to dispatch with geotype = %s \n'\
                                      'Invalid geometry in WKB string: %s' % (str(geotype),
                                                                              str(self._current_string),))
-        
+
     def parseGeometryCollection(self, reader, dimension):
         try:
             num_geoms = reader.unpack_uint32()
@@ -266,7 +266,7 @@ class GeomEncoder:
             for n in range(0,num_polygons):
                 if n > 0:
                     self.index.append(0);
-                  
+
                 self._dispatchNextType(reader)
         except:
             _, value, tb = sys.exc_info()[:3]
@@ -277,29 +277,29 @@ class GeomEncoder:
             raise ExceptionWKBParser("Caught unhandled exception parsing MultiPolygon: %s \n"\
                                      "Traceback: %s\n" % (str(self._current_string),error))
 
-        
+
     def parsePoint(self, reader, dimensions):
         x = reader.unpack_double()
         y = reader.unpack_double()
-      
+
         if dimensions == 3:
             reader.unpack_double()
 
         xx = int(round(x))
         # flip upside down
         yy = self.tileSize - int(round(y))
-        
+
         if self.first or xx - self.lastX != 0 or yy - self.lastY != 0:
             self.coordinates.append(xx - self.lastX)
             self.coordinates.append(yy - self.lastY)
             self.num_points += 1
         else:
             self.dropped += 1;
-        
+
         self.first = False
         self.lastX = xx
         self.lastY = yy
-       
+
 
     def parsePolygon(self, reader, dimensions):
         self.isPoint = False;
@@ -308,9 +308,9 @@ class GeomEncoder:
 
             for _ in range(0,num_rings):
                 self.parseLinearRing(reader,dimensions)
-            
+
             self.isPoly = True
-            
+
         except:
             _, value, tb = sys.exc_info()[:3]
             error = ("%s , %s \n" % (type, value))
@@ -324,23 +324,23 @@ class GeomEncoder:
         self.isPoint = False;
         try:
             num_points = reader.unpack_uint32()
-            
+
             self.num_points = 0;
-            
+
             # skip the last point
             for _ in range(0,num_points-1):
                 self.parsePoint(reader,dimensions)
 
-            # skip the last point                
+            # skip the last point
             reader.unpack_double()
             reader.unpack_double()
             if dimensions == 3:
                 reader.unpack_double()
-                
+
             self.index.append(self.num_points)
-    
+
             self.first = True
-            
+
         except:
             _, value, tb = sys.exc_info()[:3]
             error = ("%s , %s \n" % (type, value))
