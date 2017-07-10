@@ -576,7 +576,8 @@ def contours_mapper(row):
 
 queries = [
     {
-        'query' : 'SELECT ST_AsBinary(geom) AS geometry, elevation FROM contours',
-        'mapper' : contours_mapper
+        'query': 'SELECT geom, elevation FROM contours',
+        'srid': 4326,
+        'mapper': contours_mapper
     },
 ]

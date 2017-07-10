@@ -272,8 +272,6 @@ class MapWriter:
         map_path = self.map_path(x, y)
         self.logger.info("Creating map: %s" % map_path)
 
-        map_bbox = mercantile.bounds(x, y, 7)
-
         log_path = self.log_path(x, y)
         #TODO redirect logger to file
         logfile = open(log_path, 'a')
@@ -301,8 +299,9 @@ class MapWriter:
                         else:
                             subprocess.check_call(['touch', upper_pbf_path])
                     # extract area data from upper intermediate file
+                    bbox = mercantile.bounds(x, y, 7)
                     osmconvert_call = [configuration.OSMCONVERT_PATH, upper_pbf_path]
-                    osmconvert_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (map_bbox.west,map_bbox.south,map_bbox.east,map_bbox.north)]
+                    osmconvert_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (bbox.west,bbox.south,bbox.east,bbox.north)]
                     osmconvert_call += ['--complex-ways', '-o=%s' % pbf_path]
                     try:
                         self.logger.debug("    calling: %s", " ".join(osmconvert_call))
@@ -355,17 +354,24 @@ class MapWriter:
             extra_elements = []
             # get supplementary data while elements are processed
             with psycopg2.connect(configuration.DATA_DB_DSN) as c:
+                bounds = mercantile.xy_bounds(x, y, 7)
                 bbox = "ST_Expand(ST_SetSRID(ST_MakeBox2D(ST_MakePoint({west}, {south}), ST_MakePoint({east}, {north})), 3857), {expand})" \
-                       .format(west=map_bbox.west, south=map_bbox.south, east=map_bbox.east,north=map_bbox.north,expand=1.194*4)
+                       .format(west=bounds.left, south=bounds.bottom, east=bounds.right, north=bounds.top, expand=1.194*4)
                 for data in mappings.queries:
-                    sql = "{query} WHERE ST_Intersects(geom, {bbox})".format(query=data['query'], bbox=bbox)
+                    if data['srid'] != 3857:
+                        qbbox = "ST_Transform({bbox}, {srid})".format(bbox=bbox, srid=data['srid'])
+                    else:
+                        qbbox = bbox
+                    sql = "SELECT ST_AsBinary(geom) AS geometry, * FROM ({query}) AS data WHERE ST_Intersects(geom, {bbox})".format(query=data['query'], bbox=qbbox)
                     try:
                         cur = c.cursor(cursor_factory=psycopg2.extras.DictCursor)
                         cur.execute(str(sql)) # if str() is not used 'where' is lost for some weird reason
                         rows = cur.fetchall()
                         print(cur.query)
                         for row in rows:
-                            geom = transform(wgs84_to_mercator, shapelyWkb.loads(bytes(row['geometry'])))
+                            geom = shapelyWkb.loads(bytes(row['geometry']))
+                            if data['srid'] != 3857: # we support only 3857 and 4326 projections
+                                geom = transform(wgs84_to_mercator, geom)
                             tags, mapping = data['mapper'](row)
                             extra_elements.append(Element(None, geom, tags, mapping))
                     except (psycopg2.ProgrammingError, psycopg2.InternalError) as e:
@@ -373,7 +379,7 @@ class MapWriter:
                     finally:
                         cur.close()
 
-            # wait fro results, look for errors
+            # wait for results, look for errors
             for r in results:
                 r.get()
 
