@@ -80,13 +80,13 @@ class MapStatistics:
         handler = OsmFilter(self.logger)
         handler.apply_file(self.pbf_file)
         for k, v in sorted(handler.mapped.items(), key=itemgetter(1), reverse=True):
-            print('{:35s} {:10,d}'.format(k, v))
+            print('{:35s} {:12,d}'.format(k, v))
 
         print("")
 
         i = 1
         for k, v in sorted(handler.values.items(), key=itemgetter(1), reverse=True):
-            print('{:<3d} {:35s} {:10,d}'.format(i, str(k), v))
+            print('{:<3d} {:35s} {:12,d}'.format(i, str(k), v))
             i = i + 1
 
 
