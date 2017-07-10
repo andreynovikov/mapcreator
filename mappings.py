@@ -543,6 +543,26 @@ tags = {
             'render': False
         }
     },
+    'ele': {
+        '__any__': {
+            'adjust': osm.height,
+            'render': False
+        }
+    },
+    'height': {
+        '__any__': {
+            'adjust': osm.height,
+            'render': False
+        },
+        '__strip__': True
+    },
+    'min_height': {
+        '__any__': {
+            'adjust': osm.height,
+            'render': False
+        },
+        '__strip__': True
+    },
     'ref': {'__any__': {'render': False}},
     'iata': {'__any__': {'render': False}},
     'icao': {'__any__': {'render': False}},
@@ -551,9 +571,6 @@ tags = {
     'service': {'__any__': {'render': False}},
     'station': {'__any__': {'render': False}},
     'religion': {'__any__': {'render': False}},
-    'ele': {'__any__': {'render': False}},
-    'height': {'__any__': {'render': False}, '__strip__': True},
-    'min_height': {'__any__': {'render': False}, '__strip__': True},
     'building:levels': {'__any__': {'render': False}, '__strip__': True},
     'building:min_level': {'__any__': {'render': False}, '__strip__': True},
     'building:colour': {'__any__': {'render': False}, '__strip__': True},

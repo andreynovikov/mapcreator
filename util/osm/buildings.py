@@ -3,68 +3,18 @@ import numbers
 
 from webcolors import name_to_rgb
 
+
 def _to_float(x):
     if x is None:
         return None
+    if isinstance(x, numbers.Number):
+        return x
     # normalize punctuation
-    x = x.replace(';', '.').replace(',', '.')
+    x = x.replace(',', '.')
     try:
         return float(x)
     except ValueError:
         return None
-
-feet_pattern = re.compile('([+-]?[0-9.]+)\'(?: *([+-]?[0-9.]+)")?')
-number_pattern = re.compile('([+-]?[0-9.]+)')
-
-
-def _to_float_meters(x):
-    if x is None:
-        return None
-
-    if isinstance(x, numbers.Number):
-        return x
-
-    as_float = _to_float(x)
-    if as_float is not None:
-        return as_float
-
-    # trim whitespace to simplify further matching
-    x = x.strip()
-
-    # try explicit meters suffix
-    if x.endswith(' m'):
-        meters_as_float = _to_float(x[:-2])
-        if meters_as_float is not None:
-            return meters_as_float
-
-    # try if it looks like an expression in feet via ' "
-    feet_match = feet_pattern.match(x)
-    if feet_match is not None:
-        feet = feet_match.group(1)
-        inches = feet_match.group(2)
-        feet_as_float = _to_float(feet)
-        inches_as_float = _to_float(inches)
-
-        total_inches = 0.0
-        parsed_feet_or_inches = False
-        if feet_as_float is not None:
-            total_inches = feet_as_float * 12.0
-            parsed_feet_or_inches = True
-        if inches_as_float is not None:
-            total_inches += inches_as_float
-            parsed_feet_or_inches = True
-        if parsed_feet_or_inches:
-            meters = total_inches * 0.02544
-            return meters
-
-    # try and match the first number that can be parsed
-    for number_match in number_pattern.finditer(x):
-        potential_number = number_match.group(1)
-        as_float = _to_float(potential_number)
-        if as_float is not None:
-            return as_float
-
-    return None
 
 
 def _building_calc_levels(levels):
@@ -79,11 +29,10 @@ def _building_calc_min_levels(min_levels):
     return min_levels
 
 
-def _building_calc_height(height_val, levels_val, levels_calc_fn):
-    height = _to_float_meters(height_val)
+def _building_calc_height(height, levels_val, levels_calc_fn):
     if height is not None:
         return height
-    levels = _to_float_meters(levels_val)
+    levels = _to_float(levels_val)
     if levels is None:
         return None
     return levels_calc_fn(levels)
