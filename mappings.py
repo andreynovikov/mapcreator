@@ -561,3 +561,22 @@ tags = {
     'roof:colour': {'__any__': {'render': False}, '__strip__': True},
     'roof:material': {'__any__': {'render': False}, '__strip__': True},
 }
+
+def contours_mapper(row):
+    elevation = int(row['elevation'])
+    zoom = 14
+    if elevation % 100 == 0:
+        contour = 'elevation_major'
+        zoom = 11
+    elif elevation % 50 == 0:
+        contour = 'elevation_medium'
+    else:
+        contour = 'elevation_minor'
+    return ({'contour': contour, 'ele': elevation}, {'zoom-min': zoom})
+
+queries = [
+    {
+        'query' : 'SELECT ST_AsBinary(geom) AS geometry, elevation FROM contours',
+        'mapper' : contours_mapper
+    },
+]

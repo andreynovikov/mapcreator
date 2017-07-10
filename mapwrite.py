@@ -12,6 +12,8 @@ from collections import defaultdict, namedtuple
 
 from tqdm import tqdm
 
+import psycopg2
+import psycopg2.extras
 import osmium
 import mercantile
 import numpy
@@ -24,7 +26,6 @@ from shapely.affinity import affine_transform
 
 import configuration
 import mappings
-import landextraction
 from encoder import encode
 from util.database import MTilesDatabase
 from util.geometry import wgs84_to_mercator, mercator_to_wgs84, clockwise
@@ -196,11 +197,12 @@ class Tile():
         self.y = y
         self.elements = elements if elements else []
         self.pixelWidth = self.INITIAL_RESOLUTION / 2 ** self.zoom
-        bb = mercantile.xy_bounds(x, y, zoom)
-        self.matrix = [Tile.SCALE / (bb.right - bb.left), 0, 0,
-                       Tile.SCALE / (bb.top - bb.bottom), -bb.left * Tile.SCALE / (bb.right - bb.left),
-                       -bb.bottom * Tile.SCALE / (bb.top - bb.bottom)]
-        self.bbox = geometry.Polygon([[bb.left, bb.bottom], [bb.left, bb.top], [bb.right, bb.top], [bb.right, bb.bottom]])
+        self.bounds = mercantile.xy_bounds(x, y, zoom)
+        self.matrix = [Tile.SCALE / (self.bounds.right - self.bounds.left), 0, 0,
+                       Tile.SCALE / (self.bounds.top - self.bounds.bottom), -self.bounds.left * Tile.SCALE / (self.bounds.right - self.bounds.left),
+                       -self.bounds.bottom * Tile.SCALE / (self.bounds.top - self.bounds.bottom)]
+        self.bbox = geometry.Polygon([[self.bounds.left, self.bounds.bottom], [self.bounds.left, self.bounds.top],
+                                      [self.bounds.right, self.bounds.top], [self.bounds.right, self.bounds.bottom]])
 
     def __str__(self):
         return "%d/%d/%d" % (self.zoom, self.x, self.y)
@@ -255,8 +257,6 @@ class MapWriter:
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
         self.simplification = 0.0
-        self.landExtractor = landextraction.LandExtractor(self.data_dir, self.dry_run)
-        #self.landExtractor.downloadLandPolygons()
         self.interactive = not verbose and sys.__stdin__.isatty()
 
         try:
@@ -272,15 +272,10 @@ class MapWriter:
         map_path = self.map_path(x, y)
         self.logger.info("Creating map: %s" % map_path)
 
-        #land_path = self.landExtractor.extractLandPolygons(7, x, y, self.simplification)
+        map_bbox = mercantile.bounds(x, y, 7)
 
-        lllt = self.landExtractor.num2deg(x, y, 7)
-        llrb = self.landExtractor.num2deg(x+1, y+1, 7)
-        #mercantile.bounds(486, 332, 10)
-        #LngLatBbox(west=-9.140625, south=53.12040528310657, east=-8.7890625, north=53.33087298301705)
-
-        # paths are created by land extractor
         log_path = self.log_path(x, y)
+        #TODO redirect logger to file
         logfile = open(log_path, 'a')
 
         if intermediate or from_file:
@@ -296,10 +291,9 @@ class MapWriter:
                         upper_pbf_dir = os.path.dirname(upper_pbf_path)
                         if not os.path.exists(upper_pbf_dir):
                             os.makedirs(upper_pbf_dir)
+                        bbox = mercantile.bounds(ax, ay, 3)
                         osmconvert_call = [configuration.OSMCONVERT_PATH, configuration.SOURCE_PBF]
-                        alllt = self.landExtractor.num2deg(ax, ay, 3)
-                        allrb = self.landExtractor.num2deg(ax+1, ay+1, 3)
-                        osmconvert_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (alllt[1],allrb[0],allrb[1],alllt[0])]
+                        osmconvert_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (bbox.west,bbox.south,bbox.east,bbox.north)]
                         osmconvert_call += ['--complex-ways', '-o=%s' % upper_pbf_path]
                         self.logger.debug("    calling: %s", " ".join(osmconvert_call))
                         if not self.dry_run:
@@ -308,7 +302,7 @@ class MapWriter:
                             subprocess.check_call(['touch', upper_pbf_path])
                     # extract area data from upper intermediate file
                     osmconvert_call = [configuration.OSMCONVERT_PATH, upper_pbf_path]
-                    osmconvert_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (lllt[1],llrb[0],llrb[1],lllt[0])]
+                    osmconvert_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (map_bbox.west,map_bbox.south,map_bbox.east,map_bbox.north)]
                     osmconvert_call += ['--complex-ways', '-o=%s' % pbf_path]
                     try:
                         self.logger.debug("    calling: %s", " ".join(osmconvert_call))
@@ -357,6 +351,29 @@ class MapWriter:
                         self.proc_progress.update()
                 results.append(pool.apply_async(process_element, [element.geom, element.tags, element.mapping], callback=process_result))
             pool.close()
+
+            extra_elements = []
+            # get supplementary data while elements are processed
+            with psycopg2.connect(configuration.DATA_DB_DSN) as c:
+                bbox = "ST_Expand(ST_SetSRID(ST_MakeBox2D(ST_MakePoint({west}, {south}), ST_MakePoint({east}, {north})), 3857), {expand})" \
+                       .format(west=map_bbox.west, south=map_bbox.south, east=map_bbox.east,north=map_bbox.north,expand=1.194*4)
+                for data in mappings.queries:
+                    sql = "{query} WHERE ST_Intersects(geom, {bbox})".format(query=data['query'], bbox=bbox)
+                    try:
+                        cur = c.cursor(cursor_factory=psycopg2.extras.DictCursor)
+                        cur.execute(str(sql)) # if str() is not used 'where' is lost for some weird reason
+                        rows = cur.fetchall()
+                        print(cur.query)
+                        for row in rows:
+                            geom = transform(wgs84_to_mercator, shapelyWkb.loads(bytes(row['geometry'])))
+                            tags, mapping = data['mapper'](row)
+                            extra_elements.append(Element(None, geom, tags, mapping))
+                    except (psycopg2.ProgrammingError, psycopg2.InternalError) as e:
+                        logger.exception("Query error: %s" % sql)
+                    finally:
+                        cur.close()
+
+            # wait fro results, look for errors
             for r in results:
                 r.get()
 
@@ -364,6 +381,10 @@ class MapWriter:
                 self.proc_progress.close()
 
             self.logger.debug("    finished pre-processing elements")
+
+            if extra_elements:
+                self.logger.debug("    extra elements: %d" % len(extra_elements))
+                elements += extra_elements
 
             if self.interactive:
                 num_tiles = 0
@@ -408,17 +429,6 @@ class MapWriter:
 
             if self.interactive:
                 self.gen_progress.close()
-
-        """
-        osmosis_call += ['--mw','file=%s' % map_path]
-        osmosis_call += ['type=%s' % mem_type] # hd type is currently unsupported
-        osmosis_call += ['map-start-zoom=%s' % configuration.MAP_START_ZOOM]
-        osmosis_call += ['preferred-languages=%s' % configuration.PREFERRED_LANGUAGES]
-        osmosis_call += ['zoom-interval-conf=%s' % configuration.ZOOM_INTERVAL]
-        osmosis_call += ['bbox=%.4f,%.4f,%.4f,%.4f' % (llrb[0],lllt[1],lllt[0],llrb[1])]
-        osmosis_call += ['way-clipping=false']
-        osmosis_call += ['tag-conf-file=%s' % configuration.TAG_MAPPING]
-        """
 
         self.logger.info("Finished map: %s" % map_path)
 
@@ -593,7 +603,10 @@ class MapWriter:
         """
         returns path to map file but without extension
         """
-        return os.path.join(self.data_dir, str(zoom), str(x), '%d-%d' % (x, y))
+        output_dir = os.path.join(self.data_dir, str(zoom), str(x))
+        if not self.dry_run and not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        return os.path.join(output_dir, '%d-%d' % (x, y))
 
     def pbf_path(self, x, y, zoom=7):
         """
