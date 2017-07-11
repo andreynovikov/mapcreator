@@ -355,8 +355,8 @@ class MapWriter:
             # get supplementary data while elements are processed
             with psycopg2.connect(configuration.DATA_DB_DSN) as c:
                 bounds = mercantile.xy_bounds(x, y, 7)
-                bbox = "ST_Expand(ST_SetSRID(ST_MakeBox2D(ST_MakePoint({west}, {south}), ST_MakePoint({east}, {north})), 3857), {expand})" \
-                       .format(west=bounds.left, south=bounds.bottom, east=bounds.right, north=bounds.top, expand=1.194*4)
+                bbox = "ST_Expand(ST_MakeEnvelope({left}, {bottom}, {right}, {top}, 3857), {expand})" \
+                       .format(left=bounds.left, bottom=bounds.bottom, right=bounds.right, top=bounds.top, expand=1.194*4)
                 for data in mappings.queries:
                     if data['srid'] != 3857:
                         qbbox = "ST_Transform({bbox}, {srid})".format(bbox=bbox, srid=data['srid'])

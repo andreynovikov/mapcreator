@@ -579,7 +579,12 @@ tags = {
     'roof:material': {'__any__': {'render': False}, '__strip__': True},
 }
 
-def contours_mapper(row):
+
+def _water_mapper(row):
+    return ({'natural': 'water'}, {'zoom-min': 8, 'transform': 'filter-rings', 'union': 'natural'})
+
+
+def _contours_mapper(row):
     elevation = int(row['elevation'])
     zoom = 14
     if elevation % 100 == 0:
@@ -591,10 +596,16 @@ def contours_mapper(row):
         contour = 'elevation_minor'
     return ({'contour': contour, 'ele': elevation}, {'zoom-min': zoom})
 
+
 queries = [
+    {
+        'query': 'SELECT geom FROM osmd_water',
+        'srid': 3857,
+        'mapper': _water_mapper
+    },
     {
         'query': 'SELECT geom, elevation FROM contours',
         'srid': 4326,
-        'mapper': contours_mapper
-    },
+        'mapper': _contours_mapper
+    }
 ]
