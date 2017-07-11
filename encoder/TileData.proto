@@ -47,9 +47,8 @@ message Data {
 		// amenity kind
 		optional uint32 kind            = 32;
 		
-		// elevation per coordinate 
-		// (pixel relative to ground meters)
-		// repeated sint32 elevation     = 33 [packed = true];
+		// elevation in meters
+		optional sint32 elevation       = 33;
 		
 		// building height, precision 1/10m
 		optional sint32 height          = 34;

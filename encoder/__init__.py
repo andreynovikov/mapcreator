@@ -70,6 +70,7 @@ class VectorTile:
         id = None
         layer = None
         housenumber = None
+        elevation = None
 
         for k, v in feature.tags.items():
             if v is None:
@@ -80,6 +81,10 @@ class VectorTile:
 
             if k == 'id':
                 id = v
+                continue
+
+            if k == 'ele':
+                elevation = v
                 continue
 
             # use unsigned int for layer. i.e. map to 0..10
@@ -159,6 +164,9 @@ class VectorTile:
         # add osm layer
         if layer is not None and layer != 5:
             f.layer = layer
+
+        if elevation is not None:
+            f.elevation = int(elevation)
 
         if feature.height is not None:
             try:
