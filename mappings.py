@@ -594,6 +594,7 @@ tags = {
     'building:material': {'__any__': {'render': False}, '__strip__': True},
     'roof:colour': {'__any__': {'render': False}, '__strip__': True},
     'roof:material': {'__any__': {'render': False}, '__strip__': True},
+    'contour': {},
 }
 
 
