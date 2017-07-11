@@ -79,7 +79,7 @@ def _tag_kind(k, v):
             return kinds['vehicles']
         if value in ('bicycle_rental', 'drinking_water', 'shelter', 'toilets'):
             return kinds['hikebike']
-        if value in ('bank', 'atm', 'post_office', 'post_box'):
+        if value in ('bank', 'atm', 'bureau_de_change', 'post_office', 'post_box'):
             return kinds['moneymail']
         if value == 'veterinary':
             return kinds['pets']
@@ -113,11 +113,21 @@ def _tag_kind(k, v):
     if key == 'leisure':
         if value in ('sports_centre', 'water_park'):
             return kinds['entertainment']
-        if value in ('playground'):
+        if value == 'playground':
             return kinds['kids']
+        if value == 'slipway':
+            return kinds['vehicles']
+
+    if key == 'man_made':
+        if value in ('lighthouse', 'windmill'):
+            return kinds['attraction']
 
     if key == 'railway':
         if value in ('tram_stop', 'subway_entrance'):
             return kinds['transportation']
+
+    if key == 'emergency':
+        if value == 'phone':
+            return kinds['emergency']
 
     return 0

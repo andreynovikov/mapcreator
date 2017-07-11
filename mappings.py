@@ -224,11 +224,15 @@ tags = {
             'calc-area': True,
             'filter-area': 8
         },
+        'brownfield': DEFAULT_AREA,
+        'construction': DEFAULT_AREA,
+        'landfill': DEFAULT_AREA,
         'village_green': DEFAULT_AREA,
         'recreation_ground': DEFAULT_AREA,
         'allotments': DEFAULT_AREA,
         'quarry': DEFAULT_AREA,
         'farmyard': DEFAULT_AREA,
+        'orchard': DEFAULT_AREA,
         'cemetery': {
             'zoom-min': 11,
             'calc-area': True,
@@ -276,6 +280,7 @@ tags = {
             'filter-area': 2
         },
         'grassland': DEFAULT_AREA,
+        'heath': DEFAULT_AREA,
         'scrub': {
             'zoom-min': 10,
             'calc-area': True,
@@ -323,6 +328,18 @@ tags = {
         'drain': {'zoom-min': 14},
         'ditch': {'zoom-min': 14},
     },
+    'aerialway': {
+        'mixed_lift': {'rewrite-value': 'chair_lift'},
+        't-bar': {'rewrite-value': 'drag_lift'},
+        'j-bar': {'rewrite-value': 'drag_lift'},
+        'platter': {'rewrite-value': 'drag_lift'},
+        'rope_tow': {'rewrite-value': 'drag_lift'},
+        'cable_car': {'zoom-min': 12},
+        'gondola': {'zoom-min': 12},
+        'chair_lift': {'zoom-min': 13},
+        'magic_carpet': {'zoom-min': 13},
+        'drag_lift': {'zoom-min': 13},
+    },
     'place': {
         'ocean': {},
         'sea': {},
@@ -353,6 +370,7 @@ tags = {
         'playground': DEFAULT_PLACE,
         'sports_centre': {'zoom-min': 14},
         'water_park': {'zoom-min': 14},
+        'slipway': DEFAULT_PLACE,
     },
     'amenity': {
         'university': DEFAULT_PLACE,
@@ -375,6 +393,7 @@ tags = {
         'restaurant': DEFAULT_PLACE,
         'bank': DEFAULT_PLACE,
         'atm': DEFAULT_PLACE,
+        'bureau_de_change': DEFAULT_PLACE,
         'bus_station': DEFAULT_PLACE,
         'fuel': DEFAULT_PLACE,
         'post_office': DEFAULT_PLACE,
@@ -387,7 +406,11 @@ tags = {
         'post_box': DEFAULT_PLACE,
         'library': DEFAULT_PLACE,
         'car_repair': {'rewrite-key': 'shop'},
-        'toilets': DEFAULT_PLACE
+        'toilets': DEFAULT_PLACE,
+        'grave_yard': {'rewrite-key': 'landuse', 'rewrite-value': 'cemetery'}
+    },
+    'emergency': {
+        'phone': DEFAULT_PLACE,
     },
     'shop': {
         'bakery': DEFAULT_PLACE,
@@ -470,7 +493,12 @@ tags = {
         'wall': {'zoom-min': 14},
     },
     'man_made': {
+        'cutline': {'zoom-min': 14},
+        'pier': {'zoom-min': 14},
+        'bridge': DEFAULT_PLACE,
         'tower': {'zoom-min': 14},
+        'lighthouse': DEFAULT_PLACE,
+        'windmill': DEFAULT_PLACE,
     },
     'mountain_pass': {
         'yes': {'zoom-min': 13},
@@ -478,6 +506,7 @@ tags = {
     'power': {
         'line': {'zoom-min': 14},
         'tower': {'zoom-min': 14},
+        'generator': {'zoom-min': 14},
     },
     'area': {
         '__any__': {
@@ -559,6 +588,12 @@ tags = {
             'render': False
         }
     },
+    'access': {
+        '__any__': {
+            'one-of': ['private','no'],
+            'render': False
+        }
+    },
     'ele': {
         '__any__': {
             'adjust': osm.height,
@@ -580,14 +615,14 @@ tags = {
         },
         '__strip__': True
     },
+    'service': {'parking_aisle': {'render': False}},
     'ref': {'__any__': {'render': False}},
     'iata': {'__any__': {'render': False}},
     'icao': {'__any__': {'render': False}},
-    'access': {'__any__': {'render': False}},
     'fee': {'__any__': {'render': False}},
-    'service': {'__any__': {'render': False}},
     'station': {'__any__': {'render': False}},
     'religion': {'__any__': {'render': False}},
+    'generator:source': {'__any__': {'render': False}},
     'building:levels': {'__any__': {'render': False}, '__strip__': True},
     'building:min_level': {'__any__': {'render': False}, '__strip__': True},
     'building:colour': {'__any__': {'render': False}, '__strip__': True},
