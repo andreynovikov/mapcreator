@@ -27,7 +27,8 @@ def direction(value):
             return 1
         if value == '-1':
             return -1
-    return 0
+    return None
+
 
 meter_pattern = re.compile('([+-]?[0-9.]+)\s*m')
 feet_pattern = re.compile('([+-]?[0-9.]+)\s*ft')

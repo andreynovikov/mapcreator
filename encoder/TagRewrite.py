@@ -55,13 +55,6 @@ def fixTag(tag):
         else:
             return (key, value)
 
-    elif key == 'oneway':
-        value = tag[1].lower();
-        if value in ('yes', '1', 'true'):
-            return (key, 'yes')
-        else:
-            drop = True
-
     elif key == 'area':
         value = tag[1].lower();
         if value in ('yes', '1', 'true'):
