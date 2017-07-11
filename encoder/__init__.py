@@ -96,8 +96,8 @@ class VectorTile:
                 housenumber = v
                 continue
 
-            #if self.mappings[k].get('__strip__', False):
-            #    continue
+            if self.mappings[k].get('__strip__', False):
+                continue
 
             tag = str(k), str(v)
 
