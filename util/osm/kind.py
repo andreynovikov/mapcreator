@@ -1,21 +1,23 @@
 kinds = {
-    "road" :           0x00000001,
-    "building" :       0x00000002,
-    "accommodation" :  0x00000004,
-    "food" :           0x00000008,
-    "barrier" :        0x00000010,
-    "entertainment" :  0x00000020,
-    "emergency" :      0x00000040,
-    "pets" :           0x00000080,
+    "place" :          0x00000001,
+    "road" :           0x00000002,
+    "building" :       0x00000004,
+    "emergency" :      0x00000008,
+    "accommodation" :  0x00000010,
+    "food" :           0x00000020,
+    "attraction" :     0x00000040,
+    "entertainment" :  0x00000080,
     "shopping" :       0x00000100,
-    "attraction" :     0x00000200,
-    "education" :      0x00000400,
-    "vehicles" :       0x00000800,
-    "transportation" : 0x00001000,
-    "religion" :       0x00002000,
-    "hikebike" :       0x00004000,
-    "moneymail" :      0x00008000,
-    "urban" :          0x00010000
+    "moneymail" :      0x00000200,
+    "religion" :       0x00000400,
+    "education" :      0x00000800,
+    "kids" :           0x00001000,
+    "pets" :           0x00002000,
+    "vehicles" :       0x00004000,
+    "transportation" : 0x00008000,
+    "hikebike" :       0x00010000,
+    "urban" :          0x00020000,
+    "barrier" :        0x00040000
 }
 
 
@@ -42,6 +44,9 @@ def _tag_kind(k, v):
     key = k.lower()
     value = v.lower()
 
+    if key == 'place':
+        return kinds['place']
+
     if key == 'building' or key == 'building.part':
         return kinds['building']
 
@@ -62,8 +67,10 @@ def _tag_kind(k, v):
     if key == 'amenity':
         if value in ('police', 'fire_station', 'hospital', 'pharmacy', 'doctors', 'telephone'):
             return kinds['emergency']
-        if value in ('library', 'university', 'school', 'college', 'kindergarten'):
+        if value in ('library', 'university', 'school', 'college'):
             return kinds['education']
+        if value in ('kindergarten'):
+            return kinds['kids']
         if value in ('cafe', 'pub', 'bar', 'fast_food', 'restaurant'):
             return kinds['food']
         if value in ('theatre', 'cinema'):
@@ -104,8 +111,10 @@ def _tag_kind(k, v):
             return kinds['attraction']
 
     if key == 'leisure':
-        if value in ('sports_centre', 'water_park', 'playground'):
+        if value in ('sports_centre', 'water_park'):
             return kinds['entertainment']
+        if value in ('playground'):
+            return kinds['kids']
 
     if key == 'railway':
         if value in ('tram_stop', 'subway_entrance'):
