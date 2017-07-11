@@ -115,7 +115,7 @@ class OsmFilter(osmium.SimpleHandler):
                         continue
                     filtered_tags[k] = v
                     renderable = renderable or m.get('render', True)
-                    for k in ('transform','union','calc-area','filter-area','buffer','enlarge','force-line','label','filter-type','clip-buffer'):
+                    for k in ('transform','union','union-zoom-max','calc-area','filter-area','buffer','enlarge','force-line','label','filter-type','clip-buffer'):
                         if k in m:
                             mapping[k] = m[k]
                     if 'zoom-min' in m:
@@ -367,7 +367,7 @@ class MapWriter:
                         cur = c.cursor(cursor_factory=psycopg2.extras.DictCursor)
                         cur.execute(str(sql)) # if str() is not used 'where' is lost for some weird reason
                         rows = cur.fetchall()
-                        print(cur.query)
+                        self.logger.debug("      %s", cur.query)
                         for row in rows:
                             geom = shapelyWkb.loads(bytes(row['geometry']))
                             if data['srid'] != 3857: # we support only 3857 and 4326 projections
@@ -517,7 +517,7 @@ class MapWriter:
                         #if building_parts_geom is None or not building_parts_prepared.intersects(element.geom) or building_parts_geom.intersection(element.geom).area == 0:
                         if building_parts_geom is None or not building_parts_prepared.covers(element.geom):
                             element.tags['building:part'] = element.tags['building']
-                if 'union' in element.mapping and geom.type in ['LineString', 'MultiLineString', 'Polygon', 'MultiPolygon']:
+                if 'union' in element.mapping and tile.zoom <= element.mapping.get('union-zoom-max', 14) and geom.type in ['LineString', 'MultiLineString', 'Polygon', 'MultiPolygon']:
                     if type(element.mapping['union']) is dict:
                         pattern = [k for k, v in element.mapping['union'].items() if tile.zoom >= v]
                     else:

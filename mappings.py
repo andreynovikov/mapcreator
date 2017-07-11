@@ -24,77 +24,93 @@ tags = {
     'highway': {
         'motorway': {
             'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'motorway_link': {
             'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'trunk': {
             'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'trunk_link': {
             'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'primary': {
             'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'primary_link': {
             'zoom-min': 12,
             'union': 'highway,ref,name,layer',
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'secondary': {
             'zoom-min': 12,
             'union': 'highway,ref,name,layer',
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'secondary_link': {
             'zoom-min': 12,
             'union': 'highway,ref,name,layer',
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'tertiary': {
             'zoom-min': 12,
             'union': 'highway,ref,name,layer',
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'tertiary_link': {
             'zoom-min': 12,
             'union': 'highway,ref,name,layer',
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'unclassified': {
             'zoom-min': 12,
             'union': 'highway,ref,name,layer',
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'living_street': {
             'zoom-min': 12,
             'union': 'highway,ref,name,layer',
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'residential': {
             'zoom-min': 12,
             'union': 'highway,ref,name,layer',
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'construction': {
             'zoom-min': 12,
             'union': 'highway,ref,name,layer',
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'road': {
             'zoom-min': 12,
             'union': 'highway,ref,name,layer',
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'track': {
             'zoom-min': 13,
             'union': 'highway,layer,tracktype',
+            'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'service': {
@@ -547,7 +563,8 @@ tags = {
         '__any__': {
             'adjust': osm.height,
             'render': False
-        }
+        },
+        '__strip__': True
     },
     'height': {
         '__any__': {
