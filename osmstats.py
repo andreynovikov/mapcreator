@@ -16,6 +16,7 @@ class OsmFilter(osmium.SimpleHandler):
         super(OsmFilter, self).__init__()
         self.logger = logger
         self.mapped = {}
+        self.keys = {}
         self.values = {}
 
     def filter(self, id, tags):
@@ -53,10 +54,18 @@ class OsmFilter(osmium.SimpleHandler):
                         self.mapped[mapping] = self.mapped.get(mapping, 0) + 1
         if renderable:
             for k, v in filtered_tags.items():
-                if k not in ['addr:housenumber', 'name', 'ref', 'ele', 'iata', 'icao',
-                             'height', 'min_height', 'building:levels', 'building:min_level',
-                             'building:colour', 'building:material', 'roof:colour', 'roof:material']:
-                    self.values[v] = self.values.get(v, 0) + 1
+                self.keys[k] = self.keys.get(k, 0) + 1
+                if mappings.tags[k].get('__strip__', False):
+                    continue
+                if k in ['ref', 'iata', 'icao']:
+                    continue
+                try:
+                    number = float(v)
+                    if number > 10:
+                        continue
+                except (ValueError,TypeError):
+                    pass
+                self.values[v] = self.values.get(v, 0) + 1
 
     def node(self, n):
         self.filter(n.id, n.tags)
@@ -79,8 +88,18 @@ class MapStatistics:
 
         handler = OsmFilter(self.logger)
         handler.apply_file(self.pbf_file)
+
+        self.logger.info("Finished")
+
         for k, v in sorted(handler.mapped.items(), key=itemgetter(1), reverse=True):
             print('{:35s} {:12,d}'.format(k, v))
+
+        print("")
+
+        i = 1
+        for k, v in sorted(handler.keys.items(), key=itemgetter(1), reverse=True):
+            print('{:<3d} {:35s} {:12,d}'.format(i, str(k), v))
+            i = i + 1
 
         print("")
 
