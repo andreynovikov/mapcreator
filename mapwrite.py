@@ -253,15 +253,14 @@ def process_element(geom, tags, mapping):
 
 class MapWriter:
 
-    def __init__(self, data_dir, dry_run=False, verbose=False):
+    def __init__(self, data_dir, dry_run=False, forbid_interactive=False):
         self.dry_run = dry_run
-        self.verbose = verbose
         self.logger = logging.getLogger(__name__)
         self.data_dir = data_dir
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
         self.simplification = 0.0
-        self.interactive = not verbose and sys.__stdin__.isatty()
+        self.interactive = not forbid_interactive and sys.__stdin__.isatty()
 
         try:
             # Enable C-based speedups available from 1.2.10+
@@ -641,7 +640,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='MapTrek map writer')
     parser.add_argument('-p', '--data-path', default='data', help='base path for data files')
     parser.add_argument('-d', '--dry-run', action='store_true', help='do not generate any files')
-    parser.add_argument('-v', '--verbose', action='store_true', help='enable verbose logging')
+    parser.add_argument('-l', '--log', default='ERROR', help='set logging verbosity')
+    parser.add_argument('-n', '--noninteractive', action='store_true', help='forbid interactive mode')
     parser.add_argument('-i', '--intermediate', action='store_true', help='create intermediate osm.pbf file')
     parser.add_argument('-k', '--keep', action='store_true', help='do not remove intermediate osm.pbf file on success')
     parser.add_argument('-f', '--from-file', action='store_true', help='use file instead of database as data source')
@@ -653,15 +653,20 @@ if __name__ == "__main__":
         print("Database source is currently not supported")
         exit(1)
 
-    logging.basicConfig(level=logging.ERROR, format='%(asctime)s %(levelname)s - %(message)s')
+    log_level = getattr(logging, args.log.upper(), None)
+    if not isinstance(log_level, int):
+        print("Invalid log level: %s" % args.log)
+        exit(1)
+
+    logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s - %(message)s')
     logging.getLogger("shapely").setLevel(logging.ERROR)
     logger = logging.getLogger(__name__)
     # during a dry run the console should receive all logs
-    if args.dry_run or args.verbose:
+    if args.dry_run:
         logger.setLevel(logging.DEBUG)
 
     try:
-        mapWriter = MapWriter(args.data_path, args.dry_run, args.verbose)
+        mapWriter = MapWriter(args.data_path, args.dry_run, args.noninteractive)
         mapWriter.createMap(args.x, args.y, args.intermediate, args.keep, args.from_file)
     except Exception as e:
         logger.exception("An error occurred:")
