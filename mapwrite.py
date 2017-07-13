@@ -100,7 +100,7 @@ class OsmFilter(osmium.SimpleHandler):
                 if m is None:
                     m = mappings.tags[tag.k].get(tag.v, None)
                 if m is not None: #empty dictionaries should be also accounted
-                    k = tag.k
+                    k = tag.k.strip().lower()
                     v = tag.v
                     if 'rewrite-key' in m or 'rewrite-value' in m:
                         k = m.get('rewrite-key', k)
@@ -113,6 +113,10 @@ class OsmFilter(osmium.SimpleHandler):
                         v = m['adjust'](v)
                     if v is None:
                         continue
+                    if isinstance(v, str) and k not in ('name', 'name:en', 'name:de', 'name:ru', 'ref', 'icao', 'iata'):
+                        v = v.strip().lower()
+                        if ';' in v:
+                            v = v.split(';')[0]
                     filtered_tags[k] = v
                     renderable = renderable or m.get('render', True)
                     for k in ('transform','union','union-zoom-max','calc-area','filter-area','buffer','enlarge','force-line','label','filter-type','clip-buffer'):
