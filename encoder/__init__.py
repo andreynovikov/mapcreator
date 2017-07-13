@@ -109,7 +109,7 @@ class VectorTile:
             tags.append(self.getTagId(tag))
 
         if len(tags) == 0:
-            logging.debug('missing tags')
+            logging.warning('missing tags')
             return
 
         geom.parseGeometry(feature.geometry.wkb)
