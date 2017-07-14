@@ -2,13 +2,17 @@
 
 import os
 import sys
+import gc
 import math
+import queue
 import threading
 import multiprocessing
 import argparse
 import subprocess
 import logging.config
+import psutil
 from collections import defaultdict, namedtuple
+from datetime import datetime, timedelta
 
 from tqdm import tqdm
 
@@ -185,7 +189,6 @@ class OsmFilter(osmium.SimpleHandler):
                     found = found + 1
                     element.tags['building:outline'] = 1
             self.logger.debug("    outlined %d of %d buildings" % (found, len(self.outlines)))
-        self.logger.debug("    elements: %d" % len(self.elements))
 
 
 class Tile():
@@ -273,6 +276,7 @@ class MapWriter:
 
     def createMap(self, x, y, intermediate=False, keep=False, from_file=False):
         map_path = self.map_path(x, y)
+        start_time = datetime.utcnow()
         self.logger.info("Creating map: %s" % map_path)
 
         log_path = self.log_path(x, y)
@@ -325,6 +329,14 @@ class MapWriter:
         handler = OsmFilter(elements, self.logger)
         handler.apply_file(pbf_path)
         handler.finish()
+        del handler
+        gc.collect()
+
+        process = psutil.Process(os.getpid())
+        total = psutil.virtual_memory().total // 1048576
+        used = process.memory_info().rss // 1048576
+        self.logger.info("    memory used: {:,}M out of {:,}M".format(used, total))
+        self.multiprocessing = total / used > 3
 
         # process map only if it contains relevant data
         has_elements = bool(elements)
@@ -332,13 +344,21 @@ class MapWriter:
             self.db = MTilesDatabase(map_path)
             self.db.create("%d-%d" % (x, y), 'baselayer', '1', 'maptrek')
 
-            num_worker_threads = len(os.sched_getaffinity(0))
-            self.logger.debug("    number of threads: %d" % num_worker_threads)
+            if self.multiprocessing:
+                num_worker_threads = len(os.sched_getaffinity(0))
+                self.logger.info("    running in multiprocessing mode with %d workers" % num_worker_threads)
+            else:
+                num_worker_threads = 1
+                self.logger.info("    running in single threaded mode")
             worker_threads = []
-            pool = multiprocessing.Pool(num_worker_threads)
+
+            if self.multiprocessing:
+                pool = multiprocessing.Pool(num_worker_threads)
 
             if self.interactive:
                 self.proc_progress = tqdm(total=len(elements), desc="Processed", maxinterval=1.0)
+            else:
+                self.logger.info("    processing %d elements" % len(elements))
 
             results = []
             # pre-process elements
@@ -351,8 +371,13 @@ class MapWriter:
                         self.db.putFeature(el.id, el.tags['name'], el.kind, el.label, el.geom)
                     if self.interactive:
                         self.proc_progress.update()
-                results.append(pool.apply_async(process_element, [element.geom, element.tags, element.mapping], callback=process_result))
-            pool.close()
+                if self.multiprocessing:
+                    results.append(pool.apply_async(process_element, [element.geom, element.tags, element.mapping],
+                                                    callback=process_result))
+                else:
+                    process_result(process_element(element.geom, element.tags, element.mapping))
+            if self.multiprocessing:
+                pool.close()
 
             extra_elements = []
             # get supplementary data while elements are processed
@@ -382,17 +407,22 @@ class MapWriter:
                     finally:
                         cur.close()
 
-            # wait for results, look for errors
-            for r in results:
-                r.get()
+            if self.multiprocessing:
+                # wait for results, look for errors
+                for r in results:
+                    r.get()
+                del pool
+                del results
 
             if self.interactive:
                 self.proc_progress.close()
+            else:
+                self.logger.info("    finished pre-processing elements")
 
-            self.logger.debug("    finished pre-processing elements")
+            gc.collect()
 
             if extra_elements:
-                self.logger.debug("    extra elements: %d" % len(extra_elements))
+                self.logger.info("    added %d extra elements" % len(extra_elements))
                 elements += extra_elements
 
             if self.interactive:
@@ -402,17 +432,26 @@ class MapWriter:
                     num_tiles = num_tiles + n
                 self.gen_progress = tqdm(total=num_tiles, desc="Generated")
 
-            tile_queue = multiprocessing.JoinableQueue()
-            db_queue = multiprocessing.JoinableQueue()
+            if self.multiprocessing:
+                tile_queue = multiprocessing.JoinableQueue()
+                db_queue = multiprocessing.JoinableQueue()
+            else:
+                tile_queue = queue.Queue()
+                db_queue = queue.Queue()
 
             db_thread = threading.Thread(target=self.dbWorker, args=(db_queue,))
             db_thread.start()
 
             processes = []
-            for i in range(num_worker_threads):
-                p = multiprocessing.Process(target=self.tileWorker, args=(tile_queue, db_queue))
-                p.start()
-                processes.append(p)
+            if self.multiprocessing:
+                for i in range(num_worker_threads):
+                    p = multiprocessing.Process(target=self.tileWorker, args=(tile_queue, db_queue))
+                    p.start()
+                    processes.append(p)
+            else:
+                t = threading.Thread(target=self.tileWorker, args=(tile_queue, db_queue))
+                t.start()
+                processes.append(t)
 
             tile = Tile(7, x, y, elements)
             tile_queue.put(tile)
@@ -431,15 +470,18 @@ class MapWriter:
             db_queue.put(None)
             db_thread.join()
 
-            tile_queue.close()
-            db_queue.close()
+            if self.multiprocessing:
+                tile_queue.close()
+                db_queue.close()
 
             self.db.finish()
 
             if self.interactive:
                 self.gen_progress.close()
 
-        self.logger.info("Finished map: %s" % map_path)
+        elapsed_time = datetime.utcnow() - start_time
+        elapsed_time = elapsed_time - timedelta(microseconds=elapsed_time.microseconds)
+        self.logger.info("Finished map: %s in %s" % (map_path, elapsed_time))
 
         if not self.dry_run and has_elements:
             if os.path.getsize(map_path) == 0:
