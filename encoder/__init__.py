@@ -6,10 +6,9 @@ from . import TileData_pb2
 from . import GeomEncoder
 from . import StaticVals
 from . import StaticKeys
-from . import TagRewrite
 
 # custom keys/values start at attrib_offset
-attrib_offset = 256
+attrib_offset = 1024
 
 # coordindates are scaled to this range within tile
 extents = 4096
@@ -100,11 +99,6 @@ class VectorTile:
                 continue
 
             tag = str(k), str(v)
-
-            tag = TagRewrite.fixTag(tag)
-
-            if tag is None:
-                continue
 
             tags.append(self.getTagId(tag))
 
@@ -243,7 +237,7 @@ class VectorTile:
 
         self.out.tags.append(key)
         self.out.tags.append(val)
-        if tag[0] != 'ref' and (key > attrib_offset or val > attrib_offset):
+        if tag[0] not in ('ref','iata','icao','population') and (key > attrib_offset or val > attrib_offset):
             logging.warning("add tag %s - %d/%d" % (tag, key, val))
         r = self.num_tags
         self.tagdict[tag] = r

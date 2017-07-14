@@ -530,4 +530,9 @@ staticValues = {
     'multifamily' : 529,
     'water_tower' : 530,
     'sauna' : 531,
+    'observatory' : 532,
+    # custom values
+    'elevation_major': 1020,
+    'elevation_medium': 1021,
+    'elevation_minor': 1022,
 }

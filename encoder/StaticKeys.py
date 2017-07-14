@@ -41,6 +41,7 @@ _strings = [
     'icao',
     'iata',
     'station',
+    'contour',
     # keys that should be visualized in future:
     'construction',
     'cutting',
