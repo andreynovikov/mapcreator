@@ -46,7 +46,7 @@ class VectorTile:
 
     def complete(self):
         if self.num_tags == 0:
-            logging.info("empty tags")
+            logging.debug("empty tags")
 
         self.out.num_tags = self.num_tags
 
