@@ -23,7 +23,7 @@ def direction(value):
     """
     if value is not None:
         value = value.strip().lower()
-        if value in ('yes', 'true', '1'):
+        if value in ('yes', 'true', '1', 'y'):
             return 1
         if value == '-1':
             return -1
