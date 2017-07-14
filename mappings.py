@@ -249,6 +249,7 @@ tags = {
         'meadow': DEFAULT_AREA,
         'grass': DEFAULT_AREA,
         'vineyard': DEFAULT_AREA,
+        'field': {'rewrite-value': 'farmland'},
         'farmland': DEFAULT_AREA,
         'greenhouse_horticulture': DEFAULT_AREA,
         'plant_nursery': DEFAULT_AREA,
