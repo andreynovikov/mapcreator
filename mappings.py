@@ -527,6 +527,24 @@ tags = {
         },
         '__strip__': True
     },
+    'name:en': {
+        '__any__': {
+            'render': False
+        },
+        '__strip__': True
+    },
+    'name:de': {
+        '__any__': {
+            'render': False
+        },
+        '__strip__': True
+    },
+    'name:ru': {
+        '__any__': {
+            'render': False
+        },
+        '__strip__': True
+    },
     'addr:housenumber': {
         '__any__': {
             'label': True,

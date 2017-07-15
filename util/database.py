@@ -27,7 +27,7 @@ class MTilesDatabase():
             self.db.execute('CREATE TABLE metadata (name TEXT, value TEXT)')
             self.db.execute('CREATE TABLE tiles (zoom_level INTEGER NOT NULL, tile_column INTEGER NOT NULL, tile_row INTEGER NOT NULL, tile_data BLOB NOT NULL)')
             self.db.execute('CREATE TABLE names (ref INTEGER NOT NULL, name TEXT NOT NULL)')
-            self.db.execute('CREATE TABLE features(id INTEGER NOT NULL, name INTEGER NOT NULL, kind INTEGER, lat REAL, lon REAL)')
+            self.db.execute('CREATE TABLE features(id INTEGER NOT NULL, name INTEGER NOT NULL, name_en INTEGER, name_de INTEGER, name_ru INTEGER, kind INTEGER, lat REAL, lon REAL)')
             self.db.execute('CREATE UNIQUE INDEX coord ON tiles (zoom_level, tile_column, tile_row)')
             self.db.execute('CREATE UNIQUE INDEX property ON metadata (name)')
             self.db.execute('CREATE UNIQUE INDEX name_ref ON names (ref)')
@@ -72,8 +72,17 @@ class MTilesDatabase():
         return h
 
 
-    def putFeature(self, id, name, kind, label, geometry):
+    def putFeature(self, id, name, name_en, name_de, name_ru, kind, label, geometry):
         h = self.putName(name)
+        hen = None
+        if name_en is not None:
+            hen = self.putName(name_en)
+        hde = None
+        if name_de is not None:
+            hde = self.putName(name_de)
+        hru = None
+        if name_ru is not None:
+            hru = self.putName(name_ru)
         lat = None
         lon = None
         if label:
@@ -84,5 +93,5 @@ class MTilesDatabase():
             geom = transform(mercator_to_wgs84, geometry)
             lat = geom.y
             lon = geom.x
-        q = 'REPLACE INTO features (id, name, kind, lat, lon) VALUES (?, ?, ?, ?, ?)'
-        self.db.execute(q, (id, h, kind, lat, lon))
+        q = 'REPLACE INTO features (id, name, name_en, name_de, name_ru, kind, lat, lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        self.db.execute(q, (id, h, hen, hde, hru, kind, lat, lon))

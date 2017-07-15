@@ -376,7 +376,8 @@ class MapWriter:
                     el.kind, el.area, el.label, el.height, el.min_height, el.building_color, el.roof_color = result
                     if 'name' in el.tags:
                         el.tags['id'] = el.id
-                        self.db.putFeature(el.id, el.tags['name'], el.kind, el.label, el.geom)
+                        self.db.putFeature(el.id, el.tags['name'], el.tags.pop('name:en', None), el.tags.pop('name:de', None),
+                                           el.tags.pop('name:ru', None), el.kind, el.label, el.geom)
                     if self.interactive:
                         self.proc_progress.update()
                 if self.multiprocessing:
@@ -433,6 +434,9 @@ class MapWriter:
                 self.logger.info("    added %d extra elements" % len(extra_elements))
                 elements += extra_elements
 
+            used = process.memory_info().rss // 1048576
+            self.logger.info("    memory used: {:,}M out of {:,}M".format(used, total))
+
             if self.interactive:
                 num_tiles = 0
                 for z in range(1, 15-7):
@@ -486,6 +490,9 @@ class MapWriter:
 
             if self.interactive:
                 self.gen_progress.close()
+
+            used = process.memory_info().rss // 1048576
+            self.logger.info("    memory used: {:,}M out of {:,}M".format(used, total))
 
         elapsed_time = datetime.utcnow() - start_time
         elapsed_time = elapsed_time - timedelta(microseconds=elapsed_time.microseconds)
