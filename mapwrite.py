@@ -56,6 +56,8 @@ def deep_get(dictionary, *keys):
 
 
 class Element():
+    geom_type = {0: 'unknown', 1: 'node', 2: 'way', 3: 'relation'}
+
     def __init__(self, id, geom, tags, mapping=None):
         self.id = id
         self.geom = geom # original geometry
@@ -73,7 +75,9 @@ class Element():
     def __str__(self):
         #geom = transform(mercator_to_wgs84, self.geom)
         #return "%s: %s\n%s\n%s\n" % (str(self.id), geom, self.tags, self.mapping)
-        return "%s: %s\n%s\n%s\n" % (str(self.id), self.geom.__repr__(), self.tags, self.mapping)
+        t = self.id & 0x0000000000000003
+        id = self.id >> 2
+        return "%s/%s: %s\n%s\n%s\n" % (Element.geom_type[t], id, self.geom.__repr__(), self.tags, self.mapping)
 
     def clone(self, geom):
         el = Element(self.id, geom, self.tags, self.mapping)
@@ -158,6 +162,10 @@ class OsmFilter(osmium.SimpleHandler):
                 if 'filter-type' in mapping and geom.type not in mapping.pop('filter-type', []):
                     return
                 geom = clockwise(geom)
+                # construct unique id
+                if t == 3 and o.from_way():
+                    t = 2
+                id = (id << 2) + t
                 self.elements.append(Element(id, geom, tags, mapping))
             except Exception as e:
                 self.logger.error("%s %s" % (e, id))
