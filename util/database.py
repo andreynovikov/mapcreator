@@ -27,11 +27,13 @@ class MTilesDatabase():
             self.db.execute('CREATE TABLE metadata (name TEXT, value TEXT)')
             self.db.execute('CREATE TABLE tiles (zoom_level INTEGER NOT NULL, tile_column INTEGER NOT NULL, tile_row INTEGER NOT NULL, tile_data BLOB NOT NULL)')
             self.db.execute('CREATE TABLE names (ref INTEGER NOT NULL, name TEXT NOT NULL)')
-            self.db.execute('CREATE TABLE features(id INTEGER NOT NULL, name INTEGER NOT NULL, name_en INTEGER, name_de INTEGER, name_ru INTEGER, kind INTEGER, lat REAL, lon REAL)')
+            self.db.execute('CREATE TABLE feature_names (id INTEGER NOT NULL, lang INTEGER NOT NULL, name INTEGER NOT NULL)')
+            self.db.execute('CREATE TABLE features (id INTEGER NOT NULL, kind INTEGER, lat REAL, lon REAL)')
             self.db.execute('CREATE UNIQUE INDEX coord ON tiles (zoom_level, tile_column, tile_row)')
             self.db.execute('CREATE UNIQUE INDEX property ON metadata (name)')
             self.db.execute('CREATE UNIQUE INDEX name_ref ON names (ref)')
-            self.db.execute('CREATE UNIQUE INDEX feature_ref ON features (id, name)')
+            self.db.execute('CREATE UNIQUE INDEX feature_name_ref ON feature_names (id, lang, name)')
+            self.db.execute('CREATE UNIQUE INDEX feature_id ON features (id)')
 
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('name', name))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('type', type))
@@ -72,17 +74,19 @@ class MTilesDatabase():
         return h
 
 
-    def putFeature(self, id, name, name_en, name_de, name_ru, kind, label, geometry):
-        h = self.putName(name)
-        hen = None
-        if name_en is not None:
-            hen = self.putName(name_en)
-        hde = None
-        if name_de is not None:
-            hde = self.putName(name_de)
-        hru = None
-        if name_ru is not None:
-            hru = self.putName(name_ru)
+    def putFeature(self, id, tags, kind, label, geometry):
+        h = self.putName(tags['name'])
+        q = 'REPLACE INTO feature_names (id, lang, name) VALUES (?, ?, ?)'
+        self.db.execute(q, (id, 0, h))
+        if 'name:en' in tags:
+            h = self.putName(tags['name:en'])
+            self.db.execute(q, (id, 840, h))
+        if 'name:de' in tags:
+            h = self.putName(tags['name:de'])
+            self.db.execute(q, (id, 276, h))
+        if 'name:ru' in tags:
+            h = self.putName(tags['name:ru'])
+            self.db.execute(q, (id, 643, h))
         lat = None
         lon = None
         if label:
@@ -93,5 +97,5 @@ class MTilesDatabase():
             geom = transform(mercator_to_wgs84, geometry)
             lat = geom.y
             lon = geom.x
-        q = 'REPLACE INTO features (id, name, name_en, name_de, name_ru, kind, lat, lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-        self.db.execute(q, (id, h, hen, hde, hru, kind, lat, lon))
+        q = 'REPLACE INTO features (id, kind, lat, lon) VALUES (?, ?, ?, ?)'
+        self.db.execute(q, (id, kind, lat, lon))

@@ -293,14 +293,14 @@ class MapWriter:
 
         if intermediate or from_file:
             pbf_path = self.pbf_path(x, y)
-            if not os.path.exists(pbf_path):
-                self.logger.info("  Creating intermediate file: %s" % pbf_path)
+            if not os.path.exists(pbf_path) or os.path.getmtime(pbf_path) < os.path.getmtime(configuration.SOURCE_PBF):
                 if from_file:
                     # create upper intermediate file (zoom=3) to optimize processing of adjacent areas
                     ax = x >> 4
                     ay = y >> 4
                     upper_pbf_path = self.pbf_path(ax, ay, 3)
                     if not os.path.exists(upper_pbf_path) or os.path.getmtime(upper_pbf_path) < os.path.getmtime(configuration.SOURCE_PBF):
+                        self.logger.info("  Creating upper intermediate file: %s" % upper_pbf_path)
                         upper_pbf_dir = os.path.dirname(upper_pbf_path)
                         if not os.path.exists(upper_pbf_dir):
                             os.makedirs(upper_pbf_dir)
@@ -313,6 +313,7 @@ class MapWriter:
                             subprocess.check_call(osmconvert_call)
                         else:
                             subprocess.check_call(['touch', upper_pbf_path])
+                    self.logger.info("  Creating intermediate file: %s" % pbf_path)
                     # extract area data from upper intermediate file
                     bbox = mercantile.bounds(x, y, 7)
                     osmconvert_call = [configuration.OSMCONVERT_PATH, upper_pbf_path]
@@ -375,9 +376,11 @@ class MapWriter:
                     el = elements[index]
                     el.kind, el.area, el.label, el.height, el.min_height, el.building_color, el.roof_color = result
                     if 'name' in el.tags:
+                        self.db.putFeature(el.id, el.tags, el.kind, el.label, el.geom)
+                        el.tags.pop('name:en', None)
+                        el.tags.pop('name:de', None)
+                        el.tags.pop('name:ru', None)
                         el.tags['id'] = el.id
-                        self.db.putFeature(el.id, el.tags['name'], el.tags.pop('name:en', None), el.tags.pop('name:de', None),
-                                           el.tags.pop('name:ru', None), el.kind, el.label, el.geom)
                     if self.interactive:
                         self.proc_progress.update()
                 if self.multiprocessing:
