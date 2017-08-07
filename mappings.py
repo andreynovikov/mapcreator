@@ -447,7 +447,10 @@ tags = {
         'monument': DEFAULT_PLACE
     },
     'route': {
-        'ferry': {'zoom-min': 12},
+        'ferry': {
+            'zoom-min': 12,
+            'force-line': True
+        },
     },
     'piste:type': {
         'downhill': {'zoom-min': 13},
