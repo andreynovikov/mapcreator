@@ -349,8 +349,10 @@ class MapWriter:
         # process map only if it contains relevant data
         has_elements = bool(elements)
         if has_elements:
+            timestamp = int(configuration.SOURCE_PBF_TIMESTAMP / 3600 / 24)
+
             self.db = MTilesDatabase(map_path)
-            self.db.create("%d-%d" % (x, y), 'baselayer', '1', 'maptrek')
+            self.db.create("%d-%d" % (x, y), 'baselayer', '1', timestamp, 'maptrek')
 
             if self.multiprocessing:
                 num_worker_threads = len(os.sched_getaffinity(0))

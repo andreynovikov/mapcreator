@@ -14,7 +14,7 @@ class MTilesDatabase():
         self.namehashes = []
 
 
-    def create(self, name, type, version, format, bounds=None):
+    def create(self, name, type, version, timestamp, format, bounds=None):
         self.db = connect(self.filename, check_same_thread=False)
         self.db.execute('PRAGMA journal_mode = OFF')
         self.db.execute('PRAGMA synchronous = NORMAL')
@@ -38,6 +38,7 @@ class MTilesDatabase():
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('name', name))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('type', type))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('version', version))
+        self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('timestamp', timestamp))
         #self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('description', description))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('format', format))
 
