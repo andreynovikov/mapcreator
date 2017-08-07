@@ -145,11 +145,10 @@ class OsmFilter(osmium.SimpleHandler):
                 if t == 3 and o.from_way() and not area:
                     return # have added it already in ways handler
             try:
+                id = o.id
                 if t == 1:
-                    id = o.id
                     wkb = wkbFactory.create_point(o)
                 if t == 2:
-                    id = o.id
                     wkb = wkbFactory.create_linestring(o)
                 if t == 3:
                     id = o.orig_id()
@@ -168,7 +167,7 @@ class OsmFilter(osmium.SimpleHandler):
                 id = (id << 2) + t
                 self.elements.append(Element(id, geom, tags, mapping))
             except Exception as e:
-                self.logger.error("%s %s" % (e, id))
+                self.logger.error("%s: %s" % (id, e))
 
     def node(self, n):
         self.process(1, n)
@@ -416,6 +415,8 @@ class MapWriter:
                             extra_elements.append(Element(None, geom, tags, mapping))
                     except (psycopg2.ProgrammingError, psycopg2.InternalError) as e:
                         logger.exception("Query error: %s" % sql)
+                    except shapely.errors.WKBReadingError as e:
+                        logger.error("Geometry error: %s" % bytes(row['geometry']).hex())
                     finally:
                         cur.close()
 
