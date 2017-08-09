@@ -24,7 +24,7 @@ class MTilesDatabase():
             self.db.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles LIMIT 1')
             self.db.execute('DELETE FROM metadata')
         except:
-            self.db.execute('CREATE TABLE metadata (name TEXT, value TEXT)')
+            self.db.execute('CREATE TABLE metadata (name TEXT NOT NULL, value TEXT)')
             self.db.execute('CREATE TABLE tiles (zoom_level INTEGER NOT NULL, tile_column INTEGER NOT NULL, tile_row INTEGER NOT NULL, tile_data BLOB NOT NULL)')
             self.db.execute('CREATE TABLE names (ref INTEGER NOT NULL, name TEXT NOT NULL)')
             self.db.execute('CREATE TABLE feature_names (id INTEGER NOT NULL, lang INTEGER NOT NULL, name INTEGER NOT NULL)')
