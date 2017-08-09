@@ -8,7 +8,7 @@ kinds = {
     "attraction" :     0x00000040,
     "entertainment" :  0x00000080,
     "shopping" :       0x00000100,
-    "moneymail" :      0x00000200,
+    "service" :        0x00000200,
     "religion" :       0x00000400,
     "education" :      0x00000800,
     "kids" :           0x00001000,
@@ -69,7 +69,7 @@ def _tag_kind(k, v):
             return kinds['emergency']
         if value in ('library', 'university', 'school', 'college'):
             return kinds['education']
-        if value in ('kindergarten'):
+        if value in ('kindergarten',):
             return kinds['kids']
         if value in ('cafe', 'pub', 'bar', 'fast_food', 'restaurant'):
             return kinds['food']
@@ -80,7 +80,7 @@ def _tag_kind(k, v):
         if value in ('bicycle_rental', 'drinking_water', 'shelter', 'toilets'):
             return kinds['hikebike']
         if value in ('bank', 'atm', 'bureau_de_change', 'post_office', 'post_box'):
-            return kinds['moneymail']
+            return kinds['service']
         if value == 'veterinary':
             return kinds['pets']
         if value == 'bus_station':
@@ -99,12 +99,23 @@ def _tag_kind(k, v):
             return kinds['entertainment']
 
     if key == 'shop':
-        if value in ('bakery', 'hairdresser', 'supermarket', 'doityourself', 'mall'):
+        if value in ('gift', 'variety_store', 'doityourself', 'hardware', 'department_store', 'mall', 'jewelry',
+                     'photo', 'books'):
             return kinds['shopping']
+        if value in ('bakery', 'ice_cream', 'greengrocer', 'farm', 'alcohol', 'beverages', 'confectionery'):
+            return kinds['food']
+        if value in ('supermarket', 'convenience'):
+            return kinds['food'] | kinds['shopping']
         if value in ('car', 'car_repair'):
             return kinds['vehicles']
+        if value in ('bicycle', 'outdoor'):
+            return kinds['hikebike'] | kinds['shopping']
+        if value == 'toys':
+            return kinds['kids']
         if value == 'pet':
             return kinds['pets']
+        if value in ('hairdresser', 'copyshop', 'dry_cleaning', 'laundry'):
+            return kinds['service']
 
     if key == 'historic':
         if value in ('memorial', 'castle', 'ruins', 'monument'):
