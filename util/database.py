@@ -32,7 +32,7 @@ class MTilesDatabase():
             self.db.execute('CREATE UNIQUE INDEX coord ON tiles (zoom_level, tile_column, tile_row)')
             self.db.execute('CREATE UNIQUE INDEX property ON metadata (name)')
             self.db.execute('CREATE UNIQUE INDEX name_ref ON names (ref)')
-            self.db.execute('CREATE UNIQUE INDEX feature_name_ref ON feature_names (id, lang, name)')
+            self.db.execute('CREATE UNIQUE INDEX feature_name_lang ON feature_names (id, lang)')
             self.db.execute('CREATE UNIQUE INDEX feature_id ON features (id)')
 
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('name', name))
