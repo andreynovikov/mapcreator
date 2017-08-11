@@ -344,11 +344,12 @@ class MapWriter:
         total = psutil.virtual_memory().total // 1048576
         used = process.memory_info().rss // 1048576
         self.logger.info("    memory used: {:,}M out of {:,}M".format(used, total))
-        self.multiprocessing = total / used > 3
 
         # process map only if it contains relevant data
         has_elements = bool(elements)
         if has_elements:
+            self.multiprocessing = total / used > 3 and len(elements) > 100
+
             timestamp = int(configuration.SOURCE_PBF_TIMESTAMP / 3600 / 24)
 
             self.db = MTilesDatabase(map_path)
