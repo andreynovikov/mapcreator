@@ -65,7 +65,7 @@ def _tag_kind(k, v):
             return kinds['barrier']
 
     if key == 'amenity':
-        if value in ('police', 'fire_station', 'hospital', 'pharmacy', 'doctors', 'telephone'):
+        if value in ('police', 'fire_station', 'hospital', 'pharmacy', 'doctors', 'clinic', 'telephone'):
             return kinds['emergency']
         if value in ('library', 'university', 'school', 'college'):
             return kinds['education']

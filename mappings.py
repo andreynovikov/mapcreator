@@ -387,6 +387,7 @@ tags = {
         'fire_station': DEFAULT_PLACE,
         'pharmacy': DEFAULT_PLACE,
         'doctors': DEFAULT_PLACE,
+        'clinic': DEFAULT_PLACE,
         'veterinary': DEFAULT_PLACE,
         'cafe': DEFAULT_PLACE,
         'pub': DEFAULT_PLACE,
