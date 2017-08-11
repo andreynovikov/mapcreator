@@ -61,9 +61,8 @@ class MTilesDatabase():
 
 
     def putTile(self, zoom, x, y, content):
-        tile_row = (2**zoom - 1) - y # Hello, Paul Ramsey.
         q = 'REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)'
-        self.db.execute(q, (zoom, x, tile_row, memoryview(content)))
+        self.db.execute(q, (zoom, x, y, memoryview(content)))
 
 
     def putName(self, name):
