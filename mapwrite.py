@@ -348,7 +348,7 @@ class MapWriter:
         # process map only if it contains relevant data
         has_elements = bool(elements)
         if has_elements:
-            self.multiprocessing = total / used > 3 and len(elements) > 100
+            self.multiprocessing = total / used > 3 and len(elements) > 1000
 
             timestamp = int(configuration.SOURCE_PBF_TIMESTAMP / 3600 / 24)
 
@@ -417,9 +417,9 @@ class MapWriter:
                             tags, mapping = data['mapper'](row)
                             extra_elements.append(Element(None, geom, tags, mapping))
                     except (psycopg2.ProgrammingError, psycopg2.InternalError) as e:
-                        logger.exception("Query error: %s" % sql)
+                        self.logger.exception("Query error: %s" % sql)
                     except shapely.errors.WKBReadingError as e:
-                        logger.error("Geometry error: %s" % bytes(row['geometry']).hex())
+                        self.logger.error("Geometry error: %s" % bytes(row['geometry']).hex())
                     finally:
                         cur.close()
 
