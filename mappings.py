@@ -356,6 +356,7 @@ tags = {
         'neighbourhood': {'zoom-min': 13},
         'locality': {'zoom-min': 13},
         'isolated_dwelling': {'zoom-min': 13},
+        'allotments': {'zoom-min': 14},
     },
     'leisure': {
         'nature_reserve': {'rewrite-key': 'landuse'},
