@@ -115,7 +115,7 @@ def is_area(tags):
     result = True
     for k, v in tags.items():
         if k == 'area':
-            return (v == 1)
+            return (v == 'yes')
         if k in ['building', 'building:part']:
             return True
         # as specified by http://wiki.openstreetmap.org/wiki/Key:area
