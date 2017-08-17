@@ -292,13 +292,14 @@ class MapWriter:
 
         if intermediate or from_file:
             pbf_path = self.pbf_path(x, y)
-            if not os.path.exists(pbf_path) or os.path.getmtime(pbf_path) < os.path.getmtime(configuration.SOURCE_PBF):
+            timestamp = os.path.getmtime(configuration.SOURCE_PBF)
+            if not os.path.exists(pbf_path) or os.path.getmtime(pbf_path) < timestamp:
                 if from_file:
                     # create upper intermediate file (zoom=3) to optimize processing of adjacent areas
                     ax = x >> 4
                     ay = y >> 4
                     upper_pbf_path = self.pbf_path(ax, ay, 3)
-                    if not os.path.exists(upper_pbf_path) or os.path.getmtime(upper_pbf_path) < os.path.getmtime(configuration.SOURCE_PBF):
+                    if not os.path.exists(upper_pbf_path) or os.path.getmtime(upper_pbf_path) < timestamp:
                         self.logger.info("  Creating upper intermediate file: %s" % upper_pbf_path)
                         upper_pbf_dir = os.path.dirname(upper_pbf_path)
                         if not os.path.exists(upper_pbf_dir):
@@ -348,9 +349,9 @@ class MapWriter:
         # process map only if it contains relevant data
         has_elements = bool(elements)
         if has_elements:
-            self.multiprocessing = total / used > 3 and len(elements) > 1000
+            self.multiprocessing = total / used > 3
 
-            timestamp = int(configuration.SOURCE_PBF_TIMESTAMP / 3600 / 24)
+            timestamp = int(timestamp / 3600 / 24)
 
             self.db = MTilesDatabase(map_path)
             self.db.create("%d-%d" % (x, y), 'baselayer', '1', timestamp, 'maptrek')
@@ -410,6 +411,7 @@ class MapWriter:
                         cur.execute(str(sql)) # if str() is not used 'where' is lost for some weird reason
                         rows = cur.fetchall()
                         self.logger.debug("      %s", cur.query)
+                        self.logger.debug("      fetched %d elements", len(rows))
                         for row in rows:
                             geom = shapelyWkb.loads(bytes(row['geometry']))
                             if data['srid'] != 3857: # we support only 3857 and 4326 projections
