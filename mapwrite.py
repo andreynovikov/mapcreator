@@ -292,42 +292,13 @@ class MapWriter:
 
         if intermediate or from_file:
             pbf_path = self.pbf_path(x, y)
-            timestamp = os.path.getmtime(configuration.SOURCE_PBF)
-            if not os.path.exists(pbf_path) or os.path.getmtime(pbf_path) < timestamp:
+            self.timestamp = os.path.getmtime(configuration.SOURCE_PBF)
+            if not os.path.exists(pbf_path) or os.path.getmtime(pbf_path) < self.timestamp:
                 if from_file:
-                    # create upper intermediate file (zoom=3) to optimize processing of adjacent areas
-                    ax = x >> 4
-                    ay = y >> 4
-                    upper_pbf_path = self.pbf_path(ax, ay, 3)
-                    if not os.path.exists(upper_pbf_path) or os.path.getmtime(upper_pbf_path) < timestamp:
-                        self.logger.info("  Creating upper intermediate file: %s" % upper_pbf_path)
-                        upper_pbf_dir = os.path.dirname(upper_pbf_path)
-                        if not os.path.exists(upper_pbf_dir):
-                            os.makedirs(upper_pbf_dir)
-                        bbox = mercantile.bounds(ax, ay, 3)
-                        osmconvert_call = [configuration.OSMCONVERT_PATH, configuration.SOURCE_PBF]
-                        osmconvert_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (bbox.west,bbox.south,bbox.east,bbox.north)]
-                        osmconvert_call += ['--complex-ways', '-o=%s' % upper_pbf_path]
-                        self.logger.debug("    calling: %s", " ".join(osmconvert_call))
-                        if not self.dry_run:
-                            subprocess.check_call(osmconvert_call)
-                        else:
-                            subprocess.check_call(['touch', upper_pbf_path])
-                    self.logger.info("  Creating intermediate file: %s" % pbf_path)
-                    # extract area data from upper intermediate file
-                    bbox = mercantile.bounds(x, y, 7)
-                    osmconvert_call = [configuration.OSMCONVERT_PATH, upper_pbf_path]
-                    osmconvert_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (bbox.west,bbox.south,bbox.east,bbox.north)]
-                    osmconvert_call += ['--complex-ways', '-o=%s' % pbf_path]
-                    try:
-                        self.logger.debug("    calling: %s", " ".join(osmconvert_call))
-                        if not self.dry_run:
-                            subprocess.check_call(osmconvert_call, stderr=logfile)
-                        else:
-                            subprocess.check_call(['touch', pbf_path])
-                    except Exception as e:
-                        logfile.close()
-                        raise e
+                    # create upper intermediate files (zoom=3,5) to optimize processing of adjacent areas
+                    upper_pbf_path = self.generateIntermediateFile(configuration.SOURCE_PBF, x, y, 3, " upper")
+                    upper_pbf_path = self.generateIntermediateFile(upper_pbf_path, x, y, 5, " middle")
+                    self.generateIntermediateFile(upper_pbf_path, x, y, 7, "")
                 else:
                     logfile.close()
                     raise NotImplementedError('Loading data from database is not implemented yet')
@@ -351,10 +322,10 @@ class MapWriter:
         if has_elements:
             self.multiprocessing = total / used > 3
 
-            timestamp = int(timestamp / 3600 / 24)
+            self.timestamp = int(self.timestamp / 3600 / 24)
 
             self.db = MTilesDatabase(map_path)
-            self.db.create("%d-%d" % (x, y), 'baselayer', '1', timestamp, 'maptrek')
+            self.db.create("%d-%d" % (x, y), 'baselayer', '1', self.timestamp, 'maptrek')
 
             if self.multiprocessing:
                 num_worker_threads = len(os.sched_getaffinity(0))
@@ -445,6 +416,12 @@ class MapWriter:
 
             used = process.memory_info().rss // 1048576
             self.logger.info("    memory used: {:,}M out of {:,}M".format(used, total))
+
+            m = total / used > 3 and len(extra_elements) < 500000
+            if self.multiprocessing and not m:
+                self.multiprocessing = False
+                num_worker_threads = 1
+                self.logger.info("    running in single threaded mode")
 
             if self.interactive:
                 num_tiles = 0
@@ -673,6 +650,28 @@ class MapWriter:
             elif prepared_clip.intersects(element.geom):
                 subtile.elements.append(element.clone(clipCache[element.mapping.get('clip-buffer', 4)].intersection(element.geom)))
         self.tileQueue.put(subtile)
+
+
+    def generateIntermediateFile(self, source_pbf_path, x, y, z, name):
+        ax = x >> (7 - z)
+        ay = y >> (7 - z)
+        target_pbf_path = self.pbf_path(ax, ay, z)
+        if not os.path.exists(target_pbf_path) or os.path.getmtime(target_pbf_path) < self.timestamp:
+            self.logger.info("  Creating%s intermediate file: %s" % (name, target_pbf_path))
+            pbf_dir = os.path.dirname(target_pbf_path)
+            if not os.path.exists(pbf_dir):
+                os.makedirs(pbf_dir)
+            bbox = mercantile.bounds(ax, ay, z)
+            osmconvert_call = [configuration.OSMCONVERT_PATH, source_pbf_path]
+            osmconvert_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (bbox.west,bbox.south,bbox.east,bbox.north)]
+            osmconvert_call += ['--complex-ways', '-o=%s' % target_pbf_path]
+            self.logger.debug("    calling: %s", " ".join(osmconvert_call))
+            if not self.dry_run:
+                subprocess.check_call(osmconvert_call)
+            else:
+                subprocess.check_call(['touch', target_pbf_path])
+        return target_pbf_path
+
 
     def map_path_base(self, x, y, zoom=7):
         """
