@@ -107,7 +107,7 @@ class MapCreator:
 
         map_target_path = '{0:s}/{1:d}/{1:d}-{2:d}.mtiles'.format(configuration.MAP_TARGET_PATH, x, y)
         move_call = ["mv", map_path, map_target_path]
-        self.logger.info("calling: %s"," ".join(move_call))
+        self.logger.debug("calling: %s"," ".join(move_call))
         if not self.dry_run:
             try:
                 subprocess.check_call(move_call)
