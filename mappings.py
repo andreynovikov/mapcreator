@@ -277,8 +277,10 @@ tags = {
             'filter-area': 8
         },
         'water': {
+            'transform': 'filter-rings',
             'calc-area': True,
-            'filter-area': 2
+            'filter-area': 2,
+            'buffer': 0.3
         },
         'grassland': DEFAULT_AREA,
         'heath': DEFAULT_AREA,
@@ -470,7 +472,7 @@ tags = {
     },
     'route': {
         'ferry': {
-            'zoom-min': 12,
+            'zoom-min': 8,
             'force-line': True
         },
     },
