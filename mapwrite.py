@@ -320,7 +320,7 @@ class MapWriter:
         # process map only if it contains relevant data
         has_elements = bool(elements)
         if has_elements:
-            self.multiprocessing = total / used > 3
+            self.multiprocessing = total / used > 4
 
             self.timestamp = int(self.timestamp / 3600 / 24)
 
@@ -369,14 +369,23 @@ class MapWriter:
             # get supplementary data while elements are processed
             with psycopg2.connect(configuration.DATA_DB_DSN) as c:
                 bounds = mercantile.xy_bounds(x, y, 7)
-                bbox = "ST_Expand(ST_MakeEnvelope({left}, {bottom}, {right}, {top}, 3857), {expand})" \
-                       .format(left=bounds.left, bottom=bounds.bottom, right=bounds.right, top=bounds.top, expand=1.194*4)
+                expand = 1.194*4
+                left_expand = 0
+                right_expand = 0
+                if x > 0:
+                    left_expand = expand
+                if x < 127:
+                    right_expand = expand
+                bbox = "ST_MakeEnvelope({left}, {bottom}, {right}, {top}, 3857)" \
+                       .format(left=(bounds.left - left_expand), bottom=(bounds.bottom - expand),
+                               right=(bounds.right + right_expand), top=(bounds.top + expand))
                 for data in mappings.queries:
                     if data['srid'] != 3857:
                         qbbox = "ST_Transform({bbox}, {srid})".format(bbox=bbox, srid=data['srid'])
                     else:
                         qbbox = bbox
-                    sql = "SELECT ST_AsBinary(geom) AS geometry, * FROM ({query}) AS data WHERE ST_Intersects(geom, {bbox})".format(query=data['query'], bbox=qbbox)
+                    sql = "SELECT ST_AsBinary(geom) AS geometry, * FROM ({query}) AS data WHERE ST_Intersects(geom, {bbox})" \
+                          .format(query=data['query'], bbox=qbbox)
                     try:
                         cur = c.cursor(cursor_factory=psycopg2.extras.DictCursor)
                         cur.execute(str(sql)) # if str() is not used 'where' is lost for some weird reason
@@ -417,7 +426,7 @@ class MapWriter:
             used = process.memory_info().rss // 1048576
             self.logger.info("    memory used: {:,}M out of {:,}M".format(used, total))
 
-            m = total / used > 3 and len(extra_elements) < 500000
+            m = total / used > 4 and len(extra_elements) < 500000
             if self.multiprocessing and not m:
                 self.multiprocessing = False
                 num_worker_threads = 1
