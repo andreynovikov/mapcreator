@@ -106,9 +106,14 @@ class VectorTile:
             logging.warning('missing tags')
             return
 
-        geom.parseGeometry(feature.geometry.wkb)
-        f = None;
+        try:
+            geom.parseGeometry(feature.geometry.wkb)
+        except Exception as e:
+            logging.error("%s:" % str(feature.tags))
+            logging.exception("Error parsing geometry %s" % feature.geometry.wkt)
+            return
 
+        f = None;
         geometry_type = None
         if geom.isPoint:
             geometry_type = 'Point'
