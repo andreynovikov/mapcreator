@@ -585,9 +585,12 @@ class MapWriter:
                     else:
                         unions[key].append(element)
                     continue
-                if tile.zoom < 14 and 'transform' in element.mapping:
-                    if element.mapping.get('transform') == 'filter-rings':
-                        geom = filter_rings(geom, pixelArea)
+                if tile.zoom < 14:
+                    if 'transform' in element.mapping:
+                        if element.mapping.get('transform') == 'filter-rings':
+                            geom = filter_rings(geom, pixelArea)
+                    if 'buffer' in element.mapping:
+                        geom = geom.buffer(tile.pixelWidth * -element.mapping.get('buffer', 1))
                 geometry = affine_transform(geom, tile.matrix)
                 if geometry.is_empty:
                     continue
