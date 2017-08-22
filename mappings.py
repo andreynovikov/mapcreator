@@ -185,23 +185,29 @@ tags = {
         'military': {
             'filter-type': ['Polygon','MultiPolygon'],
             'calc-area': True,
-            'filter-area': 16,
-            'buffer': 2,
+            'filter-area': 128,
+            'buffer': 4,
             'transform': 'filter-rings'
         },
         'nature_reserve': {
             'filter-type': ['Polygon','MultiPolygon'],
-            'buffer': 2,
+            'calc-area': True,
+            'filter-area': 64,
+            'buffer': 4,
             'transform': 'filter-rings'
         },
         'protected_area': {
             'filter-type': ['Polygon','MultiPolygon'],
-            'buffer': 2,
+            'calc-area': True,
+            'filter-area': 64,
+            'buffer': 4,
             'transform': 'filter-rings'
         },
         'national_park': {
             'filter-type': ['Polygon','MultiPolygon'],
-            'buffer': 2,
+            'calc-area': True,
+            'filter-area': 64,
+            'buffer': 4,
             'transform': 'filter-rings'
         },
         'residential': {
