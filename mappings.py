@@ -183,6 +183,7 @@ tags = {
             'rewrite-key': 'natural'
         },
         'military': {
+            'zoom-min': 7,
             'filter-type': ['Polygon','MultiPolygon'],
             'calc-area': True,
             'filter-area': 128,
@@ -190,6 +191,7 @@ tags = {
             'transform': 'filter-rings'
         },
         'nature_reserve': {
+            'zoom-min': 6,
             'filter-type': ['Polygon','MultiPolygon'],
             'calc-area': True,
             'filter-area': 64,
@@ -197,6 +199,7 @@ tags = {
             'transform': 'filter-rings'
         },
         'protected_area': {
+            'zoom-min': 6,
             'filter-type': ['Polygon','MultiPolygon'],
             'calc-area': True,
             'filter-area': 64,
@@ -204,6 +207,7 @@ tags = {
             'transform': 'filter-rings'
         },
         'national_park': {
+            'zoom-min': 6,
             'filter-type': ['Polygon','MultiPolygon'],
             'calc-area': True,
             'filter-area': 64,
@@ -265,6 +269,7 @@ tags = {
             'rewrite-value': 'wood'
         },
         'wood': {
+            'zoom-min': 8,
             'transform': 'filter-rings',
             'union': 'natural',
             #TODO combine next two settings into one
@@ -283,6 +288,7 @@ tags = {
             'filter-area': 8
         },
         'water': {
+            'zoom-min': 0,
             'transform': 'filter-rings',
             'calc-area': True,
             'filter-area': 2,
@@ -323,10 +329,12 @@ tags = {
     },
     'waterway': {
         'riverbank': {
+            'zoom-min': 8,
             'calc-area': True,
             'filter-area': 2
         },
         'dock': {
+            'zoom-min': 8,
             'calc-area': True,
             'filter-area': 2
         },
@@ -350,14 +358,14 @@ tags = {
         'drag_lift': {'zoom-min': 13},
     },
     'place': {
-        'ocean': {},
-        'sea': {},
-        'country': {},
-        'state': {},
-        'region': {},
+        'ocean': {'zoom-min': 0},
+        'sea': {'zoom-min': 5},
+        'country': {'zoom-min': 2},
+        'state': {'zoom-min': 3},
+        'region': {'zoom-min': 3},
         'island': {'zoom-min': 12},
-        'city': {'filter-type': ['Point']},
-        'town': {'filter-type': ['Point']},
+        'city': {'zoom-min': 3, 'filter-type': ['Point']},
+        'town': {'zoom-min': 3, 'filter-type': ['Point']},
         'village': {'zoom-min': 12},
         'hamlet': {'zoom-min': 13},
         'suburb': {'zoom-min': 12},
