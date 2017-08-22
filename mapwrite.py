@@ -589,6 +589,8 @@ class MapWriter:
                     if element.mapping.get('transform') == 'filter-rings':
                         geom = filter_rings(geom, pixelArea)
                 geometry = affine_transform(geom, tile.matrix)
+                if geometry.is_empty:
+                    continue
                 label = None
                 if element.label and prepared_clip.contains(element.label):
                     label = affine_transform(element.label, tile.matrix)
@@ -610,7 +612,8 @@ class MapWriter:
                     if first.mapping.get('transform') == 'filter-rings':
                         united_geom = filter_rings(united_geom, pixelArea)
                 geometry = affine_transform(united_geom, tile.matrix)
-                features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
+                if not geometry.is_empty:
+                    features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
 
             for merge in merges:
                 first = merges[merge][0]
@@ -633,7 +636,8 @@ class MapWriter:
                 if 'id' in first.tags:
                     united_tags['id'] = first.tags['id']
                 geometry = affine_transform(united_geom, tile.matrix)
-                features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
+                if not geometry.is_empty:
+                    features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
 
             encoded = encode(features, mappings.tags)
             self.dbQueue.put(DBJob(tile.zoom, tile.x, tile.y, encoded))
