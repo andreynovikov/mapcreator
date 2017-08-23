@@ -290,18 +290,20 @@ class MapWriter:
         #TODO redirect logger to file
         logfile = open(log_path, 'a')
 
+        if not from_file:
+            logfile.close()
+            raise NotImplementedError('Loading data from database is not implemented yet')
         if intermediate or from_file:
             pbf_path = self.pbf_path(x, y)
             self.timestamp = os.path.getmtime(configuration.SOURCE_PBF)
             if not os.path.exists(pbf_path) or os.path.getmtime(pbf_path) < self.timestamp:
                 if from_file:
-                    # create upper intermediate files (zoom=3,5) to optimize processing of adjacent areas
-                    upper_pbf_path = self.generateIntermediateFile(configuration.SOURCE_PBF, x, y, 3, " upper")
-                    upper_pbf_path = self.generateIntermediateFile(upper_pbf_path, x, y, 5, " middle")
-                    self.generateIntermediateFile(upper_pbf_path, x, y, 7, "")
-                else:
-                    logfile.close()
-                    raise NotImplementedError('Loading data from database is not implemented yet')
+                    source_pbf_path = configuration.SOURCE_PBF
+                    if intermediate:
+                        # create upper intermediate files (zoom=3,5) to optimize processing of adjacent areas
+                        source_pbf_path = self.generateIntermediateFile(source_pbf_path, x, y, 3, " upper")
+                        source_pbf_path = self.generateIntermediateFile(source_pbf_path, x, y, 5, " middle")
+                    self.generateIntermediateFile(source_pbf_path, x, y, 7, "")
 
         self.logger.info("  Processing file: %s" % pbf_path)
 
