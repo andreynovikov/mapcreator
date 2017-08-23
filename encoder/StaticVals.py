@@ -529,7 +529,26 @@ _strings = [
     'mixed',
     'patio',
     'water_tower',
-    'sauna'
+    'sauna',
+    'convenience',
+    'department_store',
+    'greengrocer',
+    'hardware',
+    'alcohol',
+    'outdoor',
+    'gift',
+    'toys',
+    'variety_store',
+    'jewelry',
+    'books',
+    'confectionery',
+    'bicycle',
+    'beverages',
+    'copyshop',
+    'photo',
+    'laundry',
+    'dry_cleaning',
+    'ice_cream'
 ]
 
 staticValues = dict(zip(_strings,range(0, len(_strings)-1)))
