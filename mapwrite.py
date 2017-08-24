@@ -319,6 +319,15 @@ class MapWriter:
         used = process.memory_info().rss // 1048576
         self.logger.info("    memory used: {:,}M out of {:,}M".format(used, total))
 
+        if len(elements) == 1:
+            degenerated_map = False
+            for k, v in elements[0].tags.items():
+                if k == 'place' and v in ('ocean','sea'):
+                    degenerated_map = True
+            if degenerated_map:
+                self.logger.debug("    degenerated map")
+                elements = []
+
         # process map only if it contains relevant data
         has_elements = bool(elements)
         if has_elements:

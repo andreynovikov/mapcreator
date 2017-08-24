@@ -92,10 +92,15 @@ class MapCreator:
             return
         cost = int(time.time() - cost)
 
+        map_target_path = '{0:s}/{1:d}/{1:d}-{2:d}.mtiles'.format(configuration.MAP_TARGET_PATH, x, y)
+
         if map_path is None:
             self.logger.info("Empty map, skipping")
             if not self.dry_run:
                 self.writeIndex(area, x, y, 0, cost, 0)
+                if os.path.exists(map_target_path):
+                    os.remove(map_target_path)
+                    self.logger.info("  removed previously not empty map")
             return
 
         date = int(os.path.getmtime(map_path) / 3600 / 24)
@@ -105,7 +110,6 @@ class MapCreator:
             self.writeIndex(area, x, y, None, None, None, True)
             return
 
-        map_target_path = '{0:s}/{1:d}/{1:d}-{2:d}.mtiles'.format(configuration.MAP_TARGET_PATH, x, y)
         move_call = ["mv", map_path, map_target_path]
         self.logger.debug("calling: %s"," ".join(move_call))
         if not self.dry_run:
