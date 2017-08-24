@@ -613,9 +613,12 @@ class MapWriter:
                 # get united tags
                 united_tags = {k: v for k, v in first.tags.items() if k in pattern}
                 # transform geometry
-                if tile.zoom < 14 and 'transform' in first.mapping:
-                    if first.mapping.get('transform') == 'filter-rings':
-                        united_geom = filter_rings(united_geom, pixelArea)
+                if tile.zoom < 14:
+                    if 'transform' in first.mapping:
+                        if first.mapping.get('transform') == 'filter-rings':
+                            united_geom = filter_rings(united_geom, pixelArea)
+                    if 'buffer' in first.mapping:
+                        geom = geom.buffer(tile.pixelWidth * -first.mapping.get('buffer', 1))
                 geometry = affine_transform(united_geom, tile.matrix)
                 if not geometry.is_empty:
                     features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
@@ -663,6 +666,8 @@ class MapWriter:
         prepared_clip = prep(subtile.bbox.buffer(1.194 * 4))
         clipCache = BBoxCache(subtile)
         for element in tile.elements:
+            if element.mapping.get('zoom-max', 14) < zoom:
+                continue
             if prepared_clip.covers(element.geom):
                 subtile.elements.append(element)
             elif prepared_clip.intersects(element.geom):

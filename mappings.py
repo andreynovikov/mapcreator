@@ -194,7 +194,7 @@ tags = {
             'zoom-min': 6,
             'filter-type': ['Polygon','MultiPolygon'],
             'calc-area': True,
-            'filter-area': 64,
+            'filter-area': 128,
             'buffer': 4,
             'transform': 'filter-rings'
         },
@@ -202,7 +202,7 @@ tags = {
             'zoom-min': 6,
             'filter-type': ['Polygon','MultiPolygon'],
             'calc-area': True,
-            'filter-area': 64,
+            'filter-area': 128,
             'buffer': 4,
             'transform': 'filter-rings'
         },
@@ -210,7 +210,7 @@ tags = {
             'zoom-min': 6,
             'filter-type': ['Polygon','MultiPolygon'],
             'calc-area': True,
-            'filter-area': 64,
+            'filter-area': 128,
             'buffer': 4,
             'transform': 'filter-rings'
         },
@@ -271,7 +271,7 @@ tags = {
         'wood': {
             'zoom-min': 8,
             'transform': 'filter-rings',
-            'union': 'natural',
+            'union': 'natural,landuse',
             #TODO combine next two settings into one
             'calc-area': True,
             'filter-area': 2,
@@ -306,6 +306,11 @@ tags = {
             'calc-area': True,
             'filter-area': 8
         },
+        'bare_rock': {
+            'zoom-min': 10,
+            'calc-area': True,
+            'filter-area': 8
+        },
         'shingle': DEFAULT_AREA,
         'sand': DEFAULT_AREA,
         'beach': {
@@ -317,7 +322,7 @@ tags = {
         'glacier': {
             'zoom-min': 8,
             'calc-area': True,
-            'filter-area': 8
+            'filter-area': 64
         },
         'cliff': {'zoom-min': 13},
         'volcano': {'zoom-min': 13},
@@ -692,8 +697,12 @@ tags = {
 }
 
 
+def _water_z8_mapper(row):
+    return ({'natural': 'water'}, {'zoom-min': 8, 'buffer': 0.2, 'transform': 'filter-rings', 'zoom-max': 8, 'union': 'natural'})
+
+
 def _water_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 8, 'transform': 'filter-rings', 'union': 'natural'})
+    return ({'natural': 'water'}, {'zoom-min': 9, 'buffer': 0.2, 'transform': 'filter-rings', 'union': 'natural'})
 
 
 def _contours_mapper(row):
@@ -710,6 +719,11 @@ def _contours_mapper(row):
 
 
 queries = [
+    {
+        'query': 'SELECT geom FROM osmd_water_z8',
+        'srid': 3857,
+        'mapper': _water_z8_mapper
+    },
     {
         'query': 'SELECT geom FROM osmd_water',
         'srid': 3857,
