@@ -276,7 +276,7 @@ class MapWriter:
             # Enable C-based speedups available from 1.2.10+
             from shapely import speedups
             if speedups.available:
-                self.logger.info("Enabling Shapely speedups")
+                self.logger.debug("Enabling Shapely speedups")
                 speedups.enable()
         except:
             self.logger.warn("Upgrade Shapely for performance improvements")

@@ -243,7 +243,7 @@ class VectorTile:
         self.out.tags.append(key)
         self.out.tags.append(val)
         if tag[0] not in ('ref','iata','icao','population') and (key > attrib_offset or val > attrib_offset):
-            logging.warning("add tag %s - %d/%d" % (tag, key, val))
+            logging.debug("add tag %s - %d/%d" % (tag, key, val))
         r = self.num_tags
         self.tagdict[tag] = r
         self.num_tags += 1
