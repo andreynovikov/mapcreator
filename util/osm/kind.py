@@ -21,6 +21,10 @@ kinds = {
 }
 
 
+def is_place(kind):
+    return kind is not None and (kind & 0x00000001) > 0
+
+
 def get_kinds():
     return kinds
 

@@ -34,7 +34,7 @@ from encoder import encode
 from util.database import MTilesDatabase
 from util.geometry import wgs84_to_mercator, mercator_to_wgs84, clockwise
 from util.osm import is_area
-from util.osm.kind import get_kind
+from util.osm.kind import is_place, get_kind
 from util.osm.buildings import get_building_properties
 from util.filters import filter_rings
 
@@ -355,11 +355,38 @@ class MapWriter:
                 self.logger.info("    processing %d elements" % len(elements))
 
             results = []
+            places = []
             # pre-process elements
             for idx, element in enumerate(elements):
                 def process_result(result, index=idx):
                     el = elements[index]
                     el.kind, el.area, el.label, el.height, el.min_height, el.building_color, el.roof_color = result
+                    # remove overlapping places (point and polygon)
+                    # due to file processing logic we assume that points go first, if not - introduce sort
+                    if el.id and is_place(el.kind):
+                        if el.geom.type == 'Point':
+                            places.append(el)
+                        elif len(places):
+                            for place in places:
+                                if el.tags.get('place', '---') == place.tags.get('place', '===') \
+                                   and el.tags.get('name', '---') == place.tags.get('name', '===') \
+                                   and el.geom.contains(place.geom):
+                                    # copy names to point and remove them from polygon
+                                    if 'name:en' in el.tags:
+                                        name = el.tags.pop('name:en', None)
+                                        if 'name:en' not in place.tags:
+                                            place.tags['name:en'] = name
+                                    if 'name:de' in el.tags:
+                                        name = el.tags.pop('name:de', None)
+                                        if 'name:de' not in place.tags:
+                                            place.tags['name:de'] = name
+                                    if 'name:ru' in el.tags:
+                                        name = el.tags.pop('name:ru', None)
+                                        if 'name:ru' not in place.tags:
+                                            place.tags['name:ru'] = name
+                                    el.tags.pop('name', None)
+                                    break
+                    # if feature has name save it for future reference
                     if 'name' in el.tags:
                         self.db.putFeature(el.id, el.tags, el.kind, el.label, el.geom)
                         el.tags.pop('name:en', None)
