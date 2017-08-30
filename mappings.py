@@ -2,13 +2,11 @@ from util import osm
 
 DEFAULT_AREA = {
     'zoom-min': 12,
-    'calc-area': True,
     'filter-area': 8
 }
 
 DEFAULT_LABELED_AREA = {
     'zoom-min': 12,
-    'calc-area': True,
     'filter-area': 8,
     'label': True
 }
@@ -185,7 +183,6 @@ tags = {
         'military': {
             'zoom-min': 7,
             'filter-type': ['Polygon','MultiPolygon'],
-            'calc-area': True,
             'filter-area': 128,
             'buffer': 4,
             'transform': 'filter-rings'
@@ -193,7 +190,6 @@ tags = {
         'nature_reserve': {
             'zoom-min': 6,
             'filter-type': ['Polygon','MultiPolygon'],
-            'calc-area': True,
             'filter-area': 128,
             'buffer': 4,
             'transform': 'filter-rings'
@@ -201,7 +197,6 @@ tags = {
         'protected_area': {
             'zoom-min': 6,
             'filter-type': ['Polygon','MultiPolygon'],
-            'calc-area': True,
             'filter-area': 128,
             'buffer': 4,
             'transform': 'filter-rings'
@@ -209,29 +204,24 @@ tags = {
         'national_park': {
             'zoom-min': 6,
             'filter-type': ['Polygon','MultiPolygon'],
-            'calc-area': True,
             'filter-area': 128,
             'buffer': 4,
             'transform': 'filter-rings'
         },
         'residential': {
             'zoom-min': 10,
-            'calc-area': True,
             'filter-area': 8
         },
         'retail': {
             'zoom-min': 10,
-            'calc-area': True,
             'filter-area': 8
         },
         'commercial': {
             'zoom-min': 10,
-            'calc-area': True,
             'filter-area': 8
         },
         'industrial': {
             'zoom-min': 10,
-            'calc-area': True,
             'filter-area': 8
         },
         'brownfield': DEFAULT_AREA,
@@ -245,15 +235,12 @@ tags = {
         'orchard': DEFAULT_AREA,
         'cemetery': {
             'zoom-min': 11,
-            'calc-area': True,
             'filter-area': 8
         },
         'basin': {
-            'calc-area': True,
             'filter-area': 2
         },
         'reservoir': {
-            'calc-area': True,
             'filter-area': 2
         },
         'meadow': DEFAULT_AREA,
@@ -272,25 +259,20 @@ tags = {
             'zoom-min': 8,
             'transform': 'filter-rings',
             'union': 'natural,landuse',
-            #TODO combine next two settings into one
-            'calc-area': True,
             'filter-area': 2,
             'buffer': 1
         },
         'marsh': {
             'zoom-min': 10,
-            'calc-area': True,
             'filter-area': 8
         },
         'wetland': {
             'zoom-min': 10,
-            'calc-area': True,
             'filter-area': 8
         },
         'water': {
             'zoom-min': 0,
             'transform': 'filter-rings',
-            'calc-area': True,
             'filter-area': 2,
             'buffer': 0.3
         },
@@ -298,31 +280,26 @@ tags = {
         'heath': DEFAULT_AREA,
         'scrub': {
             'zoom-min': 10,
-            'calc-area': True,
             'filter-area': 8
         },
         'scree': {
             'zoom-min': 10,
-            'calc-area': True,
             'filter-area': 8
         },
         'bare_rock': {
             'zoom-min': 10,
-            'calc-area': True,
             'filter-area': 8
         },
         'shingle': DEFAULT_AREA,
         'sand': DEFAULT_AREA,
         'beach': {
             'zoom-min': 10,
-            'calc-area': True,
             'filter-area': 8
         },
         'mud': DEFAULT_AREA,
         'glacier': {
             'ignore': True,
             'zoom-min': 8,
-            'calc-area': True,
             'filter-area': 64
         },
         'cliff': {'zoom-min': 13},
@@ -336,12 +313,10 @@ tags = {
     'waterway': {
         'riverbank': {
             'zoom-min': 8,
-            'calc-area': True,
             'filter-area': 2
         },
         'dock': {
             'zoom-min': 8,
-            'calc-area': True,
             'filter-area': 2
         },
         'river': {'zoom-min': 10},

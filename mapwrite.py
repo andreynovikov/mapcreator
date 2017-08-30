@@ -131,7 +131,7 @@ class OsmFilter(osmium.SimpleHandler):
                     render = m.get('render', True)
                     renderable = renderable or render
                     ignorable = ignorable and (m.get('ignore', not render))
-                    for k in ('transform','union','union-zoom-max','calc-area','filter-area','buffer','enlarge','force-line','label','filter-type','clip-buffer'):
+                    for k in ('transform','union','union-zoom-max','filter-area','buffer','enlarge','force-line','label','filter-type','clip-buffer'):
                         if k in m:
                             mapping[k] = m[k]
                     if 'zoom-min' in m:
@@ -267,7 +267,7 @@ def process_element(geom, tags, mapping):
         else:
             pass
     area = None
-    if mapping.get('calc-area', False):
+    if mapping.get('filter-area', None):
         area = geom.area
     return (kind, area, label, height, min_height, color, roof_color)
 
