@@ -319,6 +319,9 @@ tags = {
             'zoom-min': 8,
             'filter-area': 2
         },
+        'lock_gate': {
+            'zoom-min': 12
+        },
         'river': {'zoom-min': 10},
         'canal': {'zoom-min': 10},
         'dam': {'zoom-min': 12},
