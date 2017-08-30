@@ -320,6 +320,7 @@ tags = {
         },
         'mud': DEFAULT_AREA,
         'glacier': {
+            'ignore': True,
             'zoom-min': 8,
             'calc-area': True,
             'filter-area': 64
@@ -363,14 +364,14 @@ tags = {
         'drag_lift': {'zoom-min': 13},
     },
     'place': {
-        'ocean': {'zoom-min': 0},
-        'sea': {'zoom-min': 5},
-        'country': {'zoom-min': 2},
-        'state': {'zoom-min': 3},
-        'region': {'zoom-min': 3},
+        'ocean': {'ignore': True, 'zoom-min': 0},
+        'sea': {'ignore': True, 'zoom-min': 5},
+        'country': {'ignore': True, 'zoom-min': 2},
+        'state': {'ignore': True, 'zoom-min': 3},
+        'region': {'ignore': True, 'zoom-min': 3},
         'island': {'zoom-min': 12},
-        'city': {'zoom-min': 3, 'filter-type': ['Point']},
-        'town': {'zoom-min': 3, 'filter-type': ['Point']},
+        'city': {'zoom-min': 3},
+        'town': {'zoom-min': 3},
         'village': {'zoom-min': 12},
         'hamlet': {'zoom-min': 13},
         'suburb': {'zoom-min': 12},
@@ -505,6 +506,7 @@ tags = {
         'protected_area': {'rewrite-key': 'landuse'},
         'national_park': {'rewrite-key': 'landuse'},
         'administrative': {
+            'ignore': True,
             'force-line': True
         },
     },
@@ -625,6 +627,7 @@ tags = {
     'admin_level': {
         '__any__': {
             'one-of': ['1','2','3','4','5','6'],
+            'ignore': False,
             'render': False
         },
     },

@@ -97,11 +97,13 @@ class OsmFilter(osmium.SimpleHandler):
         self.elements = elements
         self.outlines = set()
         self.logger = logger
+        self.ignorable = 0
 
     def filter(self, tags):
         filtered_tags = {}
         mapping = {}
         renderable = False
+        ignorable = True
         for tag in tags:
             if tag.k in mappings.tags.keys():
                 m = mappings.tags[tag.k].get('__any__', None)
@@ -126,13 +128,17 @@ class OsmFilter(osmium.SimpleHandler):
                         if ';' in v:
                             v = v.split(';')[0]
                     filtered_tags[k] = v
-                    renderable = renderable or m.get('render', True)
+                    render = m.get('render', True)
+                    renderable = renderable or render
+                    ignorable = ignorable and (m.get('ignore', not render))
                     for k in ('transform','union','union-zoom-max','calc-area','filter-area','buffer','enlarge','force-line','label','filter-type','clip-buffer'):
                         if k in m:
                             mapping[k] = m[k]
                     if 'zoom-min' in m:
                         if 'zoom-min' not in mapping or m['zoom-min'] < mapping['zoom-min']:
                             mapping['zoom-min'] = m['zoom-min']
+        if renderable and ignorable:
+            self.ignorable += 1
         return renderable, filtered_tags, mapping
 
     def process(self, t, o):
@@ -189,6 +195,11 @@ class OsmFilter(osmium.SimpleHandler):
                     self.outlines.add(member.ref)
 
     def finish(self):
+        if self.ignorable:
+            if len(self.elements) == self.ignorable:
+                self.elements.clear()
+                self.logger.debug("    all elements are ignored")
+                return
         if self.outlines:
             found = 0
             for element in self.elements:
@@ -318,15 +329,6 @@ class MapWriter:
         total = psutil.virtual_memory().total // 1048576
         used = process.memory_info().rss // 1048576
         self.logger.info("    memory used: {:,}M out of {:,}M".format(used, total))
-
-        if len(elements) == 1:
-            degenerated_map = False
-            for k, v in elements[0].tags.items():
-                if k == 'place' and v in ('ocean','sea'):
-                    degenerated_map = True
-            if degenerated_map:
-                self.logger.debug("    degenerated map")
-                elements = []
 
         # process map only if it contains relevant data
         has_elements = bool(elements)
