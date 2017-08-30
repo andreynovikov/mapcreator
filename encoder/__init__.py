@@ -43,10 +43,12 @@ class VectorTile:
         self.out = TileData_pb2.Data()
         self.out.version = 1
 
+        self.num_features = 0
+
 
     def complete(self):
-        if self.num_tags == 0:
-            logging.debug("empty tags")
+        if self.num_features > 0 and self.num_tags == 0:
+            logging.warn("empty tags")
 
         self.out.num_tags = self.num_tags
 
@@ -192,6 +194,7 @@ class VectorTile:
             f.housenumber = housenumber
 
         #logging.debug('tags %d, indices %d' %(len(tags),len(f.indices)))
+        self.num_features += 1
 
 
     def getLayer(self, val):
