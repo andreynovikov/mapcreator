@@ -34,7 +34,7 @@ from encoder import encode
 from util.database import MTilesDatabase
 from util.geometry import wgs84_to_mercator, mercator_to_wgs84, clockwise
 from util.osm import is_area
-from util.osm.kind import is_place, get_kind
+from util.osm.kind import is_place, is_building, get_kind
 from util.osm.buildings import get_building_properties
 from util.filters import filter_rings
 
@@ -75,9 +75,13 @@ class Element():
     def __str__(self):
         #geom = transform(mercator_to_wgs84, self.geom)
         #return "%s: %s\n%s\n%s\n" % (str(self.id), geom, self.tags, self.mapping)
-        t = self.id & 0x0000000000000003
-        id = self.id >> 2
+        t = 0
+        id = None
+        if self.id:
+            t = self.id & 0x0000000000000003
+            id = self.id >> 2
         return "%s/%s: %s\n%s\n%s\n" % (Element.geom_type[t], id, self.geom.__repr__(), self.tags, self.mapping)
+        #return "%s/%s: %s\n%s\n%s\n" % (Element.geom_type[t], id, self.geom, self.tags, self.mapping)
 
     def clone(self, geom):
         el = Element(self.id, geom, self.tags, self.mapping)
@@ -92,11 +96,12 @@ class Element():
 
 
 class OsmFilter(osmium.SimpleHandler):
-    def __init__(self, elements, logger):
+    def __init__(self, elements, basemap, logger):
         super(OsmFilter, self).__init__()
         self.elements = elements
         self.outlines = set()
         self.logger = logger
+        self.basemap = basemap
         self.ignorable = 0
 
     def filter(self, tags):
@@ -131,14 +136,24 @@ class OsmFilter(osmium.SimpleHandler):
                     render = m.get('render', True)
                     renderable = renderable or render
                     ignorable = ignorable and (m.get('ignore', not render))
-                    for k in ('transform','union','union-zoom-max','filter-area','buffer','enlarge','force-line','label','filter-type','clip-buffer'):
+                    for k in ('transform','union','union-zoom-max','filter-area','buffer','enlarge','force-line','label','filter-type','clip-buffer','keep-tags'):
                         if k in m:
                             mapping[k] = m[k]
                     if 'zoom-min' in m:
                         if 'zoom-min' not in mapping or m['zoom-min'] < mapping['zoom-min']:
                             mapping['zoom-min'] = m['zoom-min']
-        if renderable and ignorable:
-            self.ignorable += 1
+                    if 'zoom-max' in m:
+                        if 'zoom-max' not in mapping or m['zoom-max'] > mapping['zoom-max']:
+                            mapping['zoom-max'] = m['zoom-max']
+
+        if self.basemap and mapping.get('zoom-min', 0) > 7:
+            renderable = False
+        if renderable:
+            if 'keep-tags' in mapping:
+                keep = [x.strip() for x in mapping['keep-tags'].split(',')]
+                filtered_tags = {k: filtered_tags[k] for k in set(keep) & set(filtered_tags.keys())}
+            if ignorable:
+                self.ignorable += 1
         return renderable, filtered_tags, mapping
 
     def process(self, t, o):
@@ -246,12 +261,15 @@ class BBoxCache(defaultdict):
         return bbox
 
 
-def process_element(geom, tags, mapping):
+def process_element(geom, tags, mapping, basemap=False):
     kind = get_kind(tags)
     #TODO process only if kind is building
-    height, min_height, color, roof_color = get_building_properties(tags)
+    if is_building(kind):
+        height, min_height, color, roof_color = get_building_properties(tags)
+    else:
+        height, min_height, color, roof_color = (None, None, None, None)
     label = None
-    if mapping.get('label', False):
+    if not basemap and mapping.get('label', False):
         if geom.type == 'Polygon':
             label = polylabel(geom, 1.194) # pixel width at zoom 17
         elif geom.type == 'MultiPolygon':
@@ -280,7 +298,6 @@ class MapWriter:
         self.data_dir = data_dir
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
-        self.simplification = 0.0
         self.interactive = not forbid_interactive and sys.__stdin__.isatty()
 
         try:
@@ -293,6 +310,8 @@ class MapWriter:
             self.logger.warn("Upgrade Shapely for performance improvements")
 
     def createMap(self, x, y, intermediate=False, keep=False, from_file=False):
+        self.basemap = x == -1 and y == -1
+
         map_path = self.map_path(x, y)
         start_time = datetime.utcnow()
         self.logger.info("Creating map: %s" % map_path)
@@ -310,16 +329,19 @@ class MapWriter:
             if not os.path.exists(pbf_path) or os.path.getmtime(pbf_path) < self.timestamp:
                 if from_file:
                     source_pbf_path = configuration.SOURCE_PBF
-                    if intermediate:
-                        # create upper intermediate files (zoom=3,5) to optimize processing of adjacent areas
-                        source_pbf_path = self.generateIntermediateFile(source_pbf_path, x, y, 3, " upper")
-                        source_pbf_path = self.generateIntermediateFile(source_pbf_path, x, y, 5, " middle")
-                    self.generateIntermediateFile(source_pbf_path, x, y, 7, "")
+                    if self.basemap:
+                        self.generateBasemapFile(source_pbf_path)
+                    else:
+                        if intermediate:
+                            # create upper intermediate files (zoom=3,5) to optimize processing of adjacent areas
+                            source_pbf_path = self.generateIntermediateFile(source_pbf_path, x, y, 3, " upper")
+                            source_pbf_path = self.generateIntermediateFile(source_pbf_path, x, y, 5, " middle")
+                        self.generateIntermediateFile(source_pbf_path, x, y, 7, "")
 
         self.logger.info("  Processing file: %s" % pbf_path)
 
         elements = []
-        handler = OsmFilter(elements, self.logger)
+        handler = OsmFilter(elements, self.basemap, self.logger)
         handler.apply_file(pbf_path)
         handler.finish()
         del handler
@@ -338,7 +360,10 @@ class MapWriter:
             self.timestamp = int(self.timestamp / 3600 / 24)
 
             self.db = MTilesDatabase(map_path)
-            self.db.create("%d-%d" % (x, y), 'baselayer', '1', self.timestamp, 'maptrek')
+            if self.basemap:
+                self.db.create("basemap", 'baselayer', '1', self.timestamp, 'maptrek')
+            else:
+                self.db.create("%d-%d" % (x, y), 'baselayer', '1', self.timestamp, 'maptrek')
 
             if self.multiprocessing:
                 num_worker_threads = len(os.sched_getaffinity(0))
@@ -398,34 +423,41 @@ class MapWriter:
                     if self.interactive:
                         self.proc_progress.update()
                 if self.multiprocessing:
-                    results.append(pool.apply_async(process_element, [element.geom, element.tags, element.mapping],
+                    results.append(pool.apply_async(process_element, [element.geom, element.tags, element.mapping, self.basemap],
                                                     callback=process_result))
                 else:
-                    process_result(process_element(element.geom, element.tags, element.mapping))
+                    process_result(process_element(element.geom, element.tags, element.mapping, self.basemap))
             if self.multiprocessing:
                 pool.close()
 
             extra_elements = []
             # get supplementary data while elements are processed
             with psycopg2.connect(configuration.DATA_DB_DSN) as c:
-                bounds = mercantile.xy_bounds(x, y, 7)
-                expand = 1.194*4
-                left_expand = 0
-                right_expand = 0
-                if x > 0:
-                    left_expand = expand
-                if x < 127:
-                    right_expand = expand
-                bbox = "ST_MakeEnvelope({left}, {bottom}, {right}, {top}, 3857)" \
-                       .format(left=(bounds.left - left_expand), bottom=(bounds.bottom - expand),
-                               right=(bounds.right + right_expand), top=(bounds.top + expand))
-                for data in mappings.queries:
-                    if data['srid'] != 3857:
-                        qbbox = "ST_Transform({bbox}, {srid})".format(bbox=bbox, srid=data['srid'])
+                if self.basemap:
+                    queries = mappings.basemap_queries
+                else:
+                    queries = mappings.queries
+                    bounds = mercantile.xy_bounds(x, y, 7)
+                    expand = 1.194*4
+                    left_expand = 0
+                    right_expand = 0
+                    if x > 0:
+                        left_expand = expand
+                    if x < 127:
+                        right_expand = expand
+                    bbox = "ST_MakeEnvelope({left}, {bottom}, {right}, {top}, 3857)" \
+                           .format(left=(bounds.left - left_expand), bottom=(bounds.bottom - expand),
+                                   right=(bounds.right + right_expand), top=(bounds.top + expand))
+                for data in queries:
+                    if self.basemap:
+                        sql = "SELECT ST_AsBinary(geom) AS geometry, * FROM ({query}) AS data".format(query=data['query'])
                     else:
-                        qbbox = bbox
-                    sql = "SELECT ST_AsBinary(geom) AS geometry, * FROM ({query}) AS data WHERE ST_Intersects(geom, {bbox})" \
-                          .format(query=data['query'], bbox=qbbox)
+                        if data['srid'] != 3857:
+                            qbbox = "ST_Transform({bbox}, {srid})".format(bbox=bbox, srid=data['srid'])
+                        else:
+                            qbbox = bbox
+                        sql = "SELECT ST_AsBinary(geom) AS geometry, * FROM ({query}) AS data WHERE ST_Intersects(geom, {bbox})" \
+                              .format(query=data['query'], bbox=qbbox)
                     try:
                         cur = c.cursor(cursor_factory=psycopg2.extras.DictCursor)
                         cur.execute(str(sql)) # if str() is not used 'where' is lost for some weird reason
@@ -473,8 +505,13 @@ class MapWriter:
                 self.logger.info("    running in single threaded mode")
 
             if self.interactive:
-                num_tiles = 0
-                for z in range(1, 15-7):
+                if self.basemap:
+                    num_tiles = 1
+                    r = range(1, 7)
+                else:
+                    num_tiles = 0
+                    r = range(1, 15-7)
+                for z in r:
                     n = 4 ** z
                     num_tiles = num_tiles + n
                 self.gen_progress = tqdm(total=num_tiles, desc="Generated")
@@ -500,7 +537,10 @@ class MapWriter:
                 t.start()
                 processes.append(t)
 
-            tile = Tile(7, x, y, elements)
+            if self.basemap:
+                tile = Tile(0, 0, 0, elements)
+            else:
+                tile = Tile(7, x, y, elements)
             tile_queue.put(tile)
 
             self.db.commit()
@@ -575,7 +615,7 @@ class MapWriter:
             tile_queue.task_done()
 
     def generateTile(self, tile):
-        if tile.zoom > 7:
+        if self.basemap or tile.zoom > 7:
             if len(tile.elements) > 0:
                 self.logger.debug("    generating tile %s with %d elements" % (tile, len(tile.elements)))
 
@@ -689,7 +729,7 @@ class MapWriter:
             self.dbQueue.put(DBJob(tile.zoom, tile.x, tile.y, encoded))
 
         # propagate elements to lower zoom
-        if tile.zoom < 14:
+        if (not self.basemap and tile.zoom < 14) or tile.zoom < 7:
             nx = tile.x << 1
             ny = tile.y << 1
             nz = tile.zoom + 1
@@ -738,16 +778,24 @@ class MapWriter:
         """
         returns path to map file but without extension
         """
-        output_dir = os.path.join(self.data_dir, str(zoom), str(x))
-        if not self.dry_run and not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-        return os.path.join(output_dir, '%d-%d' % (x, y))
+        if self.basemap:
+            if not self.dry_run and not os.path.exists(self.data_dir):
+                os.makedirs(self.data_dir)
+            return os.path.join(self.data_dir, 'basemap')
+        else:
+            output_dir = os.path.join(self.data_dir, str(zoom), str(x))
+            if not self.dry_run and not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+            return os.path.join(output_dir, '%d-%d' % (x, y))
 
     def pbf_path(self, x, y, zoom=7):
         """
-        returns path to intermediate pbf file
+        returns path to intermediate osm file
         """
-        return self.map_path_base(x, y, zoom) + ".osm.pbf"
+        if self.basemap:
+            return self.map_path_base(x, y, zoom) + ".o5m"
+        else:
+            return self.map_path_base(x, y, zoom) + ".osm.pbf"
 
     def map_path(self, x, y):
         """

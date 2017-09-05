@@ -25,6 +25,10 @@ def is_place(kind):
     return kind is not None and (kind & 0x00000001) > 0
 
 
+def is_building(kind):
+    return kind is not None and (kind & 0x00000004) > 0
+
+
 def get_kinds():
     return kinds
 

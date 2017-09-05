@@ -183,6 +183,8 @@ tags = {
         'military': {
             'zoom-min': 7,
             'filter-type': ['Polygon','MultiPolygon'],
+            'union': 'landuse',
+            'union-zoom-max': 7,
             'filter-area': 128,
             'buffer': 4,
             'transform': 'filter-rings'
@@ -190,6 +192,8 @@ tags = {
         'nature_reserve': {
             'zoom-min': 6,
             'filter-type': ['Polygon','MultiPolygon'],
+            'union': 'landuse',
+            'union-zoom-max': 7,
             'filter-area': 128,
             'buffer': 4,
             'transform': 'filter-rings'
@@ -197,6 +201,8 @@ tags = {
         'protected_area': {
             'zoom-min': 6,
             'filter-type': ['Polygon','MultiPolygon'],
+            'union': 'landuse',
+            'union-zoom-max': 7,
             'filter-area': 128,
             'buffer': 4,
             'transform': 'filter-rings'
@@ -204,6 +210,8 @@ tags = {
         'national_park': {
             'zoom-min': 6,
             'filter-type': ['Polygon','MultiPolygon'],
+            'union': 'landuse',
+            'union-zoom-max': 7,
             'filter-area': 128,
             'buffer': 4,
             'transform': 'filter-rings'
@@ -298,9 +306,11 @@ tags = {
         },
         'mud': DEFAULT_AREA,
         'glacier': {
+            'keep-tags': 'natural', # used to strip names
+            'union': 'natural',
             'ignore': True,
-            'zoom-min': 8,
-            'filter-area': 64
+            'zoom-min': 7,
+            'filter-area': 8
         },
         'cliff': {'zoom-min': 13},
         'volcano': {'zoom-min': 13},
@@ -344,12 +354,13 @@ tags = {
     'place': {
         'ocean': {'ignore': True, 'zoom-min': 0},
         'sea': {'ignore': True, 'zoom-min': 5},
-        'country': {'ignore': True, 'zoom-min': 2},
+        'country': {'ignore': True, 'zoom-min': 1},
         'state': {'ignore': True, 'zoom-min': 3},
         'region': {'ignore': True, 'zoom-min': 3},
+        'province': {'ignore': True, 'zoom-min': 4},
         'island': {'zoom-min': 12},
-        'city': {'zoom-min': 3},
-        'town': {'zoom-min': 3},
+        'city': {'zoom-min': 7},
+        'town': {'zoom-min': 7},
         'village': {'zoom-min': 12},
         'hamlet': {'zoom-min': 13},
         'suburb': {'zoom-min': 12},
@@ -603,16 +614,41 @@ tags = {
         },
     },
     'admin_level': {
-        '__any__': {
-            'one-of': ['1','2','3','4','5','6'],
+        '2': {
+            'zoom-min': 3,
             'ignore': False,
             'render': False
         },
+        '3': {
+            'zoom-min': 4,
+            'ignore': False,
+            'render': False
+        },
+        '4': {
+            'zoom-min': 4,
+            'ignore': False,
+            'render': False
+        },
+        '5': {
+            'zoom-min': 5,
+            'ignore': False,
+            'render': False
+        },
+        '6': {
+            'zoom-min': 6,
+            'ignore': False,
+            'render': False
+        },
+        #'__any__': {
+        #    'one-of': ['1','2','3','4','5','6'],
+        # modify-mapping: function
+        #    'ignore': False,
+        #    'render': False
+        #},
     },
     'capital': {
         '__any__': {
-            'adjust': osm.integer,
-            'render': False
+            'rewrite-key': 'admin_level'
         },
     },
     'population': {
@@ -678,8 +714,56 @@ tags = {
 }
 
 
+def _water_z2_mapper(row):
+    return ({'natural': 'water'}, {'zoom-min': 0, 'zoom-max': 2})
+
+
+def _water_z3_mapper(row):
+    return ({'natural': 'water'}, {'zoom-min': 3, 'zoom-max': 3})
+
+
+def _water_z4_mapper(row):
+    return ({'natural': 'water'}, {'zoom-min': 4, 'zoom-max': 4})
+
+
+def _water_z5_mapper(row):
+    return ({'natural': 'water'}, {'zoom-min': 5, 'zoom-max': 5})
+
+
+def _water_z6_mapper(row):
+    return ({'natural': 'water'}, {'zoom-min': 6, 'zoom-max': 6})
+
+
+def _water_z7_mapper(row):
+    return ({'natural': 'water'}, {'zoom-min': 7, 'zoom-max': 7})
+
+
 def _water_z8_mapper(row):
     return ({'natural': 'water'}, {'zoom-min': 8, 'buffer': 0.2, 'transform': 'filter-rings', 'zoom-max': 8, 'union': 'natural'})
+
+
+def _lakes_110m_mapper(row):
+    return ({'natural': 'water'}, {'zoom-min': 1, 'zoom-max': 2})
+
+
+def _lakes_rivers_50m_mapper(row):
+    return ({'natural': 'water'}, {'zoom-min': 3, 'zoom-max': 4})
+
+
+def _lakes_rivers_10m_mapper(row):
+    return ({'natural': 'water'}, {'zoom-min': 5})
+
+
+def _admin_110m_mapper(row):
+    return ({'boundary': 'administrative', 'admin_level': '2'}, {'zoom-min': 1, 'zoom-max': 2})
+
+
+def _admin_50m_mapper(row):
+    return ({'boundary': 'administrative', 'admin_level': '2'}, {'zoom-min': 3, 'zoom-max': 4})
+
+
+def _admin_10m_mapper(row):
+    return ({'boundary': 'administrative', 'admin_level': '2'}, {'zoom-min': 5})
 
 
 def _water_mapper(row):
@@ -715,4 +799,77 @@ queries = [
         'srid': 4326,
         'mapper': _contours_mapper
     }
+]
+
+basemap_queries = [
+    {
+        'query': 'SELECT geom FROM osmd_water_z2',
+        'srid': 3857,
+        'mapper': _water_z2_mapper
+    },
+    {
+        'query': 'SELECT geom FROM osmd_water_z3',
+        'srid': 3857,
+        'mapper': _water_z3_mapper
+    },
+    {
+        'query': 'SELECT geom FROM osmd_water_z4',
+        'srid': 3857,
+        'mapper': _water_z4_mapper
+    },
+    {
+        'query': 'SELECT geom FROM osmd_water_z5',
+        'srid': 3857,
+        'mapper': _water_z5_mapper
+    },
+    {
+        'query': 'SELECT geom FROM osmd_water_z6',
+        'srid': 3857,
+        'mapper': _water_z6_mapper
+    },
+    {
+        'query': 'SELECT geom FROM osmd_water_z7',
+        'srid': 3857,
+        'mapper': _water_z7_mapper
+    },
+    {
+        'query': 'SELECT geom FROM ne_110m_lakes',
+        'srid': 3857,
+        'mapper': _lakes_110m_mapper
+    },
+    {
+        'query': 'SELECT geom FROM ne_50m_lakes',
+        'srid': 3857,
+        'mapper': _lakes_rivers_50m_mapper
+    },
+    {
+        'query': 'SELECT geom FROM ne_10m_lakes',
+        'srid': 3857,
+        'mapper': _lakes_rivers_10m_mapper
+    },
+    {
+        'query': 'SELECT geom FROM ne_50m_rivers_lake_centerlines',
+        'srid': 3857,
+        'mapper': _lakes_rivers_50m_mapper
+    },
+    {
+        'query': 'SELECT geom FROM ne_10m_rivers_lake_centerlines',
+        'srid': 3857,
+        'mapper': _lakes_rivers_10m_mapper
+    },
+    {
+        'query': 'SELECT geom FROM ne_110m_admin_0_boundary_lines_land',
+        'srid': 3857,
+        'mapper': _admin_110m_mapper
+    },
+    {
+        'query': 'SELECT geom FROM ne_50m_admin_0_boundary_lines_land',
+        'srid': 3857,
+        'mapper': _admin_50m_mapper
+    },
+    {
+        'query': 'SELECT geom FROM ne_10m_admin_0_boundary_lines_land',
+        'srid': 3857,
+        'mapper': _admin_10m_mapper
+    },
 ]
