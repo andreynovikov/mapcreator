@@ -25,7 +25,7 @@ class MapCreator:
         self.mapWriter = mapwrite.MapWriter(self.data_dir, self.dry_run, self.forbid_interactive)
 
         index = open(configuration.MAP_TARGET_PATH + '/nativeindex', 'r+b')
-        index.truncate(6*128*128)
+        index.truncate(6*128*128+6)
         index.close()
 
 
