@@ -136,7 +136,8 @@ class OsmFilter(osmium.SimpleHandler):
                     render = m.get('render', True)
                     renderable = renderable or render
                     ignorable = ignorable and (m.get('ignore', not render))
-                    for k in ('transform','union','union-zoom-max','filter-area','buffer','enlarge','force-line','label','filter-type','clip-buffer','keep-tags'):
+                    for k in ('transform','union','union-zoom-max','filter-area','buffer','enlarge','force-line','label', \
+                              'filter-type','clip-buffer','keep-tags','basemap-filter-area'):
                         if k in m:
                             mapping[k] = m[k]
                     if 'zoom-min' in m:
@@ -157,6 +158,8 @@ class OsmFilter(osmium.SimpleHandler):
         return renderable, filtered_tags, mapping
 
     def process(self, t, o):
+        if len(o.tags) == 0:
+            return
         renderable, tags, mapping = self.filter(o.tags)
         if renderable:
             if t > 1:
@@ -285,7 +288,7 @@ def process_element(geom, tags, mapping, basemap=False):
         else:
             pass
     area = None
-    if mapping.get('filter-area', None):
+    if mapping.get('filter-area', None) or (basemap and mapping.get('basemap-filter-area', None)):
         area = geom.area
     return (kind, area, label, height, min_height, color, roof_color)
 
@@ -505,12 +508,8 @@ class MapWriter:
                 self.logger.info("    running in single threaded mode")
 
             if self.interactive:
-                if self.basemap:
-                    num_tiles = 1
-                    r = range(1, 7)
-                else:
-                    num_tiles = 0
-                    r = range(1, 15-7)
+                r = range(1, 8)
+                num_tiles = 0
                 for z in r:
                     n = 4 ** z
                     num_tiles = num_tiles + n
@@ -615,7 +614,7 @@ class MapWriter:
             tile_queue.task_done()
 
     def generateTile(self, tile):
-        if self.basemap or tile.zoom > 7:
+        if (self.basemap and tile.zoom > 0) or tile.zoom > 7:
             if len(tile.elements) > 0:
                 self.logger.debug("    generating tile %s with %d elements" % (tile, len(tile.elements)))
 
@@ -630,16 +629,26 @@ class MapWriter:
             if tile.zoom == 14:
                 building_parts = [element.geom for element in tile.elements if 'building:part' in element.tags and 'building' not in element.tags]
                 if building_parts:
-                    building_parts_geom = cascaded_union(building_parts)
-                    building_parts_prepared = prep(building_parts_geom)
+                    try:
+                        building_parts_geom = cascaded_union(building_parts)
+                        building_parts_prepared = prep(building_parts_geom)
+                    except Exception as e:
+                        self.logger.error("Failed to dissolve building parts in tile %s" % tile)
+                        building_parts_geom = None
 
             for element in tile.elements:
                 if element.mapping.get('zoom-min', 0) > tile.zoom:
                     continue
                 geom = element.geom
                 if tile.zoom < 14:
-                    if element.area and element.area < pixelArea * element.mapping.get('filter-area', 1):
-                        continue
+                    if element.area:
+                        if self.basemap and 'basemap-filter-area' in element.mapping:
+                            #area = element.mapping.get('basemap-filter-area', 0) * (2 << (tile.zoom + 1))
+                            area = (element.mapping.get('basemap-filter-area', 0) * (2 << (tile.zoom))) ** 2
+                        else:
+                            area = element.mapping.get('filter-area', 1)
+                        if element.area < pixelArea * area:
+                            continue
                     if 'buffer' in element.mapping:
                         geom = geom.buffer(tile.pixelWidth * element.mapping.get('buffer', 1))
                     simple_geom = geom.simplify(tile.pixelWidth)
@@ -681,49 +690,56 @@ class MapWriter:
 
             #TODO combine union and merge to one logical block
             for union in unions:
-                # create united geometry
-                united_geom = cascaded_union([el.geometry for el in unions[union]])
-                first = unions[union][0]
-                if type(first.mapping['union']) is dict:
-                    pattern = [k for k, v in first.mapping['union'].items() if tile.zoom >= v]
-                else:
-                    pattern = [x.strip() for x in first.mapping['union'].split(',')]
-                # get united tags
-                united_tags = {k: v for k, v in first.tags.items() if k in pattern}
-                # transform geometry
-                if tile.zoom < 14:
-                    if 'transform' in first.mapping:
-                        if first.mapping.get('transform') == 'filter-rings':
-                            united_geom = filter_rings(united_geom, pixelArea)
-                    if 'buffer' in first.mapping:
-                        geom = geom.buffer(tile.pixelWidth * -first.mapping.get('buffer', 1))
-                geometry = affine_transform(united_geom, tile.matrix)
-                if not geometry.is_empty:
-                    features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
+                try:
+                    first = unions[union][0]
+                    # create united geometry
+                    united_geom = cascaded_union([el.geometry for el in unions[union]])
+                    if type(first.mapping['union']) is dict:
+                        pattern = [k for k, v in first.mapping['union'].items() if tile.zoom >= v]
+                    else:
+                        pattern = [x.strip() for x in first.mapping['union'].split(',')]
+                    # get united tags
+                    united_tags = {k: v for k, v in first.tags.items() if k in pattern}
+                    # transform geometry
+                    if tile.zoom < 14:
+                        if 'transform' in first.mapping:
+                            if first.mapping.get('transform') == 'filter-rings':
+                                united_geom = filter_rings(united_geom, pixelArea)
+                        if 'buffer' in first.mapping:
+                            united_geom = united_geom.buffer(tile.pixelWidth * -first.mapping.get('buffer', 1))
+                    geometry = affine_transform(united_geom, tile.matrix)
+                    if not geometry.is_empty:
+                        #print(str(geometry))
+                        features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
+                except Exception as e:
+                    self.logger.error("Failed to process union %s in tile %s" % (first.mapping['union'], tile))
 
             for merge in merges:
                 first = merges[merge][0]
-                # create united geometry
-                lines = []
-                for el in merges[merge]:
-                    if el.geometry.type == 'LineString':
-                        lines.append(el.geometry)
+                try:
+                    # create united geometry
+                    lines = []
+                    for el in merges[merge]:
+                        if el.geometry.type == 'LineString':
+                            lines.append(el.geometry)
+                        else:
+                            lines.extend(el.geometry.geoms)
+                    united_geom = linemerge(lines)
+                    # simplify once more after merge
+                    united_geom = united_geom.simplify(tile.pixelWidth)
+                    if type(first.mapping['union']) is dict:
+                        pattern = [k for k, v in first.mapping['union'].items() if tile.zoom >= v]
                     else:
-                        lines.extend(el.geometry.geoms)
-                united_geom = linemerge(lines)
-                # simplify once more after merge
-                united_geom = united_geom.simplify(tile.pixelWidth)
-                if type(first.mapping['union']) is dict:
-                    pattern = [k for k, v in first.mapping['union'].items() if tile.zoom >= v]
-                else:
-                    pattern = [x.strip() for x in first.mapping['union'].split(',')]
-                # get united tags
-                united_tags = {k: v for k, v in first.tags.items() if k in pattern}
-                if 'id' in first.tags:
-                    united_tags['id'] = first.tags['id']
-                geometry = affine_transform(united_geom, tile.matrix)
-                if not geometry.is_empty:
-                    features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
+                        pattern = [x.strip() for x in first.mapping['union'].split(',')]
+                    # get united tags
+                    united_tags = {k: v for k, v in first.tags.items() if k in pattern}
+                    if 'id' in first.tags:
+                        united_tags['id'] = first.tags['id']
+                    geometry = affine_transform(united_geom, tile.matrix)
+                    if not geometry.is_empty:
+                        features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
+                except Exception as e:
+                    self.logger.error("Failed to process merge %s in tile %s" % (first.mapping['union'], tile))
 
             encoded = encode(features, mappings.tags)
             self.dbQueue.put(DBJob(tile.zoom, tile.x, tile.y, encoded))
@@ -749,7 +765,11 @@ class MapWriter:
             if prepared_clip.covers(element.geom):
                 subtile.elements.append(element)
             elif prepared_clip.intersects(element.geom):
-                subtile.elements.append(element.clone(clipCache[element.mapping.get('clip-buffer', 4)].intersection(element.geom)))
+                try:
+                    subtile.elements.append(element.clone(clipCache[element.mapping.get('clip-buffer', 4)].intersection(element.geom)))
+                except Exception as e:
+                    self.logger.exception("Error clipping element for tile %s" % subtile)
+                    self.logger.error("Element was: %s" % element)
         self.tileQueue.put(subtile)
 
 
