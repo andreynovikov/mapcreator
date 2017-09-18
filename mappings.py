@@ -189,33 +189,6 @@ tags = {
             'buffer': 4,
             'transform': 'filter-rings'
         },
-        'nature_reserve': {
-            'zoom-min': 6,
-            'filter-type': ['Polygon','MultiPolygon'],
-            'union': 'landuse',
-            'union-zoom-max': 7,
-            'filter-area': 128,
-            'buffer': 4,
-            'transform': 'filter-rings'
-        },
-        'protected_area': {
-            'zoom-min': 6,
-            'filter-type': ['Polygon','MultiPolygon'],
-            'union': 'landuse',
-            'union-zoom-max': 7,
-            'filter-area': 128,
-            'buffer': 4,
-            'transform': 'filter-rings'
-        },
-        'national_park': {
-            'zoom-min': 6,
-            'filter-type': ['Polygon','MultiPolygon'],
-            'union': 'landuse',
-            'union-zoom-max': 7,
-            'filter-area': 128,
-            'buffer': 4,
-            'transform': 'filter-rings'
-        },
         'residential': {
             'zoom-min': 10,
             'filter-area': 8
@@ -370,9 +343,16 @@ tags = {
         'allotments': {'zoom-min': 14},
     },
     'leisure': {
-        'nature_reserve': {'rewrite-key': 'landuse'},
-        'protected_area': {'rewrite-key': 'landuse'},
-        'national_park': {'rewrite-key': 'landuse'},
+        'nature_reserve': {
+            'zoom-min': 6,
+            'filter-type': ['Polygon','MultiPolygon'],
+            'union': 'leisure',
+            'union-zoom-max': 7,
+            'basemap-filter-area': 0.0625,
+            'filter-area': 128,
+            'buffer': 4,
+            'transform': 'filter-rings'
+        },
         'garden': DEFAULT_AREA,
         'golf_course': DEFAULT_AREA,
         'pitch': DEFAULT_AREA,
@@ -491,9 +471,7 @@ tags = {
         'sled': {'zoom-min': 13},
     },
     'boundary': {
-        'nature_reserve': {'rewrite-key': 'landuse'},
-        'protected_area': {'rewrite-key': 'landuse'},
-        'national_park': {'rewrite-key': 'landuse'},
+        'national_park': {'rewrite-key': 'leisure', 'rewrite-value': 'nature_reserve'},
         'administrative': {
             'ignore': True,
             'force-line': True
@@ -602,6 +580,12 @@ tags = {
         },
     },
     'ford': {
+        '__any__': {
+            'adjust': osm.boolean,
+            'render': False
+        },
+    },
+    'maritime': {
         '__any__': {
             'adjust': osm.boolean,
             'render': False
@@ -742,16 +726,12 @@ def _water_z8_mapper(row):
     return ({'natural': 'water'}, {'zoom-min': 8, 'buffer': 0.2, 'transform': 'filter-rings', 'zoom-max': 8, 'union': 'natural'})
 
 
-def _lakes_110m_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 1, 'zoom-max': 2})
-
-
 def _lakes_rivers_50m_mapper(row):
     return ({'natural': 'water'}, {'zoom-min': 3, 'zoom-max': 4})
 
 
 def _lakes_rivers_10m_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 5})
+    return ({'natural': 'water'}, {'zoom-min': 5, 'filter-area': 8})
 
 
 def _admin_110m_mapper(row):
@@ -833,11 +813,6 @@ basemap_queries = [
         'mapper': _water_z7_mapper
     },
     {
-        'query': 'SELECT geom FROM ne_110m_lakes',
-        'srid': 3857,
-        'mapper': _lakes_110m_mapper
-    },
-    {
         'query': 'SELECT geom FROM ne_50m_lakes',
         'srid': 3857,
         'mapper': _lakes_rivers_50m_mapper
@@ -857,19 +832,19 @@ basemap_queries = [
         'srid': 3857,
         'mapper': _lakes_rivers_10m_mapper
     },
-    {
-        'query': 'SELECT geom FROM ne_110m_admin_0_boundary_lines_land',
-        'srid': 3857,
-        'mapper': _admin_110m_mapper
-    },
-    {
-        'query': 'SELECT geom FROM ne_50m_admin_0_boundary_lines_land',
-        'srid': 3857,
-        'mapper': _admin_50m_mapper
-    },
-    {
-        'query': 'SELECT geom FROM ne_10m_admin_0_boundary_lines_land',
-        'srid': 3857,
-        'mapper': _admin_10m_mapper
-    },
+    #{
+    #    'query': 'SELECT geom FROM ne_110m_admin_0_boundary_lines_land',
+    #    'srid': 3857,
+    #    'mapper': _admin_110m_mapper
+    #},
+    #{
+    #    'query': 'SELECT geom FROM ne_50m_admin_0_boundary_lines_land',
+    #    'srid': 3857,
+    #    'mapper': _admin_50m_mapper
+    #},
+    #{
+    #    'query': 'SELECT geom FROM ne_10m_admin_0_boundary_lines_land',
+    #    'srid': 3857,
+    #    'mapper': _admin_10m_mapper
+    #},
 ]
