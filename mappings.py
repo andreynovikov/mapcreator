@@ -15,6 +15,20 @@ def _admin_level_mapper(tags, renderable, ignorable, mapping):
     return (renderable, ignorable, mapping)
 
 
+def _population_mapper(tags, renderable, ignorable, mapping):
+    population = tags.get('population', 0)
+    if tags.get('place', None) in ('city','town'):
+        if population > 100000:
+            mapping['zoom-min'] = 6
+        if population > 200000:
+            mapping['zoom-min'] = 5
+        if population > 300000:
+            mapping['zoom-min'] = 4
+        if population > 1000000:
+            mapping['zoom-min'] = 3
+    return (renderable, ignorable, mapping)
+
+
 DEFAULT_AREA = {
     'zoom-min': 12,
     'filter-area': 8
@@ -624,6 +638,7 @@ tags = {
     'population': {
         '__any__': {
             'adjust': osm.integer,
+            'modify-mapping': _population_mapper,
             'render': False
         },
     },
