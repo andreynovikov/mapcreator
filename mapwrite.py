@@ -109,6 +109,7 @@ class OsmFilter(osmium.SimpleHandler):
         mapping = {}
         renderable = False
         ignorable = True
+        modifiers = set()
         for tag in tags:
             if tag.k in mappings.tags.keys():
                 m = mappings.tags[tag.k].get('__any__', None)
@@ -119,6 +120,8 @@ class OsmFilter(osmium.SimpleHandler):
                     v = tag.v
                     if 'rewrite-key' in m or 'rewrite-value' in m:
                         k = m.get('rewrite-key', k)
+                        if m.get('rewrite-if-missing', False) and filtered_tags.get(k, None):
+                            continue
                         v = m.get('rewrite-value', v)
                         m = mappings.tags.get(k, {}).get(v, {})
                     if 'one-of' in m:
@@ -146,7 +149,11 @@ class OsmFilter(osmium.SimpleHandler):
                     if 'zoom-max' in m:
                         if 'zoom-max' not in mapping or m['zoom-max'] > mapping['zoom-max']:
                             mapping['zoom-max'] = m['zoom-max']
+                    if 'modify-mapping' in m:
+                        modifiers.add(m['modify-mapping'])
 
+        for modifier in modifiers:
+            renderable, ignorable, mapping = modifier(filtered_tags, renderable, ignorable, mapping)
         if self.basemap and mapping.get('zoom-min', 0) > 7:
             renderable = False
         if renderable:
@@ -651,7 +658,7 @@ class MapWriter:
                             continue
                     if 'buffer' in element.mapping:
                         geom = geom.buffer(tile.pixelWidth * element.mapping.get('buffer', 1))
-                    simple_geom = geom.simplify(tile.pixelWidth)
+                    simple_geom = geom.simplify(tile.pixelWidth * element.mapping.get('simplify', 1))
                     if simple_geom.is_valid:
                         geom = simple_geom
                 else:

@@ -1,5 +1,20 @@
 from util import osm
 
+
+def _admin_level_mapper(tags, renderable, ignorable, mapping):
+    admin_level = tags.get('admin_level', '0')
+    if tags.get('place', None) in ('city','town'):
+        if admin_level == '2':
+            mapping['zoom-min'] = 3
+        if admin_level in ('3', '4'):
+            mapping['zoom-min'] = 4
+        if admin_level == '5':
+            mapping['zoom-min'] = 5
+        if admin_level == '6':
+            mapping['zoom-min'] = 6
+    return (renderable, ignorable, mapping)
+
+
 DEFAULT_AREA = {
     'zoom-min': 12,
     'filter-area': 8
@@ -332,8 +347,8 @@ tags = {
         'region': {'ignore': True, 'zoom-min': 3},
         'province': {'ignore': True, 'zoom-min': 4},
         'island': {'zoom-min': 12},
-        'city': {'zoom-min': 7},
-        'town': {'zoom-min': 7},
+        'city': {'filter-type': ['Point'], 'zoom-min': 7},
+        'town': {'filter-type': ['Point'], 'zoom-min': 7},
         'village': {'zoom-min': 12},
         'hamlet': {'zoom-min': 13},
         'suburb': {'zoom-min': 12},
@@ -472,10 +487,6 @@ tags = {
     },
     'boundary': {
         'national_park': {'rewrite-key': 'leisure', 'rewrite-value': 'nature_reserve'},
-        'administrative': {
-            'ignore': True,
-            'force-line': True
-        },
     },
     'building': {
         '__any__': {
@@ -598,41 +609,16 @@ tags = {
         },
     },
     'admin_level': {
-        '2': {
-            'zoom-min': 3,
-            'ignore': False,
+        '__any__': {
+            'one-of': ['1','2','3','4','5','6'],
+            'modify-mapping': _admin_level_mapper,
             'render': False
         },
-        '3': {
-            'zoom-min': 4,
-            'ignore': False,
-            'render': False
-        },
-        '4': {
-            'zoom-min': 4,
-            'ignore': False,
-            'render': False
-        },
-        '5': {
-            'zoom-min': 5,
-            'ignore': False,
-            'render': False
-        },
-        '6': {
-            'zoom-min': 6,
-            'ignore': False,
-            'render': False
-        },
-        #'__any__': {
-        #    'one-of': ['1','2','3','4','5','6'],
-        # modify-mapping: function
-        #    'ignore': False,
-        #    'render': False
-        #},
     },
     'capital': {
         '__any__': {
-            'rewrite-key': 'admin_level'
+            'rewrite-key': 'admin_level',
+            'rewrite-if-missing': True
         },
     },
     'population': {
@@ -726,24 +712,15 @@ def _water_z8_mapper(row):
     return ({'natural': 'water'}, {'zoom-min': 8, 'buffer': 0.2, 'transform': 'filter-rings', 'zoom-max': 8, 'union': 'natural'})
 
 
-def _lakes_rivers_50m_mapper(row):
+def _lakes_50m_mapper(row):
+    return ({'natural': 'water'}, {'zoom-min': 1, 'zoom-max': 4})
+
+def _rivers_50m_mapper(row):
     return ({'natural': 'water'}, {'zoom-min': 3, 'zoom-max': 4})
 
 
 def _lakes_rivers_10m_mapper(row):
     return ({'natural': 'water'}, {'zoom-min': 5, 'filter-area': 8})
-
-
-def _admin_110m_mapper(row):
-    return ({'boundary': 'administrative', 'admin_level': '2'}, {'zoom-min': 1, 'zoom-max': 2})
-
-
-def _admin_50m_mapper(row):
-    return ({'boundary': 'administrative', 'admin_level': '2'}, {'zoom-min': 3, 'zoom-max': 4})
-
-
-def _admin_10m_mapper(row):
-    return ({'boundary': 'administrative', 'admin_level': '2'}, {'zoom-min': 5})
 
 
 def _water_mapper(row):
@@ -763,6 +740,20 @@ def _contours_mapper(row):
     return ({'contour': contour, 'ele': elevation}, {'zoom-min': zoom})
 
 
+def _boundaries_mapper(row):
+    admin_level = str(row['admin_level'])
+    tags = {'boundary': 'administrative', 'admin_level': admin_level}
+    zoom = 14
+    if admin_level == '2':
+        zoom = 2
+    if admin_level in ('3', '4'):
+        zoom = 4
+    if row['maritime'] and row['maritime'] == 'yes':
+        zoom = 8
+        tags['maritime'] = row['maritime']
+    return (tags, {'zoom-min': zoom, 'union': 'boundary,admin_level,maritime', 'simplify': 3})
+
+
 queries = [
     {
         'query': 'SELECT geom FROM osmd_water_z8',
@@ -773,6 +764,11 @@ queries = [
         'query': 'SELECT geom FROM osmd_water',
         'srid': 3857,
         'mapper': _water_mapper
+    },
+    {
+        'query': 'SELECT geom, admin_level, maritime FROM osm_boundaries',
+        'srid': 3857,
+        'mapper': _boundaries_mapper
     },
     {
         'query': 'SELECT geom, elevation FROM contours',
@@ -815,7 +811,7 @@ basemap_queries = [
     {
         'query': 'SELECT geom FROM ne_50m_lakes',
         'srid': 3857,
-        'mapper': _lakes_rivers_50m_mapper
+        'mapper': _lakes_50m_mapper
     },
     {
         'query': 'SELECT geom FROM ne_10m_lakes',
@@ -825,26 +821,16 @@ basemap_queries = [
     {
         'query': 'SELECT geom FROM ne_50m_rivers_lake_centerlines',
         'srid': 3857,
-        'mapper': _lakes_rivers_50m_mapper
+        'mapper': _rivers_50m_mapper
     },
     {
         'query': 'SELECT geom FROM ne_10m_rivers_lake_centerlines',
         'srid': 3857,
         'mapper': _lakes_rivers_10m_mapper
     },
-    #{
-    #    'query': 'SELECT geom FROM ne_110m_admin_0_boundary_lines_land',
-    #    'srid': 3857,
-    #    'mapper': _admin_110m_mapper
-    #},
-    #{
-    #    'query': 'SELECT geom FROM ne_50m_admin_0_boundary_lines_land',
-    #    'srid': 3857,
-    #    'mapper': _admin_50m_mapper
-    #},
-    #{
-    #    'query': 'SELECT geom FROM ne_10m_admin_0_boundary_lines_land',
-    #    'srid': 3857,
-    #    'mapper': _admin_10m_mapper
-    #},
+    {
+        'query': 'SELECT geom, admin_level, maritime FROM osm_boundaries',
+        'srid': 3857,
+        'mapper': _boundaries_mapper
+    },
 ]
