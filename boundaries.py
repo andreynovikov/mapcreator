@@ -47,7 +47,6 @@ class OsmFilter(osmium.SimpleHandler):
                     maritime = osm.boolean(tag.v)
             if not boundary:
                 admin_level = None
-                maritime = None
             self.ways[w.id] = Boundary(wkt, admin_level, maritime)
         except Exception as e:
             self.logger.error("%s: %s" % (w.id, e))
