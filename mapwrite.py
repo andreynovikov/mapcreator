@@ -23,7 +23,7 @@ import mercantile
 import numpy
 import shapely.wkb as shapelyWkb
 import shapely.speedups
-from shapely import geometry
+from shapely.geometry import MultiLineString, Polygon
 from shapely.prepared import prep
 from shapely.ops import transform, linemerge, cascaded_union, unary_union, polylabel
 from shapely.affinity import affine_transform
@@ -140,7 +140,7 @@ class OsmFilter(osmium.SimpleHandler):
                     renderable = renderable or render
                     ignorable = ignorable and (m.get('ignore', not render))
                     for k in ('transform','union','union-zoom-max','filter-area','buffer','enlarge','force-line','label', \
-                              'filter-type','clip-buffer','keep-tags','basemap-filter-area'):
+                              'filter-type','clip-buffer','keep-tags','basemap-keep-tags','basemap-filter-area'):
                         if k in m:
                             mapping[k] = m[k]
                     if 'zoom-min' in m:
@@ -157,8 +157,13 @@ class OsmFilter(osmium.SimpleHandler):
         if self.basemap and mapping.get('zoom-min', 0) > 7:
             renderable = False
         if renderable:
-            if 'keep-tags' in mapping:
-                keep = [x.strip() for x in mapping['keep-tags'].split(',')]
+            tag_filter = None
+            if self.basemap and 'basemap-keep-tags' in mapping:
+                tag_filter = mapping['basemap-keep-tags']
+            elif 'keep-tags' in mapping:
+                tag_filter = mapping['keep-tags']
+            if tag_filter:
+                keep = [x.strip() for x in tag_filter.split(',')]
                 filtered_tags = {k: filtered_tags[k] for k in set(keep) & set(filtered_tags.keys())}
             if ignorable:
                 self.ignorable += 1
@@ -251,8 +256,8 @@ class Tile():
         self.matrix = [Tile.SCALE / (self.bounds.right - self.bounds.left), 0, 0,
                        Tile.SCALE / (self.bounds.top - self.bounds.bottom), -self.bounds.left * Tile.SCALE / (self.bounds.right - self.bounds.left),
                        -self.bounds.bottom * Tile.SCALE / (self.bounds.top - self.bounds.bottom)]
-        self.bbox = geometry.Polygon([[self.bounds.left, self.bounds.bottom], [self.bounds.left, self.bounds.top],
-                                      [self.bounds.right, self.bounds.top], [self.bounds.right, self.bounds.bottom]])
+        self.bbox = Polygon([[self.bounds.left, self.bounds.bottom], [self.bounds.left, self.bounds.top],
+                             [self.bounds.right, self.bounds.top], [self.bounds.right, self.bounds.bottom]])
 
     def __str__(self):
         return "%d/%d/%d" % (self.zoom, self.x, self.y)
@@ -647,10 +652,11 @@ class MapWriter:
                 if element.mapping.get('zoom-min', 0) > tile.zoom:
                     continue
                 geom = element.geom
+                united = 'union' in element.mapping and tile.zoom <= element.mapping.get('union-zoom-max', 14) \
+                         and geom.type in ['LineString', 'MultiLineString', 'Polygon', 'MultiPolygon']
                 if tile.zoom < 14:
                     if element.area:
                         if self.basemap and 'basemap-filter-area' in element.mapping:
-                            #area = element.mapping.get('basemap-filter-area', 0) * (2 << (tile.zoom + 1))
                             area = (element.mapping.get('basemap-filter-area', 0) * (2 << (tile.zoom))) ** 2
                         else:
                             area = element.mapping.get('filter-area', 1)
@@ -658,9 +664,14 @@ class MapWriter:
                             continue
                     if 'buffer' in element.mapping:
                         geom = geom.buffer(tile.pixelWidth * element.mapping.get('buffer', 1))
-                    simple_geom = geom.simplify(tile.pixelWidth * element.mapping.get('simplify', 1))
-                    if simple_geom.is_valid:
-                        geom = simple_geom
+                    if not united:
+                        simple_geom = geom.simplify(tile.pixelWidth * element.mapping.get('simplify', 1))
+                        if simple_geom.is_valid:
+                            geom = simple_geom
+                        if geom.type in ['LineString', 'MultiLineString']:
+                            # todo: it's a quick hack, replace with bounding box analysis
+                            if geom.length < tile.pixelWidth:
+                                continue
                 else:
                     if 'enlarge' in element.mapping:
                         geom = geom.buffer(tile.pixelWidth * element.mapping.get('enlarge', 1))
@@ -668,7 +679,7 @@ class MapWriter:
                         #if building_parts_geom is None or not building_parts_prepared.intersects(element.geom) or building_parts_geom.intersection(element.geom).area == 0:
                         if building_parts_geom is None or not building_parts_prepared.covers(element.geom):
                             element.tags['building:part'] = element.tags['building']
-                if 'union' in element.mapping and tile.zoom <= element.mapping.get('union-zoom-max', 14) and geom.type in ['LineString', 'MultiLineString', 'Polygon', 'MultiPolygon']:
+                if united:
                     if type(element.mapping['union']) is dict:
                         pattern = [k for k, v in element.mapping['union'].items() if tile.zoom >= v]
                     else:
@@ -701,6 +712,10 @@ class MapWriter:
                     first = unions[union][0]
                     # create united geometry
                     united_geom = cascaded_union([el.geometry for el in unions[union]])
+                    # simplify after union
+                    simple_geom = united_geom.simplify(tile.pixelWidth * first.mapping.get('simplify', 1))
+                    if simple_geom.is_valid:
+                        unitid_geom = simple_geom
                     if type(first.mapping['union']) is dict:
                         pattern = [k for k, v in first.mapping['union'].items() if tile.zoom >= v]
                     else:
@@ -732,8 +747,13 @@ class MapWriter:
                         else:
                             lines.extend(el.geometry.geoms)
                     united_geom = linemerge(lines)
-                    # simplify once more after merge
+                    # simplify after merge
                     united_geom = united_geom.simplify(tile.pixelWidth)
+                    # remove too short segments
+                    if united_geom.type == 'MultiLineString':
+                        united_geom = MultiLineString([line for line in united_geom.geoms if line.length > tile.pixelWidth])
+                    if united_geom.is_empty:
+                        continue
                     if type(first.mapping['union']) is dict:
                         pattern = [k for k, v in first.mapping['union'].items() if tile.zoom >= v]
                     else:
