@@ -5,12 +5,10 @@ def _admin_level_mapper(tags, renderable, ignorable, mapping):
     admin_level = tags.get('admin_level', '0')
     if tags.get('place', None) in ('city','town'):
         if admin_level == '2':
-            mapping['zoom-min'] = 3
-        if admin_level in ('3', '4'):
             mapping['zoom-min'] = 4
-        if admin_level == '5':
+        if admin_level in ('3', '4'):
             mapping['zoom-min'] = 5
-        if admin_level == '6':
+        if admin_level in ('5','6'):
             mapping['zoom-min'] = 6
     return (renderable, ignorable, mapping)
 
@@ -18,14 +16,12 @@ def _admin_level_mapper(tags, renderable, ignorable, mapping):
 def _population_mapper(tags, renderable, ignorable, mapping):
     population = tags.get('population', 0)
     if tags.get('place', None) in ('city','town'):
-        if population > 100000:
+        if population > 150000:
             mapping['zoom-min'] = 6
-        if population > 200000:
-            mapping['zoom-min'] = 5
         if population > 300000:
-            mapping['zoom-min'] = 4
+            mapping['zoom-min'] = 5
         if population > 1000000:
-            mapping['zoom-min'] = 3
+            mapping['zoom-min'] = 4
     return (renderable, ignorable, mapping)
 
 
@@ -50,29 +46,37 @@ DEFAULT_PLACE = {
 tags = {
     'highway': {
         'motorway': {
-            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'zoom-min': 6,
+            'union': {'highway': 6, 'ref': 8, 'name': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'basemap-keep-tags': 'highway'
         },
         'motorway_link': {
-            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'zoom-min': 8,
+            'union': {'highway': 8, 'ref': 8, 'name': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'trunk': {
-            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'zoom-min': 6,
+            'union': {'highway': 6, 'ref': 8, 'name': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'basemap-keep-tags': 'highway'
         },
         'trunk_link': {
-            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'zoom-min': 8,
+            'union': {'highway': 8, 'ref': 8, 'name': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'primary': {
-            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
+            'zoom-min': 7,
+            'union': {'highway': 7, 'ref': 8, 'name': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'basemap-keep-tags': 'highway'
         },
         'primary_link': {
             'zoom-min': 12,
@@ -216,7 +220,8 @@ tags = {
             'union-zoom-max': 7,
             'filter-area': 128,
             'buffer': 4,
-            'transform': 'filter-rings'
+            'transform': 'filter-rings',
+            'basemap-keep-tags': 'landuse'
         },
         'residential': {
             'zoom-min': 10,
@@ -283,7 +288,7 @@ tags = {
         'water': {
             'zoom-min': 0,
             'transform': 'filter-rings',
-            'filter-area': 2,
+            'filter-area': 4,
             'buffer': 0.3
         },
         'grassland': DEFAULT_AREA,
@@ -356,10 +361,8 @@ tags = {
     'place': {
         'ocean': {'ignore': True, 'zoom-min': 0},
         'sea': {'ignore': True, 'zoom-min': 5},
-        'country': {'ignore': True, 'zoom-min': 1},
-        'state': {'ignore': True, 'zoom-min': 3},
-        'region': {'ignore': True, 'zoom-min': 3},
-        'province': {'ignore': True, 'zoom-min': 4},
+        'country': {'ignore': True, 'zoom-min': 3},
+        'state': {'ignore': True, 'zoom-min': 5},
         'island': {'zoom-min': 12},
         'city': {'filter-type': ['Point'], 'zoom-min': 7},
         'town': {'filter-type': ['Point'], 'zoom-min': 7},
@@ -380,7 +383,8 @@ tags = {
             'basemap-filter-area': 0.0625,
             'filter-area': 128,
             'buffer': 4,
-            'transform': 'filter-rings'
+            'transform': 'filter-rings',
+            'basemap-keep-tags': 'leisure'
         },
         'garden': DEFAULT_AREA,
         'golf_course': DEFAULT_AREA,
@@ -727,19 +731,24 @@ def _water_z8_mapper(row):
     return ({'natural': 'water'}, {'zoom-min': 8, 'buffer': 0.2, 'transform': 'filter-rings', 'zoom-max': 8, 'union': 'natural'})
 
 
+def _water_mapper(row):
+    return ({'natural': 'water'}, {'zoom-min': 9, 'buffer': 0.2, 'transform': 'filter-rings', 'union': 'natural'})
+
+
 def _lakes_50m_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 1, 'zoom-max': 4})
+    return ({'natural': 'water'}, {'zoom-min': 1, 'zoom-max': 4, 'filter-area': 32})
+
 
 def _rivers_50m_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 3, 'zoom-max': 4})
+    return ({'natural': 'water'}, {'zoom-min': 4, 'zoom-max': 4})
 
 
 def _lakes_rivers_10m_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 5, 'filter-area': 8})
+    return ({'natural': 'water'}, {'zoom-min': 5})
 
 
-def _water_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 9, 'buffer': 0.2, 'transform': 'filter-rings', 'union': 'natural'})
+def _urban_areas(row):
+    return ({'landuse': 'residential'}, {'zoom-min': 6})
 
 
 def _contours_mapper(row):
@@ -762,7 +771,7 @@ def _boundaries_mapper(row):
     if admin_level == '2':
         zoom = 2
     if admin_level in ('3', '4'):
-        zoom = 4
+        zoom = 5
     if row['maritime'] and row['maritime'] == 'yes':
         zoom = 8
         tags['maritime'] = row['maritime']
@@ -842,6 +851,11 @@ basemap_queries = [
         'query': 'SELECT geom FROM ne_10m_rivers_lake_centerlines',
         'srid': 3857,
         'mapper': _lakes_rivers_10m_mapper
+    },
+    {
+        'query': 'SELECT geom FROM ne_10m_urban_areas',
+        'srid': 3857,
+        'mapper': _urban_areas
     },
     {
         'query': 'SELECT geom, admin_level, maritime FROM osm_boundaries',
