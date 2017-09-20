@@ -1,5 +1,6 @@
 import re
 import numbers
+import logging
 
 from webcolors import name_to_rgb
 
@@ -98,6 +99,9 @@ color_aliases = {
 }
 
 def _get_color(color, roof):
+    if len(color) == 0:
+        return None
+
     # process RGB hex color code
     if color[0] == '#':
         try:
@@ -108,7 +112,7 @@ def _get_color(color, roof):
             #return ColorUtil.modHsv(c, 1.0, 0.4, HSV_V, true);
             return c
         except ValueError as e:
-            print("Invalid hex color: %s" % color)
+            logging.warn("Invalid hex color: %s" % color)
             return None
 
     # clean all delimiters
@@ -140,7 +144,7 @@ def _get_color(color, roof):
             except:
                 pass
 
-    print("Unknown color: %s" % color)
+    logging.debug("Unknown color: %s" % color)
     return None
 
 
@@ -151,8 +155,7 @@ def _get_material_color(material, roof):
     if material in material_colors:
         return material_colors[material]
 
-    print("Unknown material: %s" % material)
-
+    logging.debug("Unknown material: %s" % material)
     return None
 
 
