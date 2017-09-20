@@ -51,3 +51,5 @@ do
 	process "S${i}W${j}"
     done
 done
+
+psql -q gis "delete from contours where elevation is null"
