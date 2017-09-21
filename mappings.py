@@ -25,6 +25,13 @@ def _population_mapper(tags, renderable, ignorable, mapping):
     return (renderable, ignorable, mapping)
 
 
+def _china_mapper(tags, renderable, ignorable, mapping):
+    population = tags.get('population', 0)
+    if tags.get('place', None) in ('city','town') and population < 150000:
+        renderable = False
+    return (renderable, ignorable, mapping)
+
+
 DEFAULT_AREA = {
     'zoom-min': 12,
     'filter-area': 8
@@ -47,33 +54,33 @@ tags = {
     'highway': {
         'motorway': {
             'zoom-min': 6,
-            'union': {'highway': 6, 'ref': 8, 'name': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway'
         },
         'motorway_link': {
             'zoom-min': 8,
-            'union': {'highway': 8, 'ref': 8, 'name': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'trunk': {
             'zoom-min': 6,
-            'union': {'highway': 6, 'ref': 8, 'name': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway'
         },
         'trunk_link': {
             'zoom-min': 8,
-            'union': {'highway': 8, 'ref': 8, 'name': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'primary': {
             'zoom-min': 7,
-            'union': {'highway': 7, 'ref': 8, 'name': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway'
@@ -273,7 +280,7 @@ tags = {
         'wood': {
             'zoom-min': 8,
             'transform': 'filter-rings',
-            'union': 'natural,landuse',
+            'union': 'natural',
             'filter-area': 2,
             'buffer': 1
         },
@@ -286,7 +293,7 @@ tags = {
             'filter-area': 8
         },
         'water': {
-            'zoom-min': 0,
+            'zoom-min': 8,
             'transform': 'filter-rings',
             'filter-area': 4,
             'buffer': 0.3
@@ -645,6 +652,14 @@ tags = {
             'modify-mapping': _population_mapper,
             'render': False
         },
+        '__strip__': True
+    },
+    'china_class': {
+        'zhen': {
+            'modify-mapping': _china_mapper,
+            'render': False
+        },
+        '__strip__': True
     },
     'piste:difficulty': {
         '__any__': {

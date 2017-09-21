@@ -105,7 +105,10 @@ class VectorTile:
             tags.append(self.getTagId(tag))
 
         if len(tags) == 0:
-            logging.warning('missing tags')
+            if feature.id:
+                logging.error('missing tags in element %s' % str(feature.id))
+            else:
+                logging.error('missing tags in geom %s' % feature.geometry.type)
             return
 
         try:
@@ -203,7 +206,7 @@ class VectorTile:
             if l != 0:
                 return l
         except ValueError:
-            logging.debug("layer invalid %s" %val)
+            logging.warn("layer invalid %s" %val)
 
         return None
 
@@ -245,8 +248,8 @@ class VectorTile:
 
         self.out.tags.append(key)
         self.out.tags.append(val)
-        if tag[0] not in ('ref','iata','icao','population') and (key > attrib_offset or val > attrib_offset):
-            logging.debug("add tag %s - %d/%d" % (tag, key, val))
+        if tag[0] not in ('ref','iata','icao') and (key > attrib_offset or val > attrib_offset):
+            logging.warn("add tag %s - %d/%d" % (tag, key, val))
         r = self.num_tags
         self.tagdict[tag] = r
         self.num_tags += 1

@@ -41,7 +41,7 @@ from util.filters import filter_rings
 
 ProcessJob = namedtuple('ProcessJob', ['id', 'wkb', 'tags', 'mapping', 'simple_polygon'])
 DBJob = namedtuple('DBJob', ['zoom', 'x', 'y', 'features'])
-Feature = namedtuple('Feature', ['geometry', 'tags', 'kind', 'label', 'height', 'min_height', 'building_color', 'roof_color'])
+Feature = namedtuple('Feature', ['id', 'geometry', 'tags', 'kind', 'label', 'height', 'min_height', 'building_color', 'roof_color'])
 
 wkbFactory = osmium.geom.WKBFactory()
 
@@ -139,10 +139,33 @@ class OsmFilter(osmium.SimpleHandler):
                     render = m.get('render', True)
                     renderable = renderable or render
                     ignorable = ignorable and (m.get('ignore', not render))
-                    for k in ('transform','union','union-zoom-max','filter-area','buffer','enlarge','force-line','label', \
+                    for k in ('transform','filter-area','buffer','enlarge','force-line','label', \
                               'filter-type','clip-buffer','keep-tags','basemap-keep-tags','basemap-filter-area'):
                         if k in m:
                             mapping[k] = m[k]
+                    if 'union' in m:
+                        if 'union' in mapping:
+                            combined_union = {}
+                            if type(mapping['union']) is dict:
+                                combined_union = mapping['union']
+                            else:
+                                zoom = mapping.get('zoom-min', 0)
+                                combined_union = {k: zoom for k in mapping['union'].split(',')}
+                            if type(m['union']) is dict:
+                                for k, v in m['union'].items():
+                                    if k not in combined_union or combined_union[k] > v:
+                                        combined_union[k] = v
+                            else:
+                                zoom = m.get('zoom-min', 0)
+                                for k in m['union'].split(','):
+                                    if k not in combined_union or combined_union[k] > zoom:
+                                        combined_union[k] = zoom
+                            mapping['union'] = combined_union
+                        else:
+                            mapping['union'] = m['union']
+                    if 'union-zoom-max' in m:
+                        if 'union-zoom-max' not in mapping or m['union-zoom-max'] < mapping['union-zoom-max']:
+                            mapping['union-zoom-max'] = m['union-zoom-max']
                     if 'zoom-min' in m:
                         if 'zoom-min' not in mapping or m['zoom-min'] < mapping['zoom-min']:
                             mapping['zoom-min'] = m['zoom-min']
@@ -382,6 +405,9 @@ class MapWriter:
 
             if self.multiprocessing:
                 num_worker_threads = len(os.sched_getaffinity(0))
+                if self.basemap:
+                    # temporary hack
+                    num_worker_threads = 2
                 self.logger.info("    running in multiprocessing mode with %d workers" % num_worker_threads)
             else:
                 num_worker_threads = 1
@@ -704,7 +730,8 @@ class MapWriter:
                 label = None
                 if element.label and prepared_clip.contains(element.label):
                     label = affine_transform(element.label, tile.matrix)
-                features.append(Feature(geometry, element.tags, element.kind, label, element.height, element.min_height, element.building_color, element.roof_color))
+                features.append(Feature(element.id, geometry, element.tags, element.kind, label,
+                                        element.height, element.min_height, element.building_color, element.roof_color))
 
             #TODO combine union and merge to one logical block
             for union in unions:
@@ -722,6 +749,10 @@ class MapWriter:
                         pattern = [x.strip() for x in first.mapping['union'].split(',')]
                     # get united tags
                     united_tags = {k: v for k, v in first.tags.items() if k in pattern}
+                    if len(united_tags) == 0:
+                        self.logger.error("Empty tags")
+                        for el in unions[union]:
+                            self.logger.error(str(el))
                     # transform geometry
                     if tile.zoom < 14:
                         if 'transform' in first.mapping:
@@ -732,7 +763,7 @@ class MapWriter:
                     geometry = affine_transform(united_geom, tile.matrix)
                     if not geometry.is_empty:
                         #print(str(geometry))
-                        features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
+                        features.append(Feature(None, geometry, united_tags, None, None, None, None, None, None))
                 except Exception as e:
                     self.logger.error("Failed to process union %s in tile %s" % (first.mapping['union'], tile))
 
@@ -764,7 +795,7 @@ class MapWriter:
                         united_tags['id'] = first.tags['id']
                     geometry = affine_transform(united_geom, tile.matrix)
                     if not geometry.is_empty:
-                        features.append(Feature(geometry, united_tags, None, None, None, None, None, None))
+                        features.append(Feature(None, geometry, united_tags, None, None, None, None, None, None))
                 except Exception as e:
                     self.logger.error("Failed to process merge %s in tile %s" % (first.mapping['union'], tile))
 
