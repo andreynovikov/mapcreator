@@ -27,7 +27,7 @@ def _population_mapper(tags, renderable, ignorable, mapping):
 
 def _china_mapper(tags, renderable, ignorable, mapping):
     population = tags.get('population', 0)
-    if tags.get('place', None) in ('city','town') and population < 150000:
+    if tags.get('place', None) in ('city','town') and population < 300000:
         renderable = False
     return (renderable, ignorable, mapping)
 
@@ -204,7 +204,7 @@ tags = {
         'subway_entrance': {'zoom-min': 14},
     },
     'aeroway': {
-        'aerodrome': {'zoom-min': 7, 'label': True},
+        'aerodrome': {'zoom-min': 8, 'label': True},
         'heliport': {'zoom-min': 12, 'label': True},
         'runway': {'zoom-min': 11, 'label': True},
         'taxiway': {'zoom-min': 12, 'label': True},
@@ -659,6 +659,14 @@ tags = {
             'modify-mapping': _china_mapper,
             'render': False
         },
+        'xiang': {
+            'modify-mapping': _china_mapper,
+            'render': False
+        },
+        'village': {
+            'modify-mapping': _china_mapper,
+            'render': False
+        },
         '__strip__': True
     },
     'piste:difficulty': {
@@ -678,6 +686,14 @@ tags = {
             'one-of': ['private','no'],
             'render': False
         }
+    },
+    'aerodrome': {
+        'international': {
+            'zoom-min': 7,
+            'basemap-label': True,
+            'render': False
+        },
+        '__strip__': True
     },
     'ele': {
         '__any__': {

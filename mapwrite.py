@@ -139,8 +139,8 @@ class OsmFilter(osmium.SimpleHandler):
                     render = m.get('render', True)
                     renderable = renderable or render
                     ignorable = ignorable and (m.get('ignore', not render))
-                    for k in ('transform','filter-area','buffer','enlarge','force-line','label', \
-                              'filter-type','clip-buffer','keep-tags','basemap-keep-tags','basemap-filter-area'):
+                    for k in ('transform','filter-area','buffer','enlarge','force-line','label','filter-type','clip-buffer', \
+                              'keep-tags','basemap-label','basemap-keep-tags','basemap-filter-area'):
                         if k in m:
                             mapping[k] = m[k]
                     if 'union' in m:
@@ -307,7 +307,7 @@ def process_element(geom, tags, mapping, basemap=False):
     else:
         height, min_height, color, roof_color = (None, None, None, None)
     label = None
-    if not basemap and mapping.get('label', False):
+    if mapping.get('label', False) and (not basemap or mapping.get('basemap-label', False)):
         if geom.type == 'Polygon':
             label = polylabel(geom, 1.194) # pixel width at zoom 17
         elif geom.type == 'MultiPolygon':
@@ -762,7 +762,6 @@ class MapWriter:
                             united_geom = united_geom.buffer(tile.pixelWidth * -first.mapping.get('buffer', 1))
                     geometry = affine_transform(united_geom, tile.matrix)
                     if not geometry.is_empty:
-                        #print(str(geometry))
                         features.append(Feature(None, geometry, united_tags, None, None, None, None, None, None))
                 except Exception as e:
                     self.logger.error("Failed to process union %s in tile %s" % (first.mapping['union'], tile))
