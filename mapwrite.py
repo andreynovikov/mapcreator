@@ -123,7 +123,7 @@ class OsmFilter(osmium.SimpleHandler):
                         if m.get('rewrite-if-missing', False) and filtered_tags.get(k, None):
                             continue
                         v = m.get('rewrite-value', v)
-                        m = mappings.tags.get(k, {}).get(v, {})
+                        m = mappings.tags[k].get(v, mappings.tags[k].get('__any__', {}))
                     if 'one-of' in m:
                         if v not in m['one-of']:
                             continue
