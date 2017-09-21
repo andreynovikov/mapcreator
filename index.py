@@ -10,10 +10,8 @@ import configuration
 def mapinfo(x, y):
     if x == -1 and y == -1:
         map_path = '{0:s}/basemap.mtiles'.format(configuration.MAP_TARGET_PATH)
-        num_tiles = 21845
     else:
         map_path = '{0:s}/{1:d}/{1:d}-{2:d}.mtiles'.format(configuration.MAP_TARGET_PATH, x, y)
-        num_tiles = 21844
     size = 0
     date = 0
     if path.exists(map_path):
@@ -25,7 +23,7 @@ def mapinfo(x, y):
                 date = int(cursor.fetchone()[0])
                 cursor.execute("SELECT COUNT(*) FROM tiles")
                 count = int(cursor.fetchone()[0])
-                if count != num_tiles:
+                if count != 21844:
                     print("ERROR: %s contains %d tiles" % (map_path, count))
                     size = 0
                     date = 0
