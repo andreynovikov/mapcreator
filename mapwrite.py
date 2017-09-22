@@ -348,7 +348,13 @@ class MapWriter:
             self.logger.warn("Upgrade Shapely for performance improvements")
 
     def createMap(self, x, y, intermediate=False, keep=False, from_file=False):
-        self.basemap = x == -1 and y == -1
+        self.stubmap = x == -2 and y == -2
+        self.basemap = self.stubmap or (x == -1 and y == -1)
+
+        if self.stubmap:
+            mappings.mapType = mappings.MapTypes.Stub
+        elif self.basemap:
+            mappings.mapType = mappings.MapTypes.Base
 
         map_path = self.map_path(x, y)
         start_time = datetime.utcnow()
@@ -405,7 +411,7 @@ class MapWriter:
 
             if self.multiprocessing:
                 num_worker_threads = len(os.sched_getaffinity(0))
-                if self.basemap:
+                if self.basemap and not self.stubmap:
                     # temporary hack
                     num_worker_threads = 2
                 self.logger.info("    running in multiprocessing mode with %d workers" % num_worker_threads)
@@ -474,7 +480,9 @@ class MapWriter:
             extra_elements = []
             # get supplementary data while elements are processed
             with psycopg2.connect(configuration.DATA_DB_DSN) as c:
-                if self.basemap:
+                if self.stubmap:
+                    queries = mappings.stubmap_queries
+                elif self.basemap:
                     queries = mappings.basemap_queries
                 else:
                     queries = mappings.queries
@@ -858,7 +866,11 @@ class MapWriter:
         if self.basemap:
             if not self.dry_run and not os.path.exists(self.data_dir):
                 os.makedirs(self.data_dir)
-            return os.path.join(self.data_dir, 'basemap')
+            if self.stubmap:
+                name = 'stubmap'
+            else:
+                name = 'basemap'
+            return os.path.join(self.data_dir, name)
         else:
             output_dir = os.path.join(self.data_dir, str(zoom), str(x))
             if not self.dry_run and not os.path.exists(output_dir):

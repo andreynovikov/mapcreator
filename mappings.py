@@ -1,9 +1,18 @@
 from util import osm
 
 
+class MapTypes:
+    Detailed, Base, Stub = range(3)
+
+mapType = MapTypes.Detailed
+
+
 def _admin_level_mapper(tags, renderable, ignorable, mapping):
     admin_level = tags.get('admin_level', '0')
-    if tags.get('place', None) in ('city','town'):
+    is_town = tags.get('place', None) in ('city','town')
+    if mapType == MapTypes.Stub:
+        renderable = admin_level == '2' or (is_town and tags.get('population', 0) > 0)
+    if is_town:
         if admin_level == '2':
             mapping['zoom-min'] = 4
         if admin_level in ('3', '4'):
@@ -15,12 +24,14 @@ def _admin_level_mapper(tags, renderable, ignorable, mapping):
 
 def _population_mapper(tags, renderable, ignorable, mapping):
     population = tags.get('population', 0)
+    if mapType == MapTypes.Stub:
+        renderable = tags.get('place', None) in ('country','city','town')
     if tags.get('place', None) in ('city','town'):
-        if population > 150000:
+        if population >= 150000:
             mapping['zoom-min'] = 6
-        if population > 300000:
+        if population >= 300000:
             mapping['zoom-min'] = 5
-        if population > 1000000:
+        if population >= 1000000:
             mapping['zoom-min'] = 4
     return (renderable, ignorable, mapping)
 
@@ -366,7 +377,7 @@ tags = {
         'drag_lift': {'zoom-min': 13},
     },
     'place': {
-        'ocean': {'ignore': True, 'zoom-min': 0},
+        'ocean': {'ignore': True, 'zoom-min': 2},
         'sea': {'ignore': True, 'zoom-min': 5},
         'country': {'ignore': True, 'zoom-min': 3},
         'state': {'ignore': True, 'zoom-min': 5},
@@ -767,7 +778,11 @@ def _water_mapper(row):
 
 
 def _lakes_50m_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 1, 'zoom-max': 4, 'filter-area': 32})
+    if mapType == MapTypes.Stub:
+        zoom_max = 7
+    else:
+        zoom_max = 4
+    return ({'natural': 'water'}, {'zoom-min': 2, 'zoom-max': zoom_max, 'filter-area': 32})
 
 
 def _rivers_50m_mapper(row):
@@ -890,6 +905,49 @@ basemap_queries = [
     },
     {
         'query': 'SELECT geom, admin_level, maritime FROM osm_boundaries',
+        'srid': 3857,
+        'mapper': _boundaries_mapper
+    },
+]
+
+stubmap_queries = [
+    {
+        'query': 'SELECT geom FROM osmd_water_z2',
+        'srid': 3857,
+        'mapper': _water_z2_mapper
+    },
+    {
+        'query': 'SELECT geom FROM osmd_water_z3',
+        'srid': 3857,
+        'mapper': _water_z3_mapper
+    },
+    {
+        'query': 'SELECT geom FROM osmd_water_z4',
+        'srid': 3857,
+        'mapper': _water_z4_mapper
+    },
+    {
+        'query': 'SELECT geom FROM osmd_water_z5',
+        'srid': 3857,
+        'mapper': _water_z5_mapper
+    },
+    {
+        'query': 'SELECT geom FROM osmd_water_z6',
+        'srid': 3857,
+        'mapper': _water_z6_mapper
+    },
+    {
+        'query': 'SELECT geom FROM osmd_water_z7',
+        'srid': 3857,
+        'mapper': _water_z7_mapper
+    },
+    {
+        'query': 'SELECT geom FROM ne_50m_lakes',
+        'srid': 3857,
+        'mapper': _lakes_50m_mapper
+    },
+    {
+        'query': 'SELECT geom, admin_level, maritime FROM osm_boundaries WHERE admin_level = \'2\'',
         'srid': 3857,
         'mapper': _boundaries_mapper
     },
