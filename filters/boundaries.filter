@@ -1,0 +1,17 @@
+--keep=
+( boundary=administrative and ( admin_level=2 or admin_level=3 or admin_level=4 ) )
+
+--keep-tags=
+all
+type=
+boundary=
+admin_level=
+maritime=
+natural=coastline
+
+--modify-tags=
+natural=coastline to maritime=yes
+
+--drop-author
+
+--out-o5m

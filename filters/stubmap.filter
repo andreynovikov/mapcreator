@@ -1,0 +1,22 @@
+--keep=
+
+--keep-nodes=
+place=ocean =sea =country
+admin_level=2
+capital=2
+population>=800000
+
+--keep-tags=
+all
+place=
+population=
+capital=
+admin_level=
+name=
+name:en=
+name:de=
+name:ru=
+
+--drop-author
+
+--out-o5m

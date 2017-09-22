@@ -1,0 +1,31 @@
+--keep=
+place=ocean =sea =country =state =region =city =town
+landuse=military
+leisure=nature_reserve
+boundary=national_park
+highway=motorway =trunk =primary
+aeroway=aerodrome
+
+--keep-tags=
+all
+type=
+place=
+population=
+capital=
+admin_level=
+boundary=
+landuse=
+leisure=
+highway=
+aeroway=
+aerodrome=
+iata=
+name=
+name:en=
+name:de=
+name:ru=
+china_class=
+
+--drop-author
+
+--out-o5m
