@@ -3,7 +3,7 @@
 OSMCONVERT_PATH = '/usr/bin/osmconvert'
 
 # Important! File modification date should be equal to OSM data timestamp
-SOURCE_PBF = '/gis/data/planet-170817.osm.pbf'
+SOURCE_PBF = '/gis/data/planet-170922.o5m'
 MAP_TARGET_PATH = '/gis/maps'
 LOGGING_PATH = '/var/log/mapcreator'
 DATA_PATH = '/gis/data'
