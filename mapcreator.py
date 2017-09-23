@@ -70,11 +70,11 @@ class MapCreator:
 
     def loop(self, area):
         if not area:
-            area = self.selectPopularMap(0.05, '2 weeks') or \
-                   self.selectPopularMap(0.1, '1 month') or \
-                   self.selectPopularMap(0.5, '2 months') or \
-                   self.selectDownloadedMap('2 months') or \
-                   self.selectAnyMap('4 months')
+            area = self.selectPopularMap(0.05, '1 week') or \
+                   self.selectPopularMap(0.1, '2 weeks') or \
+                   self.selectPopularMap(0.5, '3 weeks') or \
+                   self.selectDownloadedMap('1 month') or \
+                   self.selectAnyMap('2 months')
 
         if area is None:
             self.logger.debug("No maps to create")
@@ -162,7 +162,7 @@ if __name__ == "__main__":
         exit(1)
 
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s - %(message)s')
-    logger = logging.getLogger("mapcreator")
+    logger = logging.getLogger(__name__)
     # during a dry run the console should receive all logs
     if args.dry_run:
         logger.setLevel(logging.DEBUG)
