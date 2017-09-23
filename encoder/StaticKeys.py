@@ -53,6 +53,7 @@ _strings = [
     'toll',
     'tower:type',
     'wetland',
+    'maritime'
 ]
 
-staticKeys = dict(zip(_strings,range(0, len(_strings)-1)))
+staticKeys = dict(zip(_strings,range(0, len(_strings))))

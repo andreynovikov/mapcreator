@@ -549,7 +549,8 @@ _strings = [
     'laundry',
     'dry_cleaning',
     'ice_cream',
-    'bare_rock'
+    'bare_rock',
+    'lock_gate'
 ]
 
-staticValues = dict(zip(_strings,range(0, len(_strings)-1)))
+staticValues = dict(zip(_strings,range(0, len(_strings))))
