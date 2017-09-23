@@ -420,7 +420,8 @@ class MapWriter:
                 self.logger.info("    running in single threaded mode")
             worker_threads = []
 
-            if self.multiprocessing:
+            pool = None
+            if self.multiprocessing and len(elements) > 100:
                 pool = multiprocessing.Pool(num_worker_threads)
 
             if self.interactive:
@@ -469,12 +470,12 @@ class MapWriter:
                         el.tags['id'] = el.id
                     if self.interactive:
                         self.proc_progress.update()
-                if self.multiprocessing:
+                if pool:
                     results.append(pool.apply_async(process_element, [element.geom, element.tags, element.mapping, self.basemap],
                                                     callback=process_result))
                 else:
                     process_result(process_element(element.geom, element.tags, element.mapping, self.basemap))
-            if self.multiprocessing:
+            if pool:
                 pool.close()
 
             extra_elements = []
