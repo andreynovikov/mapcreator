@@ -3,7 +3,7 @@ place=ocean =sea =country =state =region =city =town
 landuse=military
 leisure=nature_reserve
 boundary=national_park
-highway=motorway =trunk =primary
+highway=motorway =trunk =primary =secondary
 aeroway=aerodrome
 
 --keep-tags=
