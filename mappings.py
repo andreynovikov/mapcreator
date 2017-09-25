@@ -103,10 +103,11 @@ tags = {
             'clip-buffer': 8,
         },
         'secondary': {
-            'zoom-min': 12,
-            'union': 'highway,ref,name,layer',
+            'zoom-min': 7,
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'basemap-keep-tags': 'highway'
         },
         'secondary_link': {
             'zoom-min': 12,
