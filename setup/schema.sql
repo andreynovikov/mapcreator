@@ -33,7 +33,7 @@ AS $$
       ) AS areas
     ) AS areas
     INNER JOIN maps ON (areas.area = maps.area)
-    WHERE pct < $1 AND error = FALSE
+    WHERE pct < $1 AND size > 0 AND error = FALSE
   ) AS areas
   WHERE age(created) > $2
   ORDER BY created
@@ -49,7 +49,7 @@ AS $$
       GROUP BY area
     ) AS areas
     INNER JOIN maps ON (areas.area = maps.area)
-    WHERE error = FALSE
+    WHERE size > 0 AND error = FALSE
   ) AS areas
   WHERE age(created) > $1
   ORDER BY created
@@ -60,7 +60,18 @@ CREATE OR REPLACE FUNCTION any_map(period interval) RETURNS TABLE(area text, cre
 AS $$
   SELECT * FROM (
     SELECT area, (date '1970-01-01' + created * interval '1 day')::date AS created FROM maps
-    WHERE created > 0 AND error = FALSE
+    WHERE size > 0 AND error = FALSE
+  ) AS areas
+  WHERE age(created) > $1
+  ORDER BY created
+$$
+LANGUAGE SQL STABLE STRICT;
+
+CREATE OR REPLACE FUNCTION empty_map(period interval) RETURNS TABLE(area text, created date)
+AS $$
+  SELECT * FROM (
+    SELECT area, (date '1970-01-01' + created * interval '1 day')::date AS created FROM maps
+    WHERE error = FALSE
   ) AS areas
   WHERE age(created) > $1
   ORDER BY created

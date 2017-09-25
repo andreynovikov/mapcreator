@@ -68,19 +68,34 @@ class MapCreator:
         return None
 
 
+    def selectEmptyMap(self, period):
+        query = "SELECT * FROM empty_map(interval '%s') LIMIT 1;"
+        with psycopg2.connect(configuration.STATS_DB_DSN) as c:
+            with c.cursor() as cur:
+                cur.execute(query % (period))
+                self.logger.debug(cur.query)
+                if cur.rowcount > 0:
+                    row = cur.fetchone()
+                    self.logger.info("Selected map %s [%s] from empty maps" % (row[0], row[1]))
+                    return row[0]
+        return None
+
+
     def loop(self, area):
         if not area:
-            area = self.selectPopularMap(0.05, '1 week') or \
-                   self.selectPopularMap(0.1, '2 weeks') or \
-                   self.selectPopularMap(0.5, '3 weeks') or \
-                   self.selectDownloadedMap('1 month') or \
-                   self.selectAnyMap('2 months')
+            area = self.selectPopularMap(0.05, '3 days') or \
+                   self.selectPopularMap(0.1, '1 week') or \
+                   self.selectPopularMap(0.5, '2 weeks') or \
+                   self.selectDownloadedMap('3 weeks') or \
+                   self.selectAnyMap('1 month') or \
+                   self.selectEmptyMap('2 months')
 
         if area is None:
             self.logger.debug("No maps to create")
             return
         (x, y) = map(int, area.split('-'))
 
+        date = int(os.path.getmtime(configuration.SOURCE_PBF) / 3600 / 24)
         cost = time.time()
         try:
             map_path = self.mapWriter.createMap(x, y, True, False, True)
@@ -97,13 +112,12 @@ class MapCreator:
         if map_path is None:
             self.logger.info("Empty map, skipping")
             if not self.dry_run:
-                self.writeIndex(area, x, y, 0, cost, 0)
+                self.writeIndex(area, x, y, 0, cost, date)
                 if os.path.exists(map_target_path):
                     os.remove(map_target_path)
                     self.logger.info("  removed previously not empty map")
             return
 
-        date = int(os.path.getmtime(map_path) / 3600 / 24)
         size = os.path.getsize(map_path)
         if not self.dry_run and size == 0:
             self.logger.error("Resulting map file size for %s is zero, keeping old map file" % map_path)
