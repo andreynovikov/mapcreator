@@ -775,7 +775,7 @@ def _water_z8_mapper(row):
 
 
 def _water_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 9, 'buffer': 0.2, 'transform': 'filter-rings', 'union': 'natural'})
+    return ({'natural': 'water'}, {'zoom-min': 9, 'buffer': 1, 'transform': 'filter-rings', 'union': 'natural'})
 
 
 def _lakes_50m_mapper(row):
