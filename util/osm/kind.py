@@ -55,7 +55,7 @@ def _tag_kind(k, v):
     if key == 'place':
         return kinds['place']
 
-    if key == 'building' or key == 'building.part':
+    if key == 'building' or key == 'building:part':
         return kinds['building']
 
     if key == 'highway':
