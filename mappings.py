@@ -65,33 +65,33 @@ tags = {
     'highway': {
         'motorway': {
             'zoom-min': 6,
-            'union': {'highway': 0, 'ref': 8, 'name': 10, 'tunnel': 12, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway'
         },
         'motorway_link': {
             'zoom-min': 8,
-            'union': {'highway': 0, 'ref': 8, 'name': 10, 'tunnel': 12, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'trunk': {
             'zoom-min': 6,
-            'union': {'highway': 0, 'ref': 8, 'name': 10, 'tunnel': 12, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway'
         },
         'trunk_link': {
             'zoom-min': 8,
-            'union': {'highway': 0, 'ref': 8, 'name': 10, 'tunnel': 12, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'primary': {
             'zoom-min': 7,
-            'union': {'highway': 0, 'ref': 8, 'name': 10, 'tunnel': 12, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway'
@@ -104,7 +104,7 @@ tags = {
         },
         'secondary': {
             'zoom-min': 7,
-            'union': {'highway': 0, 'ref': 8, 'name': 10, 'tunnel': 12, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway'
