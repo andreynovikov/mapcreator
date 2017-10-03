@@ -53,7 +53,9 @@ _strings = [
     'toll',
     'tower:type',
     'wetland',
-    'maritime'
+    'maritime',
+    'winter_road',
+    'ice_road'
 ]
 
 staticKeys = dict(zip(_strings,range(0, len(_strings))))
