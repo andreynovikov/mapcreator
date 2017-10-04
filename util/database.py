@@ -1,10 +1,10 @@
 from os.path import exists
 from sqlite3 import connect
+from spooky import hash64
 
 from shapely.ops import transform
 
 from util.geometry import mercator_to_wgs84
-from util.jenkins import hashlittle
 
 
 class MTilesDatabase():
@@ -34,6 +34,9 @@ class MTilesDatabase():
             self.db.execute('CREATE UNIQUE INDEX name_ref ON names (ref)')
             self.db.execute('CREATE UNIQUE INDEX feature_name_lang ON feature_names (id, lang)')
             self.db.execute('CREATE UNIQUE INDEX feature_id ON features (id)')
+            if name == "basemap":
+                self.db.execute('CREATE TABLE maps (x INTEGER NOT NULL, y INTEGER NOT NULL, date INTEGER NOT NULL DEFAULT 0, downloading INTEGER NOT NULL DEFAULT 0)')
+                self.db.execute('CREATE UNIQUE INDEX maps_x_y ON maps (x, y)')
 
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('name', name))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('type', type))
@@ -66,7 +69,9 @@ class MTilesDatabase():
 
 
     def putName(self, name):
-        h = hashlittle(name)
+        h = hash64(name)
+        if (h & 0x8000000000000000):
+            h = -0x10000000000000000 + h
         if h in self.namehashes:
             return h
         q = 'REPLACE INTO names (ref, name) VALUES (?, ?)'
