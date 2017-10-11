@@ -55,7 +55,8 @@ _strings = [
     'wetland',
     'maritime',
     'winter_road',
-    'ice_road'
+    'ice_road',
+    '4wd_only'
 ]
 
 staticKeys = dict(zip(_strings,range(0, len(_strings))))
