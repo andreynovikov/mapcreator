@@ -394,17 +394,7 @@ tags = {
         'allotments': {'zoom-min': 14},
     },
     'leisure': {
-        'nature_reserve': {
-            'zoom-min': 6,
-            'filter-type': ['Polygon','MultiPolygon'],
-            'union': 'leisure',
-            'union-zoom-max': 7,
-            'basemap-filter-area': 0.0625,
-            'filter-area': 128,
-            'buffer': 4,
-            'transform': 'filter-rings',
-            'basemap-keep-tags': 'leisure'
-        },
+        'nature_reserve': {'rewrite-key': 'boundary', 'rewrite-value': 'national_park'},
         'garden': DEFAULT_AREA,
         'golf_course': DEFAULT_AREA,
         'pitch': DEFAULT_AREA,
@@ -513,7 +503,8 @@ tags = {
     },
     'route': {
         'ferry': {
-            'zoom-min': 8,
+            'zoom-min': 7,
+            'basemap-keep-tags': 'route',
             'force-line': True
         },
     },
@@ -523,7 +514,17 @@ tags = {
         'sled': {'zoom-min': 13},
     },
     'boundary': {
-        'national_park': {'rewrite-key': 'leisure', 'rewrite-value': 'nature_reserve'},
+        'national_park': {
+            'zoom-min': 6,
+            'filter-type': ['Polygon','MultiPolygon'],
+            'union': 'boundary',
+            'union-zoom-max': 7,
+            'basemap-filter-area': 0.0625,
+            'filter-area': 128,
+            'buffer': 4,
+            'transform': 'filter-rings',
+            'basemap-keep-tags': 'boundary'
+        },
     },
     'building': {
         '__any__': {
