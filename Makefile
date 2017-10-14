@@ -46,5 +46,9 @@ world : $(PLANETFILE)
 	done; \
 	true
 
+publish:
+	rsync -vru --exclude='nativeindex' --exclude='lost+found' /gis/maps/* tanya.newf.ru:/gis/maps
+	ssh tanya.newf.ru /gis/mapcreator/index.py
 
-.PHONY: basemap stubmap boundaries maps world
+
+.PHONY: basemap stubmap boundaries maps world publish
