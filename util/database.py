@@ -35,8 +35,13 @@ class MTilesDatabase():
             self.db.execute('CREATE UNIQUE INDEX feature_name_lang ON feature_names (id, lang)')
             self.db.execute('CREATE UNIQUE INDEX feature_id ON features (id)')
             if name == "basemap":
+                self.db.execute('PRAGMA main.page_size = 4096')
+                self.db.execute('PRAGMA main.auto_vacuum = INCREMENTAL')
                 self.db.execute('CREATE TABLE maps (x INTEGER NOT NULL, y INTEGER NOT NULL, date INTEGER NOT NULL DEFAULT 0, downloading INTEGER NOT NULL DEFAULT 0)')
                 self.db.execute('CREATE UNIQUE INDEX maps_x_y ON maps (x, y)')
+                self.db.execute('CREATE TABLE map_features (x INTEGER NOT NULL, y INTEGER NOT NULL, feature INTEGER NOT NULL)')
+                self.db.execute('CREATE INDEX map_feature_ids ON map_features (feature)')
+                self.db.execute('CREATE UNIQUE INDEX map_feature_refs ON map_features (x, y, feature)')
 
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('name', name))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('type', type))
