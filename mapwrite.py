@@ -72,16 +72,18 @@ class Element():
         self.roof_color = None
         self.geometry = None # tile processed temporary geometry
 
-    def __str__(self):
-        #geom = transform(mercator_to_wgs84, self.geom)
-        #return "%s: %s\n%s\n%s\n" % (str(self.id), geom, self.tags, self.mapping)
+    def osm_id(self):
         t = 0
         id = None
         if self.id:
             t = self.id & 0x0000000000000003
             id = self.id >> 2
-        return "%s/%s: %s\n%s\n%s\n" % (Element.geom_type[t], id, self.geom.__repr__(), self.tags, self.mapping)
-        #return "%s/%s: %s\n%s\n%s\n" % (Element.geom_type[t], id, self.geom, self.tags, self.mapping)
+        return "%s/%s" % (Element.geom_type[t], id)
+
+    def __str__(self):
+        #geom = transform(mercator_to_wgs84, self.geom)
+        #return "%s: %s\n%s\n%s\n" % (str(self.id), geom, self.tags, self.mapping)
+        return "%s: %s\n%s\n%s\n" % (self.osm_id(), self.geom.__repr__(), self.tags, self.mapping)
 
     def clone(self, geom):
         el = Element(self.id, geom, self.tags, self.mapping)
@@ -444,7 +446,7 @@ class MapWriter:
                         elif len(places):
                             for place in places:
                                 if el.tags.get('place', '---') == place.tags.get('place', '===') \
-                                   and el.tags.get('name', '---') == place.tags.get('name', '===') \
+                                   and el.tags.get('name', '---').split(' (')[0] == place.tags.get('name', '===').split(' (')[0] \
                                    and el.geom.contains(place.geom):
                                     # copy names to point and remove them from polygon
                                     if 'name:en' in el.tags:
@@ -721,12 +723,15 @@ class MapWriter:
                         pattern = [x.strip() for x in element.mapping['union'].split(',')]
                     values = [element.tags[k] for k in sorted(set(pattern) & set(element.tags.keys()))]
                     key = hash(tuple(values))
-                    element.geometry = geom
-                    if geom.type in ['LineString', 'MultiLineString']:
-                        merges[key].append(element)
+                    if len(values):
+                        element.geometry = geom
+                        if geom.type in ['LineString', 'MultiLineString']:
+                            merges[key].append(element)
+                        else:
+                            unions[key].append(element)
+                        continue
                     else:
-                        unions[key].append(element)
-                    continue
+                        self.logger.warn("Empty union key for %s, pattern: %s" % (element.osm_id(), pattern))
                 if tile.zoom < 14:
                     if 'transform' in element.mapping:
                         if element.mapping.get('transform') == 'filter-rings':
@@ -851,7 +856,7 @@ class MapWriter:
             bbox = mercantile.bounds(ax, ay, z)
             osmconvert_call = [configuration.OSMCONVERT_PATH, source_pbf_path]
             osmconvert_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (bbox.west,bbox.south,bbox.east,bbox.north)]
-            osmconvert_call += ['--complex-ways', '-o=%s' % target_pbf_path]
+            osmconvert_call += ['--complete-ways', '--complete-multipolygons', '--complete-boundaries', '-o=%s' % target_pbf_path]
             self.logger.debug("    calling: %s", " ".join(osmconvert_call))
             if not self.dry_run:
                 subprocess.check_call(osmconvert_call)
