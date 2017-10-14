@@ -5,6 +5,7 @@ leisure=nature_reserve
 boundary=national_park
 highway=motorway =trunk =primary =secondary
 aeroway=aerodrome
+route=ferry
 
 --keep-tags=
 all
@@ -13,6 +14,7 @@ place=
 population=
 capital=
 admin_level=
+route=
 boundary=
 landuse=
 leisure=
