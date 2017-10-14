@@ -723,6 +723,12 @@ tags = {
             'rewrite-if-missing': True
         },
     },
+    'fee': {
+        '__any__': {
+            'adjust': osm.boolean,
+            'render': False
+        }
+    },
     'maritime': {
         '__any__': {
             'adjust': osm.boolean,
@@ -822,7 +828,6 @@ tags = {
     'ref': {'__any__': {'render': False}},
     'iata': {'__any__': {'render': False}},
     'icao': {'__any__': {'render': False}},
-    'fee': {'__any__': {'render': False}},
     'station': {'__any__': {'render': False}},
     'religion': {'__any__': {'render': False}},
     'generator:source': {'__any__': {'render': False}},
