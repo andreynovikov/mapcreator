@@ -56,7 +56,11 @@ _strings = [
     'maritime',
     'winter_road',
     'ice_road',
-    '4wd_only'
+    '4wd_only',
+    'sac_scale',
+    'trail_visibility',
+    'osmc:symbol',
+    'network'
 ]
 
 staticKeys = dict(zip(_strings,range(0, len(_strings))))

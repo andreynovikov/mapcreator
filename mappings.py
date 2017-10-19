@@ -65,71 +65,71 @@ tags = {
     'highway': {
         'motorway': {
             'zoom-min': 6,
-            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway'
         },
         'motorway_link': {
             'zoom-min': 8,
-            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'trunk': {
             'zoom-min': 6,
-            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway'
         },
         'trunk_link': {
             'zoom-min': 8,
-            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'primary': {
             'zoom-min': 7,
-            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway'
         },
         'primary_link': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
             'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'secondary': {
             'zoom-min': 7,
-            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway'
         },
         'secondary_link': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
             'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'tertiary': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
             'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'tertiary_link': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
             'union-zoom-max': 13,
             'clip-buffer': 8,
         },
         'unclassified': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
             'union-zoom-max': 13,
             'clip-buffer': 8,
         },
@@ -147,7 +147,7 @@ tags = {
         },
         'construction': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
             'union-zoom-max': 13,
             'clip-buffer': 8,
         },
@@ -341,10 +341,10 @@ tags = {
         'cliff': {'zoom-min': 13},
         'volcano': {'zoom-min': 13},
         'peak': {'zoom-min': 13},
+        'saddle': {'zoom-min': 13},
         'cave_entrance': {'zoom-min': 14},
         'spring': {'zoom-min': 13},
         'tree': {'zoom-min': 14, 'enlarge': 0.6},
-        'mountain_pass': {'zoom-min': 14},
     },
     'waterway': {
         'riverbank': {
@@ -507,6 +507,11 @@ tags = {
             'basemap-keep-tags': 'route',
             'force-line': True
         },
+        'hiking': {
+            'zoom-min': 11,
+            'force-line': True
+        },
+        'foot': {'rewrite-value': 'hiking'},
     },
     'piste:type': {
         'downhill': {'zoom-min': 13},
@@ -723,6 +728,12 @@ tags = {
             'rewrite-if-missing': True
         },
     },
+    'toll': {
+        '__any__': {
+            'adjust': osm.boolean,
+            'render': False
+        }
+    },
     'fee': {
         '__any__': {
             'adjust': osm.boolean,
@@ -777,6 +788,43 @@ tags = {
         },
         '__strip__': True
     },
+    'network': {
+        'iwn': {
+            'zoom-min': 8,
+            'render': False
+        },
+        'nwn': {
+            'zoom-min': 9,
+            'render': False
+        },
+        'rwn': {
+            'zoom-min': 10,
+            'render': False
+        },
+        'lwn': {
+            'render': False
+        },
+    },
+    'sac_scale': {
+        'hiking': {'rewrite-value': 'T1'},
+        'mountain_hiking': {'rewrite-value': 'T2'},
+        'demanding_mountain_hiking': {'rewrite-value': 'T3'},
+        'alpine_hiking': {'rewrite-value': 'T4'},
+        'demanding_alpine_hiking': {'rewrite-value': 'T5'},
+        'difficult_alpine_hiking': {'rewrite-value': 'T6'},
+        'T1': {'render': False},
+        'T2': {'render': False},
+        'T3': {'render': False},
+        'T4': {'render': False},
+        'T5': {'render': False},
+        'T6': {'render': False},
+    },
+    'trail_visibility': {
+        '__any__': {
+            'one-of': ['excellent','good','intermediate','bad','horrible','no'],
+            'render': False
+        }
+    },
     'piste:difficulty': {
         '__any__': {
             'one-of': ['novice','easy','intermediate','advanced','expert','freeride'],
@@ -830,6 +878,7 @@ tags = {
     'icao': {'__any__': {'render': False}},
     'station': {'__any__': {'render': False}},
     'religion': {'__any__': {'render': False}},
+    'osmc:symbol': {'__any__': {'render': False}},
     'generator:source': {'__any__': {'render': False}},
     'building:levels': {'__any__': {'render': False}, '__strip__': True},
     'building:min_level': {'__any__': {'render': False}, '__strip__': True},
