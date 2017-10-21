@@ -14,7 +14,7 @@ $(PLANETFILE) :
 
 $(DATADIR)/%.o5m : $(PLANETFILE)
 	$(call remove-file,$@)
-	osmfilter $< --parameter-file=$(MAPCREATORDIR)/filters/basemap.filter >$@
+	osmfilter $< --parameter-file=$(MAPCREATORDIR)/filters/$*.filter >$@
 
 %.mtiles: $(PLANETFILE)
 	/usr/bin/timeout --kill-after=60s $(TIMEOUT) $(MAPCREATORDIR)/mapcreator.py -l $(LOGLEVEL) --area "$*"
@@ -27,8 +27,11 @@ stubmap : % : $(DATADIR)/%.o5m
 	$(call remove-file,$(DATADIR)/$*.mtiles)
 	$(MAPCREATORDIR)/mapwrite.py -l $(LOGLEVEL) -k -f -p $(DATADIR) -2 -2
 
-boundaries : $(DATADIR)/boundaries.o5m
+boundaries : % : $(DATADIR)/%.o5m
 	$(MAPCREATORDIR)/boundaries.py -l $(LOGLEVEL) -p $(DATADIR)
+
+routes : % : $(DATADIR)/%.o5m
+	$(MAPCREATORDIR)/routes.py -l $(LOGLEVEL) -p $(DATADIR)
 
 maps : $(PLANETFILE)
 	@while [ ! -f $(MAPCREATORDIR)/stop ] ; do \

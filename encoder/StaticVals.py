@@ -552,7 +552,28 @@ _strings = [
     'bare_rock',
     'lock_gate',
     'unpaved',
-    'dirt'
+    'dirt',
+    'hiking',
+    'bicycle',
+    'mtb',
+    'iwn',
+    'nwn',
+    'rwn',
+    'lwn',
+    'icn',
+    'ncn',
+    'rcn',
+    'lcn',
+    't1',
+    't2',
+    't3',
+    't4',
+    't5',
+    't6',
+    'excellent',
+    'good',
+    'bad',
+    'horrible'
 ]
 
 staticValues = dict(zip(_strings,range(0, len(_strings))))

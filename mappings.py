@@ -507,11 +507,6 @@ tags = {
             'basemap-keep-tags': 'route',
             'force-line': True
         },
-        'hiking': {
-            'zoom-min': 11,
-            'force-line': True
-        },
-        'foot': {'rewrite-value': 'hiking'},
     },
     'piste:type': {
         'downhill': {'zoom-min': 13},
@@ -788,23 +783,6 @@ tags = {
         },
         '__strip__': True
     },
-    'network': {
-        'iwn': {
-            'zoom-min': 8,
-            'render': False
-        },
-        'nwn': {
-            'zoom-min': 9,
-            'render': False
-        },
-        'rwn': {
-            'zoom-min': 10,
-            'render': False
-        },
-        'lwn': {
-            'render': False
-        },
-    },
     'sac_scale': {
         'hiking': {'rewrite-value': 'T1'},
         'mountain_hiking': {'rewrite-value': 'T2'},
@@ -886,6 +864,7 @@ tags = {
     'building:material': {'__any__': {'render': False}, '__strip__': True},
     'roof:colour': {'__any__': {'render': False}, '__strip__': True},
     'roof:material': {'__any__': {'render': False}, '__strip__': True},
+    'network': {},
     'contour': {},
 }
 
@@ -969,6 +948,19 @@ def _boundaries_mapper(row):
     return (tags, {'zoom-min': zoom, 'union': 'boundary,admin_level,maritime', 'simplify': 3})
 
 
+def _routes_mapper(row):
+    tags = {'route': row['route'], 'network': row['network'], 'osmc:symbol': row['osmc_symbol'],
+            'ref': row['ref']}
+    zoom = 11
+    if row['network'] == 'iwn':
+        zoom = 8
+    elif row['network'] == 'nwn':
+        zoom = 9
+    elif row['network'] == 'rwn':
+        zoom = 10
+    return (tags, {'zoom-min': zoom, 'simplify': 3})
+
+
 queries = [
     {
         'query': 'SELECT geom FROM osmd_water_z8',
@@ -984,6 +976,11 @@ queries = [
         'query': 'SELECT geom, admin_level, maritime FROM osm_boundaries',
         'srid': 3857,
         'mapper': _boundaries_mapper
+    },
+    {
+        'query': 'SELECT geom, id, route, network, osmc_symbol, state, ref FROM osm_routes',
+        'srid': 3857,
+        'mapper': _routes_mapper
     },
     {
         'query': 'SELECT geom, elevation FROM contours',
