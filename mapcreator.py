@@ -82,20 +82,27 @@ class MapCreator:
 
 
     def loop(self, area):
+        date = int(os.path.getmtime(configuration.SOURCE_PBF) / 3600 / 24)
+        today = int(time.time() / 3600 / 24)
+
+        if not area and today - date < 4:
+            area = self.selectPopularMap(0.05, '3 days')
+        if not area and today - date < 5:
+            area = self.selectPopularMap(0.1, '4 days')
+        if not area and today - date < 6:
+            area = self.selectPopularMap(0.5, '5 days')
+        if not area and today - date < 8:
+            area = self.selectDownloadedMap('1 week')
+        if not area and today - date < 15:
+            area = self.selectAnyMap('2 weeks')
         if not area:
-            area = self.selectPopularMap(0.05, '3 days') or \
-                   self.selectPopularMap(0.1, '1 week') or \
-                   self.selectPopularMap(0.5, '2 weeks') or \
-                   self.selectDownloadedMap('3 weeks') or \
-                   self.selectAnyMap('1 month') or \
-                   self.selectEmptyMap('2 months')
+            area = self.selectEmptyMap('2 months')
 
         if area is None:
-            self.logger.debug("No maps to create")
-            return
+            self.logger.info("No maps to create")
+            return -1
         (x, y) = map(int, area.split('-'))
 
-        date = int(os.path.getmtime(configuration.SOURCE_PBF) / 3600 / 24)
         cost = time.time()
         try:
             map_path = self.mapWriter.createMap(x, y, True, False, True)
@@ -104,7 +111,7 @@ class MapCreator:
             print(e)
             if not self.dry_run:
                 self.writeIndex(area, x, y, None, None, None, True)
-            return
+            return 1
         cost = int(time.time() - cost)
 
         map_target_path = '{0:s}/{1:d}/{1:d}-{2:d}.mtiles'.format(configuration.MAP_TARGET_PATH, x, y)
@@ -116,13 +123,13 @@ class MapCreator:
                 if os.path.exists(map_target_path):
                     os.remove(map_target_path)
                     self.logger.info("  removed previously not empty map")
-            return
+            return 0
 
         size = os.path.getsize(map_path)
         if not self.dry_run and size == 0:
             self.logger.error("Resulting map file size for %s is zero, keeping old map file" % map_path)
             self.writeIndex(area, x, y, None, None, None, True)
-            return
+            return 0
 
         move_call = ["mv", map_path, map_target_path]
         self.logger.debug("calling: %s"," ".join(move_call))
@@ -133,8 +140,9 @@ class MapCreator:
                 print("Failed to move created map %s to target directory" % map_path)
                 print(e)
                 self.writeIndex(area, x, y, None, None, None, True)
-                return
+                return 1
             self.writeIndex(area, x, y, size, cost, date)
+        return 0
 
 
     def writeIndex(self, area, x, y, size, cost, date, error=False):
@@ -195,6 +203,8 @@ if __name__ == "__main__":
                     mapCreator.loop()
                     time.sleep(5)
         else:
-            mapCreator.loop(args.area)
+            res = mapCreator.loop(args.area)
+            if res == -1:
+                sys.exit(-1)
     except Exception as e:
         logger.exception("An error occurred:")
