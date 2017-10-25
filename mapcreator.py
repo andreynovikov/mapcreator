@@ -84,16 +84,17 @@ class MapCreator:
     def loop(self, area):
         date = int(os.path.getmtime(configuration.SOURCE_PBF) / 3600 / 24)
         today = int(time.time() / 3600 / 24)
+        self.logger.debug("Source file is %d days old" % (today - date))
 
-        if not area and today - date < 4:
+        if not area and today - date < 3:
             area = self.selectPopularMap(0.05, '3 days')
-        if not area and today - date < 5:
+        if not area and today - date < 4:
             area = self.selectPopularMap(0.1, '4 days')
-        if not area and today - date < 6:
+        if not area and today - date < 5:
             area = self.selectPopularMap(0.5, '5 days')
-        if not area and today - date < 8:
+        if not area and today - date < 7:
             area = self.selectDownloadedMap('1 week')
-        if not area and today - date < 15:
+        if not area and today - date < 14:
             area = self.selectAnyMap('2 weeks')
         if not area:
             area = self.selectEmptyMap('2 months')
