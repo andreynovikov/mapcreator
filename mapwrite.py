@@ -165,6 +165,8 @@ class OsmFilter(osmium.SimpleHandler):
                             mapping['union'] = combined_union
                         else:
                             mapping['union'] = m['union']
+                    if 'check-meta' in m:
+                        mapping['check-meta'] = m['check-meta'] or mapping.get('check-meta', False)
                     if 'union-zoom-max' in m:
                         if 'union-zoom-max' not in mapping or m['union-zoom-max'] < mapping['union-zoom-max']:
                             mapping['union-zoom-max'] = m['union-zoom-max']
@@ -535,6 +537,24 @@ class MapWriter:
                     r.get()
                 del pool
                 del results
+
+            # add meta data to elements
+            if not self.interactive:
+                self.logger.info("      adding meta data")
+            with psycopg2.connect(configuration.DATA_DB_DSN) as c:
+                sql = "SELECT network FROM osm_features_meta WHERE id = %s"
+                for element in elements:
+                    if element.id and element.mapping.get('check-meta', False):
+                        try:
+                            cur = c.cursor(cursor_factory=psycopg2.extras.DictCursor)
+                            cur.execute(sql, (element.id,))
+                            row = cur.fetchone()
+                            if row:
+                                element.tags['route:network'] = row['network']
+                        except (psycopg2.ProgrammingError, psycopg2.InternalError) as e:
+                            self.logger.exception("Query error: %s" % sql)
+                        finally:
+                            cur.close()
 
             if self.interactive:
                 self.proc_progress.close()

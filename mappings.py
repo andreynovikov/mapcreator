@@ -68,123 +68,150 @@ tags = {
             'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
-            'basemap-keep-tags': 'highway'
+            'basemap-keep-tags': 'highway',
+            'check-meta': True
         },
         'motorway_link': {
             'zoom-min': 8,
             'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'check-meta': True
         },
         'trunk': {
             'zoom-min': 6,
             'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
-            'basemap-keep-tags': 'highway'
+            'basemap-keep-tags': 'highway',
+            'check-meta': True
         },
         'trunk_link': {
             'zoom-min': 8,
             'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'check-meta': True
         },
         'primary': {
             'zoom-min': 7,
             'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
-            'basemap-keep-tags': 'highway'
+            'basemap-keep-tags': 'highway',
+            'check-meta': True
         },
         'primary_link': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'check-meta': True
         },
         'secondary': {
             'zoom-min': 7,
             'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
-            'basemap-keep-tags': 'highway'
+            'basemap-keep-tags': 'highway',
+            'check-meta': True
         },
         'secondary_link': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'check-meta': True
         },
         'tertiary': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'check-meta': True
         },
         'tertiary_link': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'check-meta': True
         },
         'unclassified': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'check-meta': True
         },
         'living_street': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface',
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'check-meta': True
         },
         'residential': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface',
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'check-meta': True
         },
         'construction': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'check-meta': True
         },
         'road': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface',
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'check-meta': True
         },
         'track': {
             'zoom-min': 13,
             'union': 'highway,tunnel,layer,tracktype,winter_road,ice_road',
             'union-zoom-max': 13,
             'clip-buffer': 8,
+            'check-meta': True
         },
         'service': {
             'zoom-min': 14,
             'clip-buffer': 8,
+            'check-meta': True
         },
         'pedestrian': {
             'zoom-min': 14,
             'clip-buffer': 8,
+            'check-meta': True
         },
         'bridleway': {
-            'zoom-min': 14
+            'zoom-min': 14,
+            'check-meta': True
         },
         'cycleway': {
-            'zoom-min': 14
+            'zoom-min': 14,
+            'check-meta': True
         },
         'path': {
-            'zoom-min': 14
+            'zoom-min': 14,
+            'check-meta': True
         },
         'footway': {
-            'zoom-min': 14
+            'zoom-min': 14,
+            'check-meta': True
         },
         'steps': {
-            'zoom-min': 14
+            'zoom-min': 14,
+            'check-meta': True
+        },
+        'via_ferrata': {
+            'zoom-min': 14,
+            'check-meta': True
         },
         'traffic_signals': {
             'zoom-min': 14
@@ -194,19 +221,19 @@ tags = {
         },
     },
     'railway': {
-        'rail': {'zoom-min': 12},
-        'tram': {'zoom-min': 14},
-        'light_rail': {'zoom-min': 14},
-        'monorail': {'zoom-min': 14},
-        'miniature': {'zoom-min': 14},
-        'subway': {'zoom-min': 11},
-        'narrow_gauge': {'zoom-min': 14},
-        'preserved': {'zoom-min': 14},
-        'funicular': {'zoom-min': 14},
-        'monorail': {'zoom-min': 14},
-        'disused': {'zoom-min': 14},
-        'abandoned': {'zoom-min': 14},
-        'preserved': {'zoom-min': 14},
+        'rail': {'zoom-min': 12, 'check-meta': True},
+        'tram': {'zoom-min': 14, 'check-meta': True},
+        'light_rail': {'zoom-min': 14, 'check-meta': True},
+        'monorail': {'zoom-min': 14, 'check-meta': True},
+        'miniature': {'zoom-min': 14, 'check-meta': True},
+        'subway': {'zoom-min': 11, 'check-meta': True},
+        'narrow_gauge': {'zoom-min': 14, 'check-meta': True},
+        'preserved': {'zoom-min': 14, 'check-meta': True},
+        'funicular': {'zoom-min': 14, 'check-meta': True},
+        'monorail': {'zoom-min': 14, 'check-meta': True},
+        'disused': {'zoom-min': 14, 'check-meta': True},
+        'abandoned': {'zoom-min': 14, 'check-meta': True},
+        'preserved': {'zoom-min': 14, 'check-meta': True},
         'station': {'zoom-min': 14},
         'platform': {'zoom-min': 14},
         'halt': {'zoom-min': 14},
@@ -358,12 +385,12 @@ tags = {
         'lock_gate': {
             'zoom-min': 12
         },
-        'river': {'zoom-min': 10},
-        'canal': {'zoom-min': 10},
-        'dam': {'zoom-min': 12},
-        'stream': {'zoom-min': 13},
-        'drain': {'zoom-min': 14},
-        'ditch': {'zoom-min': 14},
+        'river': {'zoom-min': 10, 'check-meta': True},
+        'canal': {'zoom-min': 10, 'check-meta': True},
+        'dam': {'zoom-min': 12, 'check-meta': True},
+        'stream': {'zoom-min': 13, 'check-meta': True},
+        'drain': {'zoom-min': 14, 'check-meta': True},
+        'ditch': {'zoom-min': 14, 'check-meta': True},
     },
     'aerialway': {
         'mixed_lift': {'rewrite-value': 'chair_lift'},
@@ -371,11 +398,12 @@ tags = {
         'j-bar': {'rewrite-value': 'drag_lift'},
         'platter': {'rewrite-value': 'drag_lift'},
         'rope_tow': {'rewrite-value': 'drag_lift'},
-        'cable_car': {'zoom-min': 12},
-        'gondola': {'zoom-min': 12},
-        'chair_lift': {'zoom-min': 13},
-        'magic_carpet': {'zoom-min': 13},
-        'drag_lift': {'zoom-min': 13},
+        'cable_car': {'zoom-min': 12, 'check-meta': True},
+        'gondola': {'zoom-min': 12, 'check-meta': True},
+        'chair_lift': {'zoom-min': 13, 'check-meta': True},
+        'magic_carpet': {'zoom-min': 13, 'check-meta': True},
+        'drag_lift': {'zoom-min': 13, 'check-meta': True},
+        'zip_line': {'zoom-min': 14, 'check-meta': True},
     },
     'place': {
         'ocean': {'ignore': True, 'zoom-min': 2},
@@ -747,6 +775,12 @@ tags = {
             'render': False
         },
     },
+    'via_ferrata': {
+        '__any__': {
+            'adjust': osm.boolean,
+            'render': False
+        },
+    },
     'admin_level': {
         '__any__': {
             'one-of': ['1','2','3','4','5','6'],
@@ -865,6 +899,7 @@ tags = {
     'roof:colour': {'__any__': {'render': False}, '__strip__': True},
     'roof:material': {'__any__': {'render': False}, '__strip__': True},
     'network': {},
+    'route:network': {},
     'contour': {},
 }
 
