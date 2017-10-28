@@ -99,12 +99,16 @@ def _tag_kind(k, v):
             return kinds['urban']
 
     if key == 'tourism':
-        if value in ('wilderness_hut', 'alpine_hut', 'camp_site', 'caravan_site', 'guest_house', 'motel', 'hostel', 'hotel'):
+        if value in ('wilderness_hut', 'alpine_hut'):
+            return kinds['accommodation'] | kinds['hikebike']
+        if value in ('camp_site', 'caravan_site', 'guest_house', 'motel', 'hostel', 'hotel'):
             return kinds['accommodation']
-        if value in ('attraction', 'viewpoint', 'museum', 'information', 'artwork'):
+        if value in ('attraction', 'viewpoint', 'museum', 'artwork'):
             return kinds['attraction']
         if value in ('zoo', 'picnic_site'):
             return kinds['entertainment']
+        if value == 'information':
+            return kinds['attraction'] | kinds['hikebike']
 
     if key == 'shop':
         if value in ('gift', 'variety_store', 'doityourself', 'hardware', 'department_store', 'mall', 'jewelry',
