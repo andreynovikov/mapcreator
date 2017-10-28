@@ -573,7 +573,8 @@ _strings = [
     'excellent',
     'good',
     'bad',
-    'horrible'
+    'horrible',
+    'saddle'
 ]
 
 staticValues = dict(zip(_strings,range(0, len(_strings))))
