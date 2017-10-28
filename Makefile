@@ -1,6 +1,6 @@
 DATADIR ?= /gis/data
 MAPCREATORDIR ?= /gis/mapcreator
-PLANETFILE ?= $(DATADIR)/planet-171012.o5m
+PLANETFILE ?= $(DATADIR)/planet-latest.o5m
 TIMEOUT ?= 2h
 LOGLEVEL ?= INFO
 
@@ -49,9 +49,17 @@ world : $(PLANETFILE)
 	done; \
 	true
 
-publish:
-	rsync -vru --exclude='nativeindex' --exclude='lost+found' /gis/maps/* tanya.newf.ru:/gis/maps
+publish :
+	rsync -vru --exclude='nativeindex' --exclude='lost+found' --exclude='index' --delete-after /gis/maps/* tanya.newf.ru:/gis/maps/
 	ssh tanya.newf.ru /gis/mapcreator/index.py
 
+downloads :
+	ssh tanya.newf.ru pg_dump -c -t map_downloads gis > /tmp/downloads.sql
+	cat /tmp/downloads.sql | psql gis
 
-.PHONY: basemap stubmap boundaries maps world publish
+update : $(PLANETFILE)
+	$(call remove-file,$(DATADIR)/planet-updated.o5m)
+	osmupdate -v --day --keep-tempfiles $< $(DATADIR)/planet-updated.o5m
+	mv $(DATADIR)/planet-updated.o5m $<
+
+.PHONY: basemap stubmap boundaries maps world publish downloads update

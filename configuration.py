@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-OSMCONVERT_PATH = '/usr/bin/osmconvert'
+OSMCONVERT_PATH = '/gis/bin/osmconvert'
 
 # Important! File modification date should be equal to OSM data timestamp
-SOURCE_PBF = '/gis/data/planet-170922.o5m'
+SOURCE_PBF = '/gis/data/planet-latest.o5m'
 MAP_TARGET_PATH = '/gis/maps'
 LOGGING_PATH = '/var/log/mapcreator'
 DATA_PATH = '/gis/data'
