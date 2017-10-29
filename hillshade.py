@@ -52,7 +52,7 @@ class HillShadeCreator:
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('description', 'MapTrek hillshade layer'))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('timestamp', timestamp))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('format', 'png'))
-        self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('minzoom', '12'))
+        self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('minzoom', '8'))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('maxzoom', '12'))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('scheme', 'tms'))
 
@@ -70,11 +70,11 @@ class HillShadeCreator:
         if zoom > 7:
             if self.noninteractive:
                 self.logger.debug("Saving tile %d/%d/%d" % (zoom, x, y))
-            tilepath = os.path.join(self.tiles_dir, str(zoom), str(x), '%d.png' % y)
+            tile_row = (2**zoom - 1) - y # Hello, Paul Ramsey
+            tilepath = os.path.join(self.tiles_dir, str(zoom), str(x), '%d.png' % tile_row)
             if os.path.exists(tilepath):
                 with open(tilepath, 'rb') as f:
                     tile = f.read()
-                    tile_row = (2**zoom - 1) - y # Hello, Paul Ramsey
                     self.db.execute(self.query, (zoom, x, tile_row, memoryview(tile)))
             else:
                 self.logger.error("Tile does not exist: %d/%d/%d" % (zoom, x, y))
