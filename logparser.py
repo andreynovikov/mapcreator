@@ -9,7 +9,7 @@ import psycopg2
 import configuration
 
 
-map_file_path = configuration.MAP_TARGET_PATH + '/%s/%s.map'
+map_file_path = configuration.MAP_TARGET_PATH + '/%s/%s.mtiles'
 
 """
 217.66.152.237 - - [01/Oct/2016:13:29:18 +0300] "GET /maps/74/74-37.map HTTP/1.1" 200 43869017 "-" "AndroidDownloadManager/6.0 (Linux; U; Android 6.0; FRD-L19 Build/HUAWEIFRD-L19)" 20.679 1 0
