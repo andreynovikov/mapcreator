@@ -59,7 +59,7 @@ downloads :
 
 update : $(PLANETFILE)
 	$(call remove-file,$(DATADIR)/planet-updated.o5m)
-	osmupdate -v --day --keep-tempfiles $< $(DATADIR)/planet-updated.o5m
+	osmupdate -v --day $< $(DATADIR)/planet-updated.o5m
 	mv $(DATADIR)/planet-updated.o5m $<
 
 .PHONY: basemap stubmap boundaries maps world publish downloads update

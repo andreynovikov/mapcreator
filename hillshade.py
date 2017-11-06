@@ -7,6 +7,7 @@ import argparse
 import logging.config
 
 from sqlite3 import connect
+from tqdm import tqdm
 
 import configuration
 
@@ -34,13 +35,13 @@ class HillShadeCreator:
         self.db = connect(filename)
         self.db.execute('PRAGMA journal_mode = OFF')
         self.db.execute('PRAGMA synchronous = NORMAL')
-        self.db.execute('PRAGMA application_id = 0x4d504258')
         # check if database already exists
         try:
             self.db.execute('SELECT name, value FROM metadata LIMIT 1')
             self.db.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles LIMIT 1')
             self.db.execute('DELETE FROM metadata')
         except:
+            self.db.execute('PRAGMA application_id = 0x4d504258')
             self.db.execute('CREATE TABLE metadata (name TEXT NOT NULL, value TEXT)')
             self.db.execute('CREATE TABLE tiles (zoom_level INTEGER NOT NULL, tile_column INTEGER NOT NULL, tile_row INTEGER NOT NULL, tile_data BLOB NOT NULL)')
             self.db.execute('CREATE UNIQUE INDEX coord ON tiles (zoom_level, tile_column, tile_row)')
@@ -54,7 +55,7 @@ class HillShadeCreator:
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('format', 'png'))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('minzoom', '8'))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('maxzoom', '12'))
-        self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('scheme', 'tms'))
+        self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('tile_row_type', 'xyz'))
 
         self.db.commit()
         self.db.text_factory = bytes
@@ -75,7 +76,7 @@ class HillShadeCreator:
             if os.path.exists(tilepath):
                 with open(tilepath, 'rb') as f:
                     tile = f.read()
-                    self.db.execute(self.query, (zoom, x, tile_row, memoryview(tile)))
+                    self.db.execute(self.query, (zoom, x, y, memoryview(tile)))
             else:
                 self.logger.error("Tile does not exist: %d/%d/%d" % (zoom, x, y))
         if zoom < 12:
@@ -111,8 +112,14 @@ if __name__ == "__main__":
             (x, y) = map(int, args.area.split('-'))
             hsCreator.createArea(x, y)
         else:
+            if not args.noninteractive:
+                gen_progress = tqdm(total=128*128, desc="Generated")
             for x in range(128):
                 for y in range(128):
                     hsCreator.createArea(x, y)
+                    if not args.noninteractive:
+                        gen_progress.update()
+            if not args.noninteractive:
+                gen_progress.close()
     except Exception as e:
         logger.exception("An error occurred:")
