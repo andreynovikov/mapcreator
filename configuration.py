@@ -12,5 +12,5 @@ DATA_DB_DSN = 'dbname=gis'
 MAP_DOWNLOAD_LOG = '/var/log/nginx/maps.log'
 STATS_DB_DSN = 'dbname=gis'
 
-HILLSHADE_TILES_PATH = '/gis/data/hillshade/tiles'
-HILLSHADE_MAPS_PATH = '/gis/hillshade'
+HILLSHADE_TILES_DB = '/gis/data/hillshade/hillshade.mbtiles'
+HILLSHADE_TARGET_PATH = '/gis/hillshade'
