@@ -372,6 +372,7 @@ tags = {
         'cave_entrance': {'zoom-min': 14},
         'spring': {'zoom-min': 13},
         'tree': {'zoom-min': 14, 'enlarge': 0.6},
+        'waterfall': {'rewrite-key': 'waterway'},
     },
     'waterway': {
         'riverbank': {
@@ -385,6 +386,7 @@ tags = {
         'lock_gate': {
             'zoom-min': 12
         },
+        'waterfall': DEFAULT_PLACE,
         'river': {'zoom-min': 10, 'check-meta': True},
         'canal': {'zoom-min': 10, 'check-meta': True},
         'dam': {'zoom-min': 12, 'check-meta': True},
@@ -404,6 +406,7 @@ tags = {
         'magic_carpet': {'zoom-min': 13, 'check-meta': True},
         'drag_lift': {'zoom-min': 13, 'check-meta': True},
         'zip_line': {'zoom-min': 14, 'check-meta': True},
+        'station': {'zoom-min': 14},
     },
     'place': {
         'ocean': {'ignore': True, 'zoom-min': 2},

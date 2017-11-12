@@ -149,6 +149,10 @@ def _tag_kind(k, v):
         if value in ('tram_stop', 'subway_entrance'):
             return kinds['transportation']
 
+    if key == 'waterway':
+        if value == 'waterfall':
+            return kinds['attraction']
+
     if key == 'emergency':
         if value == 'phone':
             return kinds['emergency']
