@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
-import os,sys,inspect
+import os
+import sys
+import inspect
 import numpy as np
 from collections import defaultdict
 
