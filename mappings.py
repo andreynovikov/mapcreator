@@ -371,7 +371,7 @@ tags = {
         'saddle': {'zoom-min': 13},
         'cave_entrance': {'zoom-min': 14},
         'spring': {'zoom-min': 13},
-        'tree': {'zoom-min': 14, 'enlarge': 0.6},
+        'tree': {'zoom-min': 14},
         'waterfall': {'rewrite-key': 'waterway'},
     },
     'waterway': {
