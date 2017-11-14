@@ -75,13 +75,14 @@ class HillShadeCreator:
             if self.noninteractive:
                 self.logger.debug("Saving tile %d/%d/%d" % (zoom, x, y))
             tile_row = (2**zoom - 1) - y # Hello, Paul Ramsey
-            with self.src_db.cursor() as cur:
-                cur.execute(self.select_query, (zoom, x, tile_row))
-                row = cur.fetchone()
-                if row is None:
-                    self.logger.error("Tile does not exist: %d/%d/%d" % (zoom, x, y))
-                else:
-                    self.db.execute(self.replace_query, (zoom, x, y, memoryview(row[0])))
+            cur = self.src_db.cursor()
+            cur.execute(self.select_query, (zoom, x, tile_row))
+            row = cur.fetchone()
+            if row is None:
+                self.logger.error("Tile does not exist: %d/%d/%d" % (zoom, x, y))
+            else:
+                self.db.execute(self.replace_query, (zoom, x, y, memoryview(row[0])))
+            cur.close()
         if zoom < 12:
             nx = x << 1
             ny = y << 1
@@ -95,21 +96,9 @@ class HillShadeCreator:
 def mapinfo(maps_path, x, y):
     map_path = '{0:s}/{1:d}/{1:d}-{2:d}.mbtiles'.format(maps_path, x, y)
     size = 0
-    date = 0
     if os.path.exists(map_path):
-        with connect(map_path) as db:
-            size = os.path.getsize(map_path)
-            try:
-                cursor = db.cursor()
-                cursor.execute("SELECT value FROM metadata WHERE name = 'timestamp'")
-                date = int(cursor.fetchone()[0])
-            except:
-                date = 0
-        if size > 0:
-            print(map_path)
-            print('    size: {0:d}'.format(size))
-            print('    date: {0:d}'.format(date))
-    return (size, date)
+        size = os.path.getsize(map_path)
+    return size
 
 
 if __name__ == "__main__":
@@ -147,11 +136,11 @@ if __name__ == "__main__":
                 gen_progress.close()
         if args.index:
             with open(args.maps_path + '/index', 'wb') as f:
-                f.truncate(6*128*128)
+                f.truncate(5*128*128)
                 for x in range(128):
                     for y in range(128):
-                        size, date = mapinfo(args.maps_path, x, y)
-                        f.write((date).to_bytes(2, byteorder='big', signed=False))
+                        size = mapinfo(args.maps_path, x, y)
+                        f.write((configuration.HILLSHADE_VERSION).to_bytes(1, byteorder='big', signed=False))
                         f.write((size).to_bytes(4, byteorder='big', signed=False))
     except Exception as e:
         logger.exception("An error occurred:")
