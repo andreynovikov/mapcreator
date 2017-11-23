@@ -507,7 +507,8 @@ tags = {
         'car_repair': DEFAULT_PLACE,
         'copyshop': DEFAULT_PLACE,
         'dry_cleaning': DEFAULT_PLACE,
-        'laundry': DEFAULT_PLACE
+        'laundry': DEFAULT_PLACE,
+        'sports': DEFAULT_PLACE
     },
     'tourism': {
         'picnic_site': DEFAULT_LABELED_AREA,
@@ -543,6 +544,12 @@ tags = {
         'downhill': {'zoom-min': 13},
         'nordic': {'zoom-min': 13},
         'sled': {'zoom-min': 13},
+        'skitour': {'zoom-min': 13},
+        'hike': {'zoom-min': 13},
+        'ice_skate': {'zoom-min': 13},
+        'sleigh': {'zoom-min': 13},
+        'snow_park': {'zoom-min': 14},
+        'playground': {'zoom-min': 14},
     },
     'boundary': {
         'national_park': {
@@ -662,7 +669,7 @@ tags = {
     'ford': {
         '__any__': {
             'adjust': osm.boolean,
-            'render': False
+            'zoom-min': 14,
         },
     },
     'winter_road': {
@@ -819,6 +826,13 @@ tags = {
             'render': False
         },
         '__strip__': True
+    },
+    'information': {
+        'guidepost': {'render': False},
+        'map': {'render': False},
+        'office': {'render': False},
+        'citymap': {'rewrite-value': 'map'},
+        'hikingmap': {'rewrite-value': 'map'},
     },
     'sac_scale': {
         'hiking': {'rewrite-value': 'T1'},

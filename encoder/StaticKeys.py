@@ -61,7 +61,8 @@ _strings = [
     'trail_visibility',
     'osmc:symbol',
     'network',
-    'route:network'
+    'route:network',
+    'information'
 ]
 
 staticKeys = dict(zip(_strings,range(0, len(_strings))))
