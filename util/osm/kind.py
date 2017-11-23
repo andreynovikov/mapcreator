@@ -112,7 +112,7 @@ def _tag_kind(k, v):
 
     if key == 'shop':
         if value in ('gift', 'variety_store', 'doityourself', 'hardware', 'department_store', 'mall', 'jewelry',
-                     'photo', 'books'):
+                     'photo', 'books', 'sports'):
             return kinds['shopping']
         if value in ('bakery', 'ice_cream', 'greengrocer', 'farm', 'alcohol', 'beverages', 'confectionery'):
             return kinds['food']
