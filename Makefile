@@ -8,6 +8,14 @@ define remove-file
 [ -f $1 ] && rm $1 || true
 endef
 
+define remove-dir
+[ -d $1 ] && rm -rf $1 || true
+endef
+
+define run-in-dir
+[ -d $1 ] && cd $1 && $2
+endef
+
 $(PLANETFILE) :
 	echo "Planet file does not exist! Exiting..."
 	false
@@ -62,4 +70,15 @@ update : $(PLANETFILE)
 	osmupdate -v --day $< $(DATADIR)/planet-updated.o5m
 	mv $(DATADIR)/planet-updated.o5m $<
 
-.PHONY: basemap stubmap boundaries maps world publish downloads update
+water :
+	$(call remove-file,$(DATADIR)/water-polygons-split-3857.zip)
+	$(call remove-file,$(DATADIR)/water-polygons-generalized-3857.zip)
+	$(call remove-dir,$(DATADIR)/water-polygons-split-3857)
+	$(call remove-dir,$(DATADIR)/water-polygons-generalized-3857)
+	wget http://data.openstreetmapdata.com/water-polygons-split-3857.zip -P $(DATADIR)
+	wget http://data.openstreetmapdata.com/water-polygons-generalized-3857.zip -P $(DATADIR)
+	unzip $(DATADIR)/water-polygons-split-3857.zip -d $(DATADIR)
+	unzip $(DATADIR)/water-polygons-generalized-3857.zip -d $(DATADIR)
+	$(call run-in-dir,$(DATADIR),$(MAPCREATORDIR)/setup/water2pgsql.sh | psql gis)
+
+.PHONY: basemap stubmap boundaries maps world publish downloads update water
