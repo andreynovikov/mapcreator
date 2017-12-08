@@ -167,18 +167,15 @@ class OsmFilter(osmium.SimpleHandler):
         self.logger.info("Process resorts")
         progress = tqdm(total=len(self.resorts), desc="Resorts")
         for resort in self.resorts:
-            print("------------------")
             resort.geom = resort.geom.buffer(1.7, resolution=32)
             areas = Polygon()
             geoms = []
             for difficulty in difficulties:
                 if not resort.pistes[difficulty]:
                     continue
-                print(difficulty)
                 for grooming in groomings:
                     if not resort.pistes[difficulty][grooming]:
                         continue
-                    print("  ", grooming)
                     pistes = []
                     for piste in resort.pistes[difficulty][grooming]:
                         if not piste.area:
@@ -198,7 +195,6 @@ class OsmFilter(osmium.SimpleHandler):
                                 continue
                             if borders_difficulty == pistes_difficulty and borders_grooming == pistes_grooming:
                                 continue
-                            print("%s %s %s %s" % (borders_difficulty, borders_grooming, pistes_difficulty, pistes_grooming))
                             borders = resort.borders[borders_difficulty][borders_grooming]
                             pistes = resort.areas[pistes_difficulty][pistes_grooming].buffer(0.0001)
                             borders = borders.difference(pistes)
