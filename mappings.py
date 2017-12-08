@@ -437,6 +437,7 @@ tags = {
         'sports_centre': {'zoom-min': 14},
         'water_park': {'zoom-min': 14},
         'slipway': DEFAULT_PLACE,
+        'swimming_pool': DEFAULT_PLACE,
     },
     'amenity': {
         'university': DEFAULT_PLACE,
@@ -474,7 +475,8 @@ tags = {
         'library': DEFAULT_PLACE,
         'car_repair': {'rewrite-key': 'shop'},
         'toilets': DEFAULT_PLACE,
-        'grave_yard': {'rewrite-key': 'landuse', 'rewrite-value': 'cemetery'}
+        'grave_yard': {'rewrite-key': 'landuse', 'rewrite-value': 'cemetery'},
+        'swimming_pool': {'rewrite-key': 'leisure'},
     },
     'emergency': {
         'phone': DEFAULT_PLACE,
