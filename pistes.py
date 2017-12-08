@@ -9,7 +9,7 @@ import psycopg2
 import psycopg2.extras
 import osmium
 import shapely.wkb as shapelyWkb
-from shapely.geometry import Polygon
+from shapely.geometry import LineString, Polygon
 from shapely.ops import transform, linemerge
 from shapely.ops import transform, linemerge, cascaded_union
 from shapely.prepared import prep
@@ -23,7 +23,7 @@ from util.geometry import wgs84_to_mercator, mercator_to_wgs84, clockwise
 wkbFactory = osmium.geom.WKBFactory()
 
 difficulties = ['novice', 'easy', 'intermediate', 'advanced', 'expert', 'freeride', 'extreme', 'unknown']
-groomings = ['backcountry', 'mogul', 'unknown']
+groomings = ['unknown', 'mogul', 'backcountry']
 
 
 def multidimentiondict(n, type):
@@ -60,9 +60,9 @@ class Resort():
         # list of all pistes combined by difficulty
         self.pistes = multidimentiondict(3, list)
         # united piste areas combined by difficulty, used in post-processing
-        #self.areas = defaultdict(list)
+        self.areas = multidimentiondict(3, Polygon)
         # united piste borders combined by difficulty, used in post-processing
-        #self.borders = defaultdict(list)
+        self.borders = multidimentiondict(3, LineString)
 
         self.add(piste)
         self.point = piste.point
@@ -86,8 +86,7 @@ class Resort():
     def combine(self, resort):
         for difficulty in resort.pistes:
             for grooming in resort.pistes[difficulty]:
-                for piste in resort.pistes[difficulty][grooming]:
-                    self.pistes[difficulty][grooming].append(piste)
+                self.pistes[difficulty][grooming].extend(resort.pistes[difficulty][grooming])
         self.area = cascaded_union([self.area, resort.area])
         self.geom = cascaded_union([self.geom, resort.geom])
         self.prepared = prep(self.geom)
@@ -180,30 +179,30 @@ class OsmFilter(osmium.SimpleHandler):
                     if not resort.pistes[difficulty][grooming]:
                         continue
                     print("  ", grooming)
-                    #n = difficulties.index(difficulty)
-                    #resort.areas[difficulty] = Polygon()
+                    pistes = []
                     for piste in resort.pistes[difficulty][grooming]:
-                        # extract piste areas from piste ways to remove tails
                         if not piste.area:
                             piste.geom = piste.geom.difference(resort.area)
-                        piste.geom = piste.geom.buffer(5, resolution=32).buffer(-3)
-                        piste.borders = piste.geom.boundary
-                        #geom = transform(mercator_to_wgs84, piste.geom)
-                        #print("%s\n\n" % geom)
-                        #geom = transform(mercator_to_wgs84, areas)
-                        #print("%s\n\n" % geom)
-                        for geom in geoms:
-                            piste.geom = piste.geom.difference(geom)
-                            piste.borders = piste.borders.difference(geom)
-                            if piste.geom.is_empty:
-                                break
-                        if not piste.geom.is_empty:
-                            geoms.append(piste.geom)
-                        piste.borders = piste.borders.difference(resort.geom)
-                        #print(piste.borders.type)
-                        #areas = cascaded_union([areas, piste.geom]).buffer(2).buffer(-2)
-                #geom = transform(mercator_to_wgs84, resort.areas[difficulty])
-                #print("%s\n\n" % geom)
+                        pistes.append(piste.geom)
+                    resort.areas[difficulty][grooming] = cascaded_union(pistes)
+                    resort.areas[difficulty][grooming] = resort.areas[difficulty][grooming].buffer(5, resolution=32).buffer(-3)
+                    resort.borders[difficulty][grooming] = resort.areas[difficulty][grooming].boundary
+                    for geom in geoms:
+                        resort.areas[difficulty][grooming] = resort.areas[difficulty][grooming].difference(geom)
+                    geoms.append(resort.areas[difficulty][grooming])
+            for borders_difficulty in resort.borders:
+                for borders_grooming in resort.borders[borders_difficulty]:
+                    for pistes_difficulty in resort.pistes:
+                        for pistes_grooming in resort.areas[pistes_difficulty]:
+                            if resort.borders[borders_difficulty][borders_grooming].is_empty:
+                                continue
+                            if borders_difficulty == pistes_difficulty and borders_grooming == pistes_grooming:
+                                continue
+                            print("%s %s %s %s" % (borders_difficulty, borders_grooming, pistes_difficulty, pistes_grooming))
+                            borders = resort.borders[borders_difficulty][borders_grooming]
+                            pistes = resort.areas[pistes_difficulty][pistes_grooming].buffer(0.0001)
+                            borders = borders.difference(pistes)
+                            resort.borders[borders_difficulty][borders_grooming] = borders
         progress.close()
 
         self.logger.info("Save data")
@@ -229,27 +228,26 @@ class OsmFilter(osmium.SimpleHandler):
             cur.execute("SELECT AddGeometryColumn('osm_piste_borders','geom','3857','GEOMETRY',2)")
             for resort in self.resorts:
                 print("------------------")
-                for difficulty in resort.pistes:
+                for difficulty in resort.areas:
                     print(difficulty)
-                    for grooming in resort.pistes[difficulty]:
+                    for grooming in resort.areas[difficulty]:
                         print("  ", grooming)
-                        for piste in resort.pistes[difficulty][grooming]:
-                            if piste.geom.is_empty:
-                                continue
-                            try:
-                                cur.execute("""INSERT INTO osm_pistes (difficulty, grooming, geom)
-                                               VALUES (%s, %s, ST_GeomFromText(%s, 3857))""", \
-                                            (difficulty, grooming, piste.geom.wkt))
-                            except psycopg2.DataError as e:
-                                self.logger.exception("Insertion error:")
-                            if piste.borders.is_empty:
-                                continue
-                            try:
-                                cur.execute("""INSERT INTO osm_piste_borders (difficulty, grooming, geom)
-                                               VALUES (%s, %s, ST_GeomFromText(%s, 3857))""", \
-                                            (difficulty, grooming, piste.borders.wkt))
-                            except psycopg2.DataError as e:
-                                self.logger.exception("Insertion error:")
+                        if resort.areas[difficulty][grooming].is_empty:
+                            continue
+                        try:
+                            cur.execute("""INSERT INTO osm_pistes (difficulty, grooming, geom)
+                                           VALUES (%s, %s, ST_GeomFromText(%s, 3857))""", \
+                                        (difficulty, grooming, resort.areas[difficulty][grooming].wkt))
+                        except psycopg2.DataError as e:
+                            self.logger.exception("Insertion error:")
+                        if resort.borders[difficulty][grooming].is_empty:
+                            continue
+                        try:
+                            cur.execute("""INSERT INTO osm_piste_borders (difficulty, grooming, geom)
+                                           VALUES (%s, %s, ST_GeomFromText(%s, 3857))""", \
+                                        (difficulty, grooming, resort.borders[difficulty][grooming].wkt))
+                        except psycopg2.DataError as e:
+                            self.logger.exception("Insertion error:")
             c.commit()
             cur.execute('CREATE INDEX ON osm_pistes USING GIST ("geom")')
             cur.execute('CREATE INDEX ON osm_piste_borders USING GIST ("geom")')
