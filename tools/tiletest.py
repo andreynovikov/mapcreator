@@ -2,6 +2,7 @@
 
 import os
 import sys
+import argparse
 import inspect
 import numpy as np
 from collections import defaultdict
@@ -60,7 +61,11 @@ def print_tile(tile):
         print("%s: %s - %d" % (getKey(k), getValue(v), n))
 
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='MapTrek tile inspector')
+    parser.add_argument('-m', '--map-path', help='path to map file')
+    args = parser.parse_args()
+
     #if len(sys.argv) != 2 :
     #    print("Usage: %s <osmtile>" % sys.argv[0], file=sys.stderr)
     #    sys.exit(1)
@@ -68,14 +73,15 @@ if __name__ == "__main__" :
     tile = TileData_pb2.Data()
 
     # 69-41: 14/8852/5305
-    mx = 35
-    my = 47
-    z = 14
-    x = 4492
-    y = 6023
-    map_path = '{0:s}/{1:d}/{1:d}-{2:d}.mtiles'.format(configuration.MAP_TARGET_PATH, mx, my)
-    if os.path.exists(map_path):
-        with sqlite3.connect(map_path) as db:
+    mx = 68
+    my = 44
+    z = 12
+    x = 2187
+    y = 1432
+    if not args.map_path:
+        args.map_path = '{0:s}/{1:d}/{1:d}-{2:d}.mtiles'.format(configuration.MAP_TARGET_PATH, mx, my)
+    if os.path.exists(args.map_path):
+        with sqlite3.connect(args.map_path) as db:
             cursor = db.cursor()
             cursor.execute("SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?", (z, x, y))
             blob = cursor.fetchone()[0]
