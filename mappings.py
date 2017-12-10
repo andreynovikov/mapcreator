@@ -1,5 +1,5 @@
 from util import osm
-
+from util.processing import pistes
 
 class MapTypes:
     Detailed, Base, Stub = range(3)
@@ -543,7 +543,7 @@ tags = {
         },
     },
     'piste:type': {
-        'downhill': {'zoom-min': 13},
+        'downhill': {'zoom-min': 13, 'pre-process': pistes.process},
         'nordic': {'zoom-min': 13},
         'sled': {'zoom-min': 13},
         'skitour': {'zoom-min': 13},
@@ -787,6 +787,25 @@ tags = {
             'render': False
         },
     },
+    'lit': {
+        '__any__': {
+            'adjust': osm.boolean,
+            'render': False
+        },
+        '__strip__': True
+    },
+    'piste:lit': {
+        '__any__': {
+            'adjust': osm.boolean,
+            'render': False
+        },
+    },
+    'piste:oneway': {
+        '__any__': {
+            'adjust': osm.boolean,
+            'render': False
+        },
+    },
     'via_ferrata': {
         '__any__': {
             'adjust': osm.boolean,
@@ -862,6 +881,12 @@ tags = {
             'render': False
         }
     },
+    'piste:grooming': {
+        '__any__': {
+            'one-of': ['mogul', 'backcountry', 'scooter'],
+            'render': False
+        }
+    },
     'tracktype': {
         '__any__': {
             'one-of': ['grade1','grade2','grade3','grade4','grade5'],
@@ -920,6 +945,7 @@ tags = {
     'network': {},
     'route:network': {},
     'contour': {},
+    'piste:border': {},
 }
 
 

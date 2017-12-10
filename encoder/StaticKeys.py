@@ -62,7 +62,11 @@ _strings = [
     'osmc:symbol',
     'network',
     'route:network',
-    'information'
+    'information',
+    'piste:border',
+    'piste:grooming',
+    'piste:lit',
+    'piste:oneway'
 ]
 
 staticKeys = dict(zip(_strings,range(0, len(_strings))))

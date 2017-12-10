@@ -584,7 +584,10 @@ _strings = [
     'sleigh',
     'snow_park',
     'sports',
-    'swimming_pool'
+    'swimming_pool',
+    'scooter',
+    'mogul',
+    'backcountry'
 ]
 
 staticValues = dict(zip(_strings,range(0, len(_strings))))
