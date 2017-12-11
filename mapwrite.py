@@ -278,15 +278,15 @@ def process_element(geom, tags, mapping, basemap=False):
         if geom.type == 'Polygon':
             label = polylabel(geom, 1.194) # pixel width at zoom 17
         elif geom.type == 'MultiPolygon':
-            #TODO in future allow multiple polygons have their own labels
+            label = []
             area = 0
-            polygon = None
             for p in geom:
-                if p.area > area:
+                l = polylabel(p, 1.194)
+                if p.area > area: # we need to find largest polygon for main label
                     area = p.area
-                    polygon = p
-            if polygon:
-                label = polylabel(polygon, 1.194)
+                    label.insert(0, l)
+                else:
+                    label.append(l)
         else:
             pass
     area = None
@@ -728,10 +728,17 @@ class MapWriter:
                 geometry = affine_transform(geom, tile.matrix)
                 if geometry.is_empty:
                     continue
-                label = None
-                if element.label and prepared_clip.contains(element.label):
-                    label = affine_transform(element.label, tile.matrix)
-                features.append(Feature(element.id, geometry, element.tags, element.kind, label,
+                labels = None
+                if element.label:
+                    if isinstance(element.label, list):
+                        for label in element.label:
+                            if prepared_clip.contains(label):
+                                if labels is None:
+                                    labels = []
+                                labels.append(affine_transform(label, tile.matrix))
+                    elif prepared_clip.contains(element.label):
+                        labels = affine_transform(element.label, tile.matrix)
+                features.append(Feature(element.id, geometry, element.tags, element.kind, labels,
                                         element.height, element.min_height, element.building_color, element.roof_color))
 
             #TODO combine union and merge to one logical block

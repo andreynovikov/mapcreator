@@ -152,9 +152,23 @@ class VectorTile:
 
         # add label position
         if feature.label is not None:
-            geom.parseGeometry(feature.label.wkb)
-            if geom.isPoint:
-                f.label.extend(geom.coordinates)
+            if isinstance(feature.label, list):
+                """
+                # need to fix decoder first
+                coordinates = []
+                for label in feature.label:
+                    geom.parseGeometry(label.wkb)
+                    if geom.isPoint:
+                        coordinates.extend(geom.coordinates)
+                f.label.extend(coordinates)
+                """
+                geom.parseGeometry(feature.label[0].wkb)
+                if geom.isPoint:
+                    f.label.extend(geom.coordinates)
+            else:
+                geom.parseGeometry(feature.label.wkb)
+                if geom.isPoint:
+                    f.label.extend(geom.coordinates)
 
         # add tags
         f.tags.extend(tags)

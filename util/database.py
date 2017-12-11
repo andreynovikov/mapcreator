@@ -100,7 +100,10 @@ class MTilesDatabase():
         lat = None
         lon = None
         if label:
-            geom = transform(mercator_to_wgs84, label)
+            if isinstance(label, list):
+                geom = transform(mercator_to_wgs84, label[0])
+            else:
+                geom = transform(mercator_to_wgs84, label)
             lat = geom.y
             lon = geom.x
         elif geometry.type == 'Point':
