@@ -65,7 +65,8 @@ tags = {
     'highway': {
         'motorway': {
             'zoom-min': 6,
-            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8,
+                      'name': 10, 'tunnel': 10, 'layer': 12, 'piste:type': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway',
@@ -73,14 +74,16 @@ tags = {
         },
         'motorway_link': {
             'zoom-min': 8,
-            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8,
+                      'name': 10, 'tunnel': 10, 'layer': 12, 'piste:type': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'check-meta': True
         },
         'trunk': {
             'zoom-min': 6,
-            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8,
+                      'name': 10, 'tunnel': 10, 'layer': 12, 'piste:type': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway',
@@ -88,14 +91,16 @@ tags = {
         },
         'trunk_link': {
             'zoom-min': 8,
-            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8,
+                      'name': 10, 'tunnel': 10, 'layer': 12, 'piste:type': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'check-meta': True
         },
         'primary': {
             'zoom-min': 7,
-            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8,
+                      'name': 10, 'tunnel': 10, 'layer': 12, 'piste:type': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway',
@@ -103,14 +108,15 @@ tags = {
         },
         'primary_link': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll,piste:type',
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'check-meta': True
         },
         'secondary': {
             'zoom-min': 7,
-            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8, 'name': 10, 'tunnel': 10, 'layer': 12},
+            'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8,
+                      'name': 10, 'tunnel': 10, 'layer': 12, 'piste:type': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'basemap-keep-tags': 'highway',
@@ -118,63 +124,63 @@ tags = {
         },
         'secondary_link': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll,piste:type',
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'check-meta': True
         },
         'tertiary': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll,piste:type',
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'check-meta': True
         },
         'tertiary_link': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll,piste:type',
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'check-meta': True
         },
         'unclassified': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll,piste:type',
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'check-meta': True
         },
         'living_street': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,piste:type',
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'check-meta': True
         },
         'residential': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,piste:type',
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'check-meta': True
         },
         'construction': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll,piste:type',
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'check-meta': True
         },
         'road': {
             'zoom-min': 12,
-            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface',
+            'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,piste:type',
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'check-meta': True
         },
         'track': {
             'zoom-min': 13,
-            'union': 'highway,tunnel,layer,tracktype,winter_road,ice_road',
+            'union': 'highway,tunnel,layer,tracktype,winter_road,ice_road,piste:type',
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'check-meta': True
@@ -473,6 +479,7 @@ tags = {
         'parking': DEFAULT_PLACE,
         'post_box': DEFAULT_PLACE,
         'library': DEFAULT_PLACE,
+        'marketplace': DEFAULT_PLACE,
         'car_repair': {'rewrite-key': 'shop'},
         'toilets': DEFAULT_PLACE,
         'grave_yard': {'rewrite-key': 'landuse', 'rewrite-value': 'cemetery'},
@@ -548,10 +555,10 @@ tags = {
         'sled': {'zoom-min': 13},
         'skitour': {'zoom-min': 13},
         'hike': {'zoom-min': 13},
-        'ice_skate': {'zoom-min': 13},
         'sleigh': {'zoom-min': 13},
-        'snow_park': {'zoom-min': 14},
-        'playground': {'zoom-min': 14},
+        'snow_park': {'zoom-min': 13},
+        'playground': {'zoom-min': 13},
+        'ice_skate': {'zoom-min': 13, 'label': True},
     },
     'boundary': {
         'national_park': {
