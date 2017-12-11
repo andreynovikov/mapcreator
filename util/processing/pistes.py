@@ -18,6 +18,7 @@ difficulties = ['playground', 'snow_park', 'novice', 'easy', 'intermediate', 'ad
 groomings = ['unknown', 'mogul', 'backcountry']
 
 piste_mapping = {'zoom-min': 12}
+labeled_piste_mapping = {'zoom-min': 12, 'label': True}
 border_mapping = {'zoom-min': 12}
 
 
@@ -190,11 +191,13 @@ def process(elements, interactive):
                     continue
                 if difficulty in ['snow_park','playground']:
                     tags = {'piste:type': difficulty}
+                    mapping = labeled_piste_mapping
                 else:
                     tags = {'piste:type': 'downhill', 'piste:difficulty': difficulty}
+                    mapping = piste_mapping
                 if grooming != 'unknown':
                     tags['piste:grooming'] = grooming
-                elements.append(Element(None, resort.areas[difficulty][grooming], tags, piste_mapping))
+                elements.append(Element(None, resort.areas[difficulty][grooming], tags, mapping))
                 if resort.borders[difficulty][grooming].is_empty:
                     continue
                 if difficulty in ['snow_park','playground']:
