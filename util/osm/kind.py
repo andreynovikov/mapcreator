@@ -89,6 +89,8 @@ def _tag_kind(k, v):
             return kinds['hikebike']
         if value in ('bank', 'atm', 'bureau_de_change', 'post_office', 'post_box'):
             return kinds['service']
+        if value == 'marketplace':
+            return kinds['food'] | kinds['shopping']
         if value == 'veterinary':
             return kinds['pets']
         if value == 'bus_station':
