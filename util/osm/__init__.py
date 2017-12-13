@@ -130,5 +130,9 @@ def is_area(tags):
             # this should be safe
             if v in ['rail','tram','subway','monorail','narrow_gauge','preserved','light_rail','construction']:
                 result = False
+        if k == 'piste:type':
+            # These piste types are supposed to be lines even if closed
+            if v in ['nordic','sled','hike','sleigh']:
+                result = False
 
     return result
