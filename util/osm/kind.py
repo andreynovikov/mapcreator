@@ -83,7 +83,7 @@ def _tag_kind(k, v):
             return kinds['food']
         if value in ('theatre', 'cinema'):
             return kinds['entertainment']
-        if value in ('parking', 'fuel', 'car_repair'):
+        if value in ('parking', 'fuel', 'car_repair', 'car_rental'):
             return kinds['vehicles']
         if value in ('bicycle_rental', 'drinking_water', 'shelter', 'toilets'):
             return kinds['hikebike']
@@ -91,6 +91,8 @@ def _tag_kind(k, v):
             return kinds['service']
         if value == 'marketplace':
             return kinds['food'] | kinds['shopping']
+        if value == 'ranger_station':
+            return kinds['emergency'] | kinds['hikebike']
         if value == 'veterinary':
             return kinds['pets']
         if value == 'bus_station':
@@ -110,7 +112,7 @@ def _tag_kind(k, v):
         if value in ('zoo', 'picnic_site'):
             return kinds['entertainment']
         if value == 'information':
-            return kinds['attraction'] | kinds['hikebike']
+            return kinds['hikebike']
 
     if key == 'shop':
         if value in ('gift', 'variety_store', 'doityourself', 'hardware', 'department_store', 'mall', 'jewelry',

@@ -18,7 +18,7 @@ difficulties = ['playground', 'snow_park', 'novice', 'easy', 'intermediate', 'ad
 groomings = ['unknown', 'mogul', 'backcountry']
 
 piste_mapping = {'zoom-min': 12}
-labeled_piste_mapping = {'zoom-min': 12, 'label': True}
+labeled_piste_mapping = {'zoom-min': 13, 'label': True}
 border_mapping = {'zoom-min': 12}
 
 
