@@ -1,12 +1,16 @@
 import logging
+import json
 from collections import defaultdict
 
 from shapely.geometry import LineString, Polygon
+from shapely.geometry import mapping as geom_mapping
 from shapely.ops import cascaded_union
+from shapely.ops import transform
 from shapely.prepared import prep
 from tqdm import tqdm
 
 from util.core import Element
+from util.geometry import mercator_to_wgs84
 
 
 BUFFER_RESOLUTION = 3
@@ -159,8 +163,31 @@ def process(elements, interactive):
                 for piste in resort.pistes[difficulty][grooming]:
                     if not piste.area:
                         piste.geom = piste.geom.difference(resort.area)
+                    if piste.geom.is_empty:
+                        continue
                     pistes.append(piste.geom)
-                resort.areas[difficulty][grooming] = cascaded_union(pistes)
+                try:
+                    resort.areas[difficulty][grooming] = cascaded_union(pistes)
+                except Exception as e:
+                    logging.error("-------------------------------------------------------")
+                    for piste in pistes:
+                        try:
+                            if resort.areas[difficulty][grooming]:
+                                resort.areas[difficulty][grooming] = resort.areas[difficulty][grooming].union(piste.buffer(1))
+                                #piste = piste.buffer(2)
+                                #resort.areas[difficulty][grooming] = cascaded_union([ resort.areas[difficulty][grooming], piste])
+                                #resort.areas[difficulty][grooming] = resort.areas[difficulty][grooming].buffer(-2)
+                            else:
+                                resort.areas[difficulty][grooming] = piste.buffer(1)
+                        except Exception as e:
+                            geom = transform(mercator_to_wgs84, resort.areas[difficulty][grooming])
+                            logging.error("---------------")
+                            print(json.dumps(geom_mapping(geom)))
+                            geom = transform(mercator_to_wgs84, piste.buffer(1))
+                            logging.error("---------------")
+                            print(json.dumps(geom_mapping(geom)))
+                            logging.error("---------------")
+                    resort.areas[difficulty][grooming] = resort.areas[difficulty][grooming].buffer(-1)
                 resort.areas[difficulty][grooming] = resort.areas[difficulty][grooming].buffer(5, resolution=BUFFER_RESOLUTION)
                 resort.areas[difficulty][grooming] = resort.areas[difficulty][grooming].buffer(-3)
                 resort.borders[difficulty][grooming] = resort.areas[difficulty][grooming].boundary
