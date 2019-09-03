@@ -591,7 +591,12 @@ _strings = [
     'ski_jump',
     'ski_jump_landing',
     'ranger_station',
-    'car_rental'
+    'car_rental',
+    'archaeological_site',
+    'beach_resort',
+    'sauna',
+    'ferry_terminal',
+    'shower'
 ]
 
 staticValues = dict(zip(_strings,range(0, len(_strings))))

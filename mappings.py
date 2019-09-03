@@ -442,8 +442,10 @@ tags = {
         'playground': DEFAULT_PLACE,
         'sports_centre': DEFAULT_LABELED_AREA,
         'water_park': DEFAULT_LABELED_AREA,
+        'beach_resort': DEFAULT_LABELED_AREA,
         'slipway': DEFAULT_PLACE,
         'swimming_pool': DEFAULT_PLACE,
+        'sauna': DEFAULT_PLACE
     },
     'amenity': {
         'university': DEFAULT_PLACE,
@@ -484,6 +486,8 @@ tags = {
         'toilets': DEFAULT_PLACE,
         'ranger_station': DEFAULT_PLACE,
         'car_rental': DEFAULT_PLACE,
+        'ferry_terminal': DEFAULT_PLACE,
+        'shower': DEFAULT_PLACE,
         'grave_yard': {'rewrite-key': 'landuse', 'rewrite-value': 'cemetery'},
         'swimming_pool': {'rewrite-key': 'leisure'},
     },
@@ -542,7 +546,8 @@ tags = {
         'memorial': DEFAULT_PLACE,
         'castle': DEFAULT_PLACE,
         'ruins': DEFAULT_PLACE,
-        'monument': DEFAULT_PLACE
+        'monument': DEFAULT_PLACE,
+	'archaeological_site': DEFAULT_PLACE
     },
     'route': {
         'ferry': {
