@@ -25,7 +25,8 @@ import shapely.wkb as shapelyWkb
 import shapely.speedups
 from shapely.geometry import MultiLineString, Polygon
 from shapely.prepared import prep
-from shapely.ops import transform, linemerge, cascaded_union, unary_union, polylabel
+from shapely.ops import transform, linemerge, cascaded_union, unary_union
+from shapely.algorithms.polylabel import polylabel
 from shapely.affinity import affine_transform
 
 import configuration
@@ -39,6 +40,8 @@ from util.osm.kind import is_place, is_building, get_kind
 from util.osm.buildings import get_building_properties
 from util.filters import filter_rings
 
+
+logging.getLogger('shapely.geos').setLevel(logging.WARNING)
 
 ProcessJob = namedtuple('ProcessJob', ['id', 'wkb', 'tags', 'mapping', 'simple_polygon'])
 DBJob = namedtuple('DBJob', ['zoom', 'x', 'y', 'features'])
@@ -847,6 +850,8 @@ class MapWriter:
             pbf_dir = os.path.dirname(target_pbf_path)
             if not os.path.exists(pbf_dir):
                 os.makedirs(pbf_dir)
+            if os.path.exists(target_pbf_path):
+                os.remove(target_pbf_path)
             bbox = mercantile.bounds(ax, ay, z)
             osmconvert_call = [configuration.OSMCONVERT_PATH, source_pbf_path]
             osmconvert_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (bbox.west,bbox.south,bbox.east,bbox.north)]
