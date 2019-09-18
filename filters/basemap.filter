@@ -4,7 +4,8 @@ landuse=military
 leisure=nature_reserve
 boundary=national_park
 highway=motorway =trunk =primary =secondary
-aeroway=aerodrome
+aerodrome=international
+aerodrome:type=international
 route=ferry
 
 --keep-tags=
@@ -21,6 +22,7 @@ leisure=
 highway=
 aeroway=
 aerodrome=
+aerodrome:type=
 iata=
 name=
 name:en=
