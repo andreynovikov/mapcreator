@@ -37,7 +37,7 @@ class MTilesDatabase():
             if name == "basemap":
                 self.db.execute('PRAGMA main.page_size = 4096')
                 self.db.execute('PRAGMA main.auto_vacuum = INCREMENTAL')
-                self.db.execute('CREATE TABLE maps (x INTEGER NOT NULL, y INTEGER NOT NULL, date INTEGER NOT NULL DEFAULT 0, downloading INTEGER NOT NULL DEFAULT 0)')
+                self.db.execute('CREATE TABLE maps (x INTEGER NOT NULL, y INTEGER NOT NULL, date INTEGER NOT NULL DEFAULT 0, version INTEGER NOT NULL DEFAULT 0, downloading INTEGER NOT NULL DEFAULT 0, hillshade_downloading INTEGER NOT NULL DEFAULT 0)')
                 self.db.execute('CREATE UNIQUE INDEX maps_x_y ON maps (x, y)')
                 self.db.execute('CREATE TABLE map_features (x INTEGER NOT NULL, y INTEGER NOT NULL, feature INTEGER NOT NULL)')
                 self.db.execute('CREATE INDEX map_feature_ids ON map_features (feature)')
