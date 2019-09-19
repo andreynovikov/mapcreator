@@ -9,7 +9,7 @@ _strings = [
     'oneway',
     'ref',
     'barrier',
-    'tracktype',
+    'smoothness',
     'access',
     'place',
     'railway',
@@ -42,7 +42,6 @@ _strings = [
     'iata',
     'station',
     'contour',
-    # keys that should be visualized in future:
     'construction',
     'cutting',
     'embankment',

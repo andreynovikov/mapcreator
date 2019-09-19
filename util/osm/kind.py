@@ -75,19 +75,19 @@ def _tag_kind(k, v):
     if key == 'amenity':
         if value in ('police', 'fire_station', 'hospital', 'pharmacy', 'doctors', 'clinic', 'telephone'):
             return kinds['emergency']
-        if value in ('library', 'university', 'school', 'college'):
+        if value in ('university', 'school', 'college'):
             return kinds['education']
         if value in ('kindergarten',):
             return kinds['kids']
         if value in ('cafe', 'pub', 'bar', 'fast_food', 'restaurant'):
             return kinds['food']
-        if value in ('theatre', 'cinema'):
+        if value in ('theatre', 'cinema', 'library', 'boat_rental'):
             return kinds['entertainment']
         if value in ('parking', 'fuel', 'car_repair', 'car_rental'):
             return kinds['vehicles']
         if value in ('bicycle_rental', 'drinking_water', 'shelter', 'toilets'):
             return kinds['hikebike']
-        if value in ('bank', 'atm', 'bureau_de_change', 'post_office', 'post_box'):
+        if value in ('bank', 'atm', 'bureau_de_change', 'post_office', 'post_box', 'shower'):
             return kinds['service']
         if value == 'marketplace':
             return kinds['food'] | kinds['shopping']
@@ -109,7 +109,7 @@ def _tag_kind(k, v):
             return kinds['accommodation']
         if value in ('attraction', 'viewpoint', 'museum', 'artwork'):
             return kinds['attraction']
-        if value in ('zoo', 'picnic_site'):
+        if value in ('zoo', 'picnic_site', 'theme_park'):
             return kinds['entertainment']
         if value == 'information':
             return kinds['hikebike']
@@ -134,13 +134,13 @@ def _tag_kind(k, v):
             return kinds['service']
 
     if key == 'historic':
-        if value in ('memorial', 'castle', 'ruins', 'monument'):
+        if value in ('memorial', 'castle', 'ruins', 'monument', 'archaeological_site'):
             return kinds['attraction']
 
     if key == 'leisure':
-        if value in ('sports_centre', 'water_park'):
+        if value in ('sports_centre', 'water_park', 'beach_resort', 'sauna'):
             return kinds['entertainment']
-        if value == 'playground':
+        if value in ('playground', 'amusement_arcade'):
             return kinds['kids']
         if value == 'slipway':
             return kinds['vehicles']

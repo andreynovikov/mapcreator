@@ -1,5 +1,5 @@
 from util import osm
-from util.processing import pistes
+from util.processing import cutlines, pistes
 
 class MapTypes:
     Detailed, Base, Stub = range(3)
@@ -40,6 +40,26 @@ def _china_mapper(tags, renderable, ignorable, mapping):
     population = tags.get('population', 0)
     if tags.get('place', None) in ('city','town') and population < 300000:
         renderable = False
+    return (renderable, ignorable, mapping)
+
+
+def _ice_skate_mapper(tags, renderable, ignorable, mapping):
+    skating = False
+    leisure = tags.get('leisure', None)
+    if leisure == 'pitch':
+        if tags.get('sport', None) == 'ice_skating':
+            skating = True
+    if leisure == 'ice_rink':
+        sport = tags.get('sport', None)
+        if sport is None or sport == 'ice_skating':
+            skating = True
+            renderable = True
+            tags['area'] = 'yes'
+    if skating:
+        tags['piste:type'] = 'ice_skate'
+        mapping['label'] = True
+        if tags.get('covered', 'no') == 'yes':
+            tags['area'] = 'no'
     return (renderable, ignorable, mapping)
 
 
@@ -180,7 +200,7 @@ tags = {
         },
         'track': {
             'zoom-min': 13,
-            'union': 'highway,tunnel,layer,tracktype,winter_road,ice_road,piste:type',
+            'union': 'highway,tunnel,layer,smoothness,winter_road,ice_road,piste:type',
             'union-zoom-max': 13,
             'clip-buffer': 8,
             'check-meta': True
@@ -325,7 +345,8 @@ tags = {
         'wood': {
             'zoom-min': 8,
             'transform': 'filter-rings',
-            'union': 'natural',
+            'keep-tags': 'natural', # used to strip names
+            #'union': 'natural',
             'filter-area': 2,
             'buffer': 1
         },
@@ -342,6 +363,16 @@ tags = {
             'transform': 'filter-rings',
             'filter-area': 4,
             'buffer': 0.3
+        },
+        'bay': {
+            'zoom-min': 8,
+            'filter-area': 4,
+            'label': True
+        },
+        'strait': {
+            'zoom-min': 8,
+            'filter-area': 4,
+            'label': True
         },
         'grassland': DEFAULT_AREA,
         'heath': DEFAULT_AREA,
@@ -361,7 +392,8 @@ tags = {
         'sand': DEFAULT_AREA,
         'beach': {
             'zoom-min': 10,
-            'filter-area': 8
+            'filter-area': 8,
+            'label': True
         },
         'mud': DEFAULT_AREA,
         'glacier': {
@@ -377,6 +409,7 @@ tags = {
         'saddle': {'zoom-min': 13},
         'cave_entrance': {'zoom-min': 14},
         'spring': {'zoom-min': 13},
+        'tree_row': {'zoom-min': 14},
         'tree': {'zoom-min': 14},
         'waterfall': {'rewrite-key': 'waterway'},
     },
@@ -399,6 +432,12 @@ tags = {
         'stream': {'zoom-min': 13, 'check-meta': True},
         'drain': {'zoom-min': 14, 'check-meta': True},
         'ditch': {'zoom-min': 14, 'check-meta': True},
+    },
+    'wetland': {
+        '__any__': {
+            'one-of': ['marsh', 'reedbed', 'saltmarsh', 'wet_meadow', 'swamp', 'mangrove', 'bog', 'fen', 'string_bog', 'tidalflat'],
+            'render': False
+        },
     },
     'aerialway': {
         'mixed_lift': {'rewrite-value': 'chair_lift'},
@@ -432,9 +471,20 @@ tags = {
     },
     'leisure': {
         'nature_reserve': {'rewrite-key': 'boundary', 'rewrite-value': 'national_park'},
+        'ice_rink': {
+            'modify-mapping': _ice_skate_mapper,
+            'zoom-min': 13,
+            'filter-area': 8,
+            'render': False,
+            '__strip__': True
+        },
+        'pitch': {
+            'modify-mapping': _ice_skate_mapper,
+            'zoom-min': 12,
+            'filter-area': 8
+        },
         'garden': DEFAULT_AREA,
         'golf_course': DEFAULT_AREA,
-        'pitch': DEFAULT_AREA,
         'stadium': DEFAULT_AREA,
         'common': DEFAULT_AREA,
         'dog_park': {'zoom-min': 14},
@@ -445,7 +495,8 @@ tags = {
         'beach_resort': DEFAULT_LABELED_AREA,
         'slipway': DEFAULT_PLACE,
         'swimming_pool': DEFAULT_PLACE,
-        'sauna': DEFAULT_PLACE
+        'sauna': DEFAULT_PLACE,
+        'amusement_arcade': DEFAULT_PLACE
     },
     'amenity': {
         'university': DEFAULT_PLACE,
@@ -488,6 +539,7 @@ tags = {
         'car_rental': DEFAULT_PLACE,
         'ferry_terminal': DEFAULT_PLACE,
         'shower': DEFAULT_PLACE,
+        'boat_rental': DEFAULT_PLACE,
         'grave_yard': {'rewrite-key': 'landuse', 'rewrite-value': 'cemetery'},
         'swimming_pool': {'rewrite-key': 'leisure'},
     },
@@ -528,6 +580,7 @@ tags = {
     'tourism': {
         'picnic_site': DEFAULT_LABELED_AREA,
         'zoo': DEFAULT_LABELED_AREA,
+        'theme_park': DEFAULT_LABELED_AREA,
         'wilderness_hut': DEFAULT_PLACE,
         'alpine_hut': DEFAULT_PLACE,
         'camp_site': DEFAULT_PLACE,
@@ -547,7 +600,7 @@ tags = {
         'castle': DEFAULT_PLACE,
         'ruins': DEFAULT_PLACE,
         'monument': DEFAULT_PLACE,
-	'archaeological_site': DEFAULT_PLACE
+        'archaeological_site': DEFAULT_PLACE
     },
     'route': {
         'ferry': {
@@ -607,13 +660,13 @@ tags = {
         'toll_booth': {'zoom-min': 14},
         'yes': {'zoom-min': 14},
         'city_wall': {'zoom-min': 13},
-        'fence': {'zoom-min': 14},
-        'hedge': {'zoom-min': 14},
-        'retaining_wall': {'zoom-min': 14},
-        'wall': {'zoom-min': 14},
+        'fence': {'zoom-min': 16},
+        'hedge': {'zoom-min': 16},
+        'retaining_wall': {'zoom-min': 16},
+        'wall': {'zoom-min': 15},
     },
     'man_made': {
-        'cutline': {'zoom-min': 14},
+        'cutline': {'zoom-min': 14, 'pre-process': cutlines.process, '__strip__': True},
         'pier': {'zoom-min': 14},
         'bridge': DEFAULT_PLACE,
         'tower': {'zoom-min': 14},
@@ -633,6 +686,12 @@ tags = {
             'adjust': osm.boolean,
             'render': False
         },
+    },
+    'sport': {
+        '__any__': {
+            'render': False
+        },
+        '__strip__': True
     },
     'layer': {
         '__any__': {
@@ -763,19 +822,35 @@ tags = {
         },
     },
     'smoothness': {
-        'very_bad': {
-            'rewrite-key': 'tracktype',
-            'rewrite-value': 'grade3',
+        '__any__': {
+            'one-of': ['excellent','good','intermediate','bad','very_bad','horrible','very_horrible','impassable'],
+            'render': False
+        },
+    },
+    'tracktype': {
+        'grade1': {
+            'rewrite-key': 'smoothness',
+            'rewrite-value': 'intermediate',
             'rewrite-if-missing': True
         },
-        'horrible': {
-            'rewrite-key': 'tracktype',
-            'rewrite-value': 'grade4',
+        'grade2': {
+            'rewrite-key': 'smoothness',
+            'rewrite-value': 'bad',
             'rewrite-if-missing': True
         },
-        'very_horrible': {
-            'rewrite-key': 'tracktype',
-            'rewrite-value': 'grade5',
+        'grade3': {
+            'rewrite-key': 'smoothness',
+            'rewrite-value': 'bad',
+            'rewrite-if-missing': True
+        },
+        'grade4': {
+            'rewrite-key': 'smoothness',
+            'rewrite-value': 'very_bad',
+            'rewrite-if-missing': True
+        },
+        'grade5': {
+            'rewrite-key': 'smoothness',
+            'rewrite-value': 'horrible', # it's not exactly correct but is often used to mark extremely bad roads
             'rewrite-if-missing': True
         },
     },
@@ -821,6 +896,13 @@ tags = {
             'adjust': osm.boolean,
             'render': False
         },
+    },
+    'covered': {
+        '__any__': {
+            'adjust': osm.boolean,
+            'render': False
+        },
+        '__strip__': True
     },
     'via_ferrata': {
         '__any__': {
@@ -903,12 +985,6 @@ tags = {
             'render': False
         }
     },
-    'tracktype': {
-        '__any__': {
-            'one-of': ['grade1','grade2','grade3','grade4','grade5'],
-            'render': False
-        }
-    },
     'access': {
         '__any__': {
             'one-of': ['private','no'],
@@ -916,6 +992,14 @@ tags = {
         }
     },
     'aerodrome': {
+        'international': {
+            'zoom-min': 7,
+            'basemap-label': True,
+            'render': False
+        },
+        '__strip__': True
+    },
+    'aerodrome:type': {
         'international': {
             'zoom-min': 7,
             'basemap-label': True,
@@ -966,35 +1050,35 @@ tags = {
 
 
 def _water_z2_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 0, 'zoom-max': 2})
+    return ({'natural': 'sea'}, {'zoom-min': 0, 'zoom-max': 2})
 
 
 def _water_z3_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 3, 'zoom-max': 3})
+    return ({'natural': 'sea'}, {'zoom-min': 3, 'zoom-max': 3})
 
 
 def _water_z4_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 4, 'zoom-max': 4})
+    return ({'natural': 'sea'}, {'zoom-min': 4, 'zoom-max': 4})
 
 
 def _water_z5_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 5, 'zoom-max': 5})
+    return ({'natural': 'sea'}, {'zoom-min': 5, 'zoom-max': 5})
 
 
 def _water_z6_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 6, 'zoom-max': 6})
+    return ({'natural': 'sea'}, {'zoom-min': 6, 'zoom-max': 6})
 
 
 def _water_z7_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 7, 'zoom-max': 7})
+    return ({'natural': 'sea'}, {'zoom-min': 7, 'zoom-max': 7})
 
 
 def _water_z8_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 8, 'buffer': 0.2, 'transform': 'filter-rings', 'zoom-max': 8, 'union': 'natural'})
+    return ({'natural': 'sea'}, {'zoom-min': 8, 'buffer': 0.2, 'transform': 'filter-rings', 'zoom-max': 8, 'union': 'natural'})
 
 
 def _water_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 9, 'buffer': 1, 'transform': 'filter-rings', 'union': 'natural'})
+    return ({'natural': 'sea'}, {'zoom-min': 9, 'buffer': 1, 'transform': 'filter-rings', 'union': 'natural'})
 
 
 def _lakes_50m_mapper(row):
