@@ -99,6 +99,8 @@ class VectorTile:
 
             if self.mappings[k].get('__strip__', False):
                 continue
+            if self.mappings[k].get(v, {}).get('__strip__', False):
+                continue
 
             tag = str(k), str(v)
 
