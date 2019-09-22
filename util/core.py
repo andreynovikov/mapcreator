@@ -28,6 +28,9 @@ class Element():
         #return "%s: %s\n%s\n%s\n" % (str(self.id), geom, self.tags, self.mapping)
         return "%s: %s\n%s\n%s\n" % (self.osm_id(), self.geom.__repr__(), self.tags, self.mapping)
 
+    def __repr__(self):
+        return str(self)
+
     def clone(self, geom):
         el = Element(self.id, geom, self.tags, self.mapping)
         el.label = self.label

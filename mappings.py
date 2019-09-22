@@ -63,6 +63,42 @@ def _ice_skate_mapper(tags, renderable, ignorable, mapping):
     return (renderable, ignorable, mapping)
 
 
+"""
+Mapping parameters:
+
+   rewrite-key - rewrite tag key
+   rewrite-if-missing - rewrite only if there is no target tag key
+   rewrite-value - rewrite tag value
+   one-of - apply only if value is in the specified list
+   adjust
+   filter-type
+   render - mark element as renderable (default True)
+   zoom-min - set minimum zoom for element
+   zoom-max - set maximum zoom for element
+   ignore
+   filter-area
+   buffer
+   enlarge
+   simplify
+   label
+   filter-type
+   clip-buffer
+   keep-tags - force keeping tags with keys in the specified list
+   keep-for
+   union
+   union-zoom-max
+   transform - transform geom ['point', 'filter-rings']
+   transform-exclusive - apply transform only this is the only renderable tag
+   force-line - treat closed line as line instead of area
+   check-meta - get additional data from database
+   modify-mapping - call predefined routine that post-modifies mapping (stacked)
+   pre-process - apply pre-processing routine (stacked)
+
+   basemap-label
+   basemap-keep-tags
+   basemap-filter-area
+"""
+
 DEFAULT_AREA = {
     'zoom-min': 12,
     'filter-area': 8
@@ -346,8 +382,9 @@ tags = {
             'zoom-min': 8,
             'transform': 'filter-rings',
             'keep-tags': 'natural', # used to strip names
-            #'union': 'natural',
+            'union': 'natural',
             'filter-area': 2,
+            'simplify': 0.5,
             'buffer': 1
         },
         'marsh': {
@@ -367,11 +404,13 @@ tags = {
         'bay': {
             'zoom-min': 8,
             'filter-area': 4,
+            'transform': 'point',
             'label': True
         },
         'strait': {
             'zoom-min': 8,
             'filter-area': 4,
+            'transform': 'point',
             'label': True
         },
         'grassland': DEFAULT_AREA,
@@ -436,6 +475,7 @@ tags = {
     'wetland': {
         '__any__': {
             'one-of': ['marsh', 'reedbed', 'saltmarsh', 'wet_meadow', 'swamp', 'mangrove', 'bog', 'fen', 'string_bog', 'tidalflat'],
+            'buffer': 0.5,
             'render': False
         },
     },
@@ -458,7 +498,7 @@ tags = {
         'sea': {'ignore': True, 'zoom-min': 5},
         'country': {'ignore': True, 'zoom-min': 3},
         'state': {'ignore': True, 'zoom-min': 5},
-        'island': {'zoom-min': 12},
+        'island': {'zoom-min': 12, 'transform': 'point', 'transform-exclusive': True},
         'city': {'filter-type': ['Point'], 'zoom-min': 7},
         'town': {'filter-type': ['Point'], 'zoom-min': 7},
         'village': {'zoom-min': 12},
@@ -637,6 +677,7 @@ tags = {
     },
     'building': {
         '__any__': {
+            'adjust': osm.boolean,
             'zoom-min': 14,
             'clip-buffer': 0
         },
@@ -644,6 +685,7 @@ tags = {
     'building:part': {
         '__any__': {
             'filter-type': ['Polygon','MultiPolygon'],
+            'adjust': osm.boolean,
             'zoom-min': 14,
             'clip-buffer': 0
         },
@@ -727,6 +769,7 @@ tags = {
     'addr:housenumber': {
         '__any__': {
             'label': True,
+            'keep-for': 'building,building:part',
             'render': False
         },
         '__strip__': True
@@ -881,6 +924,7 @@ tags = {
     'lit': {
         '__any__': {
             'adjust': osm.boolean,
+            'keep-for': 'piste:type',
             'render': False
         },
         '__strip__': True
@@ -1017,6 +1061,7 @@ tags = {
     'height': {
         '__any__': {
             'adjust': osm.height,
+            'keep-for': 'building,building:part',
             'render': False
         },
         '__strip__': True
@@ -1024,12 +1069,18 @@ tags = {
     'min_height': {
         '__any__': {
             'adjust': osm.height,
+            'keep-for': 'building,building:part',
             'render': False
         },
         '__strip__': True
     },
+    'ref': {
+        '__any__': {
+            'keep-for': 'highway',
+            'render': False
+        }
+    },
     'service': {'parking_aisle': {'render': False}},
-    'ref': {'__any__': {'render': False}},
     'iata': {'__any__': {'render': False}},
     'icao': {'__any__': {'render': False}},
     'station': {'__any__': {'render': False}},
@@ -1106,7 +1157,7 @@ def _contours_mapper(row):
     zoom = 14
     if elevation % 100 == 0:
         contour = 'elevation_major'
-        zoom = 11
+        zoom = 12
     elif elevation % 50 == 0:
         contour = 'elevation_medium'
     else:
@@ -1125,7 +1176,7 @@ def _boundaries_mapper(row):
     if row['maritime'] and row['maritime'] == 'yes':
         zoom = 8
         tags['maritime'] = row['maritime']
-    return (tags, {'zoom-min': zoom, 'union': 'boundary,admin_level,maritime', 'simplify': 3})
+    return (tags, {'zoom-min': zoom, 'union': 'boundary,admin_level,maritime', 'simplify': 2})
 
 
 def _routes_mapper(row):
@@ -1138,7 +1189,7 @@ def _routes_mapper(row):
         zoom = 9
     elif row['network'] == 'rwn':
         zoom = 10
-    return (tags, {'zoom-min': zoom, 'simplify': 3})
+    return (tags, {'zoom-min': zoom, 'simplify': 2})
 
 
 queries = [

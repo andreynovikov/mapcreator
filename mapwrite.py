@@ -26,7 +26,6 @@ import shapely.speedups
 from shapely.geometry import MultiLineString, Polygon
 from shapely.prepared import prep
 from shapely.ops import transform, linemerge, cascaded_union, unary_union
-from shapely.algorithms.polylabel import polylabel
 from shapely.affinity import affine_transform
 
 import configuration
@@ -34,7 +33,7 @@ import mappings
 from encoder import encode
 from util.core import Element
 from util.database import MTilesDatabase
-from util.geometry import wgs84_to_mercator, mercator_to_wgs84, clockwise
+from util.geometry import wgs84_to_mercator, mercator_to_wgs84, clockwise, polylabel
 from util.osm import is_area
 from util.osm.kind import is_place, is_building, get_kind
 from util.osm.buildings import get_building_properties
@@ -96,7 +95,8 @@ class OsmFilter(osmium.SimpleHandler):
                         v = m['adjust'](v)
                     if v is None:
                         continue
-                    if isinstance(v, str) and k not in ('name', 'name:en', 'name:de', 'name:ru', 'ref', 'icao', 'iata'):
+                    if isinstance(v, str) and k not in ('name', 'name:en', 'name:de', 'name:ru', \
+                                                        'ref', 'icao', 'iata', 'addr:housenumber'):
                         v = v.strip().lower()
                         if ';' in v:
                             v = v.split(';')[0]
@@ -104,8 +104,12 @@ class OsmFilter(osmium.SimpleHandler):
                     render = m.get('render', True)
                     renderable = renderable or render
                     ignorable = ignorable and (m.get('ignore', not render))
-                    for k in ('transform','filter-area','buffer','enlarge','force-line','label','filter-type','clip-buffer', \
-                              'keep-tags','basemap-label','basemap-keep-tags','basemap-filter-area'):
+                    if 'keep-for' in m:
+                        keep = mapping.get('keep-for', {})
+                        keep[k] = m['keep-for']
+                        mapping['keep-for'] = keep
+                    for k in ('filter-area','buffer','enlarge','simplify','force-line','label','filter-type', \
+                              'clip-buffer','keep-tags','basemap-label','basemap-keep-tags','basemap-filter-area'):
                         if k in m:
                             mapping[k] = m[k]
                     if 'union' in m:
@@ -128,6 +132,19 @@ class OsmFilter(osmium.SimpleHandler):
                             mapping['union'] = combined_union
                         else:
                             mapping['union'] = m['union']
+                    transform_exclusive = m.get('transform-exclusive', False)
+                    if 'transform' in m:
+                        # apply exclusive transform only if this is the first match
+                        if not transform_exclusive or mapping.get('transform-exclusive', None) is None:
+                            mapping['transform'] = m['transform']
+                        elif transform_exclusive:
+                            transform_exclusive = False
+                    if render:
+                        if mapping.get('transform-exclusive', False):
+                            # if there was previous exclusive transform remove it
+                            if 'transform' not in m or transform_exclusive:
+                                del mapping['transform']
+                        mapping['transform-exclusive'] = transform_exclusive
                     if 'check-meta' in m:
                         mapping['check-meta'] = m['check-meta'] or mapping.get('check-meta', False)
                     if 'union-zoom-max' in m:
@@ -149,6 +166,11 @@ class OsmFilter(osmium.SimpleHandler):
         if self.basemap and mapping.get('zoom-min', 0) > 7:
             renderable = False
         if renderable:
+            if 'keep-for' in mapping:
+                for k, v in mapping['keep-for'].items():
+                    keep = [x.strip() for x in v.split(',')]
+                    if not set(keep) & set(filtered_tags.keys()):
+                        del filtered_tags[k]
             tag_filter = None
             if self.basemap and 'basemap-keep-tags' in mapping:
                 tag_filter = mapping['basemap-keep-tags']
@@ -276,26 +298,32 @@ def process_element(geom, tags, mapping, basemap=False):
         height, min_height, color, roof_color = get_building_properties(tags)
     else:
         height, min_height, color, roof_color = (None, None, None, None)
-    label = None
-    if mapping.get('label', False) and (not basemap or mapping.get('basemap-label', False)):
-        if geom.type == 'Polygon':
-            label = polylabel(geom, 1.194) # pixel width at zoom 17
-        elif geom.type == 'MultiPolygon':
-            label = []
-            area = 0
-            for p in geom:
-                l = polylabel(p, 1.194)
-                if p.area > area: # we need to find largest polygon for main label
-                    area = p.area
-                    label.insert(0, l)
-                else:
-                    label.append(l)
-        else:
-            pass
+
     area = None
-    if mapping.get('filter-area', None) or (basemap and mapping.get('basemap-filter-area', None)):
+    label = None
+    new_geom = None
+
+    if mapping.get('label', False) and (not basemap or mapping.get('basemap-label', False)):
+        label = polylabel(geom)
+    if 'transform' in mapping:
+        if mapping.get('transform') == 'point':
+            area = geom.area
+            if label:
+                if isinstance(label, list):
+                    new_geom = label[0]
+                else:
+                    new_geom = label
+            else:
+                point = polylabel(geom)
+                if isinstance(point, list):
+                    new_geom = point[0]
+                else:
+                    new_geom = point
+
+    if area is None and (mapping.get('filter-area', None) or (basemap and mapping.get('basemap-filter-area', None))):
         area = geom.area
-    return (kind, area, label, height, min_height, color, roof_color)
+
+    return (kind, new_geom, area, label, height, min_height, color, roof_color)
 
 
 class MapWriter:
@@ -409,7 +437,9 @@ class MapWriter:
             for idx, element in enumerate(elements):
                 def process_result(result, index=idx):
                     el = elements[index]
-                    el.kind, el.area, el.label, el.height, el.min_height, el.building_color, el.roof_color = result
+                    el.kind, new_geom, el.area, el.label, el.height, el.min_height, el.building_color, el.roof_color = result
+                    if new_geom:
+                        el.geom = new_geom
                     # remove overlapping places (point and polygon)
                     # due to file processing logic we assume that points go first, if not - introduce sort
                     if el.id and is_place(el.kind):
@@ -750,10 +780,6 @@ class MapWriter:
                     first = unions[union][0]
                     # create united geometry
                     united_geom = cascaded_union([el.geometry for el in unions[union]])
-                    # simplify after union
-                    simple_geom = united_geom.simplify(tile.pixelWidth * first.mapping.get('simplify', 1))
-                    if simple_geom.is_valid:
-                        unitid_geom = simple_geom
                     if type(first.mapping['union']) is dict:
                         pattern = [k for k, v in first.mapping['union'].items() if tile.zoom >= v]
                     else:
@@ -771,6 +797,10 @@ class MapWriter:
                                 united_geom = filter_rings(united_geom, pixelArea)
                         if 'buffer' in first.mapping:
                             united_geom = united_geom.buffer(tile.pixelWidth * -first.mapping.get('buffer', 1))
+                        # simplify after union
+                        simple_geom = united_geom.simplify(tile.pixelWidth * first.mapping.get('simplify', 1))
+                        if simple_geom.is_valid:
+                            united_geom = simple_geom
                     geometry = affine_transform(united_geom, tile.matrix)
                     if not geometry.is_empty:
                         features.append(Feature(None, geometry, united_tags, None, None, None, None, None, None))

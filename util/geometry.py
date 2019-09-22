@@ -3,6 +3,7 @@ from functools import partial
 import pyproj
 from shapely import geometry
 from shapely.geometry.polygon import orient
+from shapely.algorithms.polylabel import polylabel as shapely_polylabel
 
 
 wgs84 = pyproj.Proj(init='epsg:4326')
@@ -25,6 +26,7 @@ def clockwise(geom):
     else:
         return geom
 
+
 # old version
 def clockwise_polygon(polygon):
     exterior = polygon.exterior
@@ -42,3 +44,20 @@ def clockwise_polygon(polygon):
         return geometry.Polygon(exterior, interiors)
     else:
         return polygon
+
+
+def polylabel(geom):
+    label = None
+    if geom.type == 'Polygon':
+        label = shapely_polylabel(geom, 1.194) # pixel width at zoom 17
+    elif geom.type == 'MultiPolygon':
+        label = []
+        area = 0
+        for p in geom:
+            l = shapely_polylabel(p, 1.194)
+            if p.area > area: # we need to find largest polygon for main label
+                area = p.area
+                label.insert(0, l)
+            else:
+                label.append(l)
+    return label
