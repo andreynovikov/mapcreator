@@ -20,12 +20,11 @@ import psycopg2
 import psycopg2.extras
 import osmium
 import mercantile
-import numpy
 import shapely.wkb as shapelyWkb
 import shapely.speedups
 from shapely.geometry import MultiLineString, Polygon
 from shapely.prepared import prep
-from shapely.ops import transform, linemerge, cascaded_union, unary_union
+from shapely.ops import transform, linemerge, cascaded_union
 from shapely.affinity import affine_transform
 
 import configuration
@@ -33,7 +32,7 @@ import mappings
 from encoder import encode
 from util.core import Element
 from util.database import MTilesDatabase
-from util.geometry import wgs84_to_mercator, mercator_to_wgs84, clockwise, polylabel
+from util.geometry import wgs84_to_mercator, clockwise, polylabel
 from util.osm import is_area
 from util.osm.kind import is_place, is_building, get_kind
 from util.osm.buildings import get_building_properties
@@ -79,7 +78,7 @@ class OsmFilter(osmium.SimpleHandler):
                 m = mappings.tags[tag.k].get('__any__', None)
                 if m is None:
                     m = mappings.tags[tag.k].get(tag.v, None)
-                if m is not None: #empty dictionaries should be also accounted
+                if m is not None:  # empty dictionaries should be also accounted
                     k = tag.k.strip().lower()
                     v = tag.v
                     if 'rewrite-key' in m or 'rewrite-value' in m:
@@ -95,7 +94,7 @@ class OsmFilter(osmium.SimpleHandler):
                         v = m['adjust'](v)
                     if v is None:
                         continue
-                    if isinstance(v, str) and k not in ('name', 'name:en', 'name:de', 'name:ru', \
+                    if isinstance(v, str) and k not in ('name', 'name:en', 'name:de', 'name:ru',
                                                         'ref', 'icao', 'iata', 'addr:housenumber'):
                         v = v.strip().lower()
                         if ';' in v:
@@ -108,8 +107,9 @@ class OsmFilter(osmium.SimpleHandler):
                         keep = mapping.get('keep-for', {})
                         keep[k] = m['keep-for']
                         mapping['keep-for'] = keep
-                    for k in ('filter-area','buffer','enlarge','simplify','force-line','label','filter-type', \
-                              'clip-buffer','keep-tags','basemap-label','basemap-keep-tags','basemap-filter-area'):
+                    for k in ('filter-area', 'buffer', 'enlarge', 'simplify', 'force-line', 'label',
+                              'filter-type', 'clip-buffer', 'keep-tags', 'basemap-label',
+                              'basemap-keep-tags', 'basemap-filter-area'):
                         if k in m:
                             mapping[k] = m[k]
                     if 'union' in m:
@@ -191,9 +191,9 @@ class OsmFilter(osmium.SimpleHandler):
             if t > 1:
                 area = is_area(tags)
                 if t == 2 and o.is_closed() and area:
-                    return # will get it later in area handler
+                    return  # will get it later in area handler
                 if t == 3 and o.from_way() and not area:
-                    return # have added it already in ways handler
+                    return  # have added it already in ways handler
             try:
                 id = o.id
                 if t == 1:
@@ -205,7 +205,7 @@ class OsmFilter(osmium.SimpleHandler):
                     wkb = wkbFactory.create_multipolygon(o)
                 geom = transform(wgs84_to_mercator, shapelyWkb.loads(wkb, hex=True))
                 if t == 3 and not o.is_multipolygon():
-                    geom = geom[0] # simplify geometry
+                    geom = geom[0]  # simplify geometry
                 if mapping.pop('force-line', False) and geom.type in ['Polygon', 'MultiPolygon']:
                     geom = geom.boundary
                 if 'filter-type' in mapping and geom.type not in mapping.pop('filter-type', []):
@@ -293,7 +293,7 @@ class BBoxCache(defaultdict):
 
 def process_element(geom, tags, mapping, basemap=False):
     kind = get_kind(tags)
-    #TODO process only if kind is building
+    # TODO process only if kind is building
     if is_building(kind):
         height, min_height, color, roof_color = get_building_properties(tags)
     else:
@@ -359,7 +359,7 @@ class MapWriter:
         self.logger.info("Creating map: %s" % map_path)
 
         log_path = self.log_path(x, y)
-        #TODO redirect logger to file
+        # TODO redirect logger to file
         logfile = open(log_path, 'a')
 
         if not from_file:
@@ -420,7 +420,6 @@ class MapWriter:
             else:
                 num_worker_threads = 1
                 self.logger.info("    running in single threaded mode")
-            worker_threads = []
 
             pool = None
             if self.multiprocessing and len(elements) > 100:
@@ -492,7 +491,7 @@ class MapWriter:
                 else:
                     queries = mappings.queries
                     bounds = mercantile.xy_bounds(x, y, 7)
-                    expand = 1.194*4
+                    expand = 1.194 * 4
                     left_expand = 0
                     right_expand = 0
                     if x > 0:
@@ -514,19 +513,19 @@ class MapWriter:
                               .format(query=data['query'], bbox=qbbox)
                     try:
                         cur = c.cursor(cursor_factory=psycopg2.extras.DictCursor)
-                        cur.execute(str(sql)) # if str() is not used 'where' is lost for some weird reason
+                        cur.execute(str(sql))  # if str() is not used 'where' is lost for some weird reason
                         rows = cur.fetchall()
                         self.logger.debug("      %s", cur.query)
                         self.logger.debug("      fetched %d elements", len(rows))
                         for row in rows:
                             geom = shapelyWkb.loads(bytes(row['geometry']))
-                            if data['srid'] != 3857: # we support only 3857 and 4326 projections
+                            if data['srid'] != 3857:  # we support only 3857 and 4326 projections
                                 geom = transform(wgs84_to_mercator, geom)
                             tags, mapping = data['mapper'](row)
                             extra_elements.append(Element(None, geom, tags, mapping))
-                    except (psycopg2.ProgrammingError, psycopg2.InternalError) as e:
+                    except (psycopg2.ProgrammingError, psycopg2.InternalError):
                         self.logger.exception("Query error: %s" % sql)
-                    except shapely.errors.WKBReadingError as e:
+                    except shapely.errors.WKBReadingError:
                         self.logger.error("Geometry error: %s" % bytes(row['geometry']).hex())
                     finally:
                         cur.close()
@@ -551,7 +550,7 @@ class MapWriter:
                             row = cur.fetchone()
                             if row:
                                 element.tags['route:network'] = row['network']
-                        except (psycopg2.ProgrammingError, psycopg2.InternalError) as e:
+                        except (psycopg2.ProgrammingError, psycopg2.InternalError):
                             self.logger.exception("Query error: %s" % sql)
                         finally:
                             cur.close()
@@ -678,7 +677,7 @@ class MapWriter:
                 break
             try:
                 self.generateTile(tile)
-            except Exception as e:
+            except Exception:
                 self.logger.exception("Error generating tile %s" % tile)
             tile_queue.task_done()
 
@@ -701,7 +700,7 @@ class MapWriter:
                     try:
                         building_parts_geom = cascaded_union(building_parts)
                         building_parts_prepared = prep(building_parts_geom)
-                    except Exception as e:
+                    except Exception:
                         self.logger.error("Failed to dissolve building parts in tile %s" % tile)
                         building_parts_geom = None
 
@@ -732,8 +731,8 @@ class MapWriter:
                 else:
                     if 'enlarge' in element.mapping:
                         geom = geom.buffer(tile.pixelWidth * element.mapping.get('enlarge', 1))
-                    if 'building' in element.tags and not 'building:outline' in element.tags and not 'building:part' in element.tags:
-                        #if building_parts_geom is None or not building_parts_prepared.intersects(element.geom) or building_parts_geom.intersection(element.geom).area == 0:
+                    if 'building' in element.tags and 'building:outline' not in element.tags and 'building:part' not in element.tags:
+                        # if building_parts_geom is None or not building_parts_prepared.intersects(element.geom) or building_parts_geom.intersection(element.geom).area == 0:
                         if building_parts_geom is None or not building_parts_prepared.covers(element.geom):
                             element.tags['building:part'] = element.tags['building']
                 if united:
@@ -774,7 +773,7 @@ class MapWriter:
                 features.append(Feature(element.id, geometry, element.tags, element.kind, labels,
                                         element.height, element.min_height, element.building_color, element.roof_color))
 
-            #TODO combine union and merge to one logical block
+            # TODO combine union and merge to one logical block
             for union in unions:
                 try:
                     first = unions[union][0]
@@ -804,7 +803,7 @@ class MapWriter:
                     geometry = affine_transform(united_geom, tile.matrix)
                     if not geometry.is_empty:
                         features.append(Feature(None, geometry, united_tags, None, None, None, None, None, None))
-                except Exception as e:
+                except Exception:
                     self.logger.error("Failed to process union %s in tile %s" % (first.mapping['union'], tile))
 
             for merge in merges:
@@ -836,7 +835,7 @@ class MapWriter:
                     geometry = affine_transform(united_geom, tile.matrix)
                     if not geometry.is_empty:
                         features.append(Feature(None, geometry, united_tags, None, None, None, None, None, None))
-                except Exception as e:
+                except Exception:
                     self.logger.error("Failed to process merge %s in tile %s" % (first.mapping['union'], tile))
 
             encoded = encode(features, mappings.tags)
@@ -847,10 +846,10 @@ class MapWriter:
             nx = tile.x << 1
             ny = tile.y << 1
             nz = tile.zoom + 1
-            self.generateSubtiles(nx,   ny,   nz, tile)
-            self.generateSubtiles(nx,   ny+1, nz, tile)
-            self.generateSubtiles(nx+1, ny,   nz, tile)
-            self.generateSubtiles(nx+1, ny+1, nz, tile)
+            self.generateSubtiles(nx, ny, nz, tile)
+            self.generateSubtiles(nx, ny + 1, nz, tile)
+            self.generateSubtiles(nx + 1, ny, nz, tile)
+            self.generateSubtiles(nx + 1, ny + 1, nz, tile)
 
     def generateSubtiles(self, x, y, zoom, tile):
         subtile = Tile(zoom, x, y)
@@ -865,11 +864,10 @@ class MapWriter:
             elif prepared_clip.intersects(element.geom):
                 try:
                     subtile.elements.append(element.clone(clipCache[element.mapping.get('clip-buffer', 4)].intersection(element.geom)))
-                except Exception as e:
+                except Exception:
                     self.logger.exception("Error clipping element for tile %s" % subtile)
                     self.logger.error("Element was: %s" % element)
         self.tileQueue.put(subtile)
-
 
     def generateIntermediateFile(self, source_pbf_path, x, y, z, name):
         ax = x >> (7 - z)
@@ -884,7 +882,7 @@ class MapWriter:
                 os.remove(target_pbf_path)
             bbox = mercantile.bounds(ax, ay, z)
             osmconvert_call = [configuration.OSMCONVERT_PATH, source_pbf_path]
-            osmconvert_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (bbox.west,bbox.south,bbox.east,bbox.north)]
+            osmconvert_call += ['-b=%.4f,%.4f,%.4f,%.4f' % (bbox.west, bbox.south, bbox.east, bbox.north)]
             osmconvert_call += ['--complete-ways', '--complete-multipolygons', '--complete-boundaries', '-o=%s' % target_pbf_path]
             self.logger.debug("    calling: %s", " ".join(osmconvert_call))
             if not self.dry_run:
@@ -892,7 +890,6 @@ class MapWriter:
             else:
                 subprocess.check_call(['touch', target_pbf_path])
         return target_pbf_path
-
 
     def map_path_base(self, x, y, zoom=7):
         """
@@ -967,4 +964,4 @@ if __name__ == "__main__":
         mapWriter = MapWriter(args.data_path, args.dry_run, args.noninteractive)
         mapWriter.createMap(args.x, args.y, args.intermediate, args.keep, args.from_file)
     except Exception as e:
-        logger.exception("An error occurred:")
+        logger.exception("An error occurred:", e)

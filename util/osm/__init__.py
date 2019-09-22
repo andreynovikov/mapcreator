@@ -1,6 +1,7 @@
 import numbers
 import re
 
+
 def boolean(value):
     if value is None or value.strip().lower() in ('false', 'no', '0', 'undefined'):
         return 'no'
@@ -34,6 +35,7 @@ meter_pattern = re.compile('([+-]?[0-9.]+)\s*m')
 feet_pattern = re.compile('([+-]?[0-9.]+)\s*ft')
 feet_or_inch_pattern = re.compile('([+-]?[0-9.]+)\'(?: *([+-]?[0-9.]+)")?')
 number_pattern = re.compile('([+-]?[0-9.]+)')
+
 
 def height(value):
     """
@@ -79,11 +81,11 @@ def height(value):
         inches = feet_match.group(2)
         try:
             feet_as_float = float(feet)
-        except (ValueError,TypeError):
+        except (ValueError, TypeError):
             feet_as_float = None
         try:
             inches_as_float = float(inches)
-        except (ValueError,TypeError):
+        except (ValueError, TypeError):
             inches_as_float = None
         total_inches = 0.0
         parsed_feet_or_inches = False
@@ -110,7 +112,7 @@ def height(value):
 
 def is_area(tags):
     if not tags:
-        return True # or False?
+        return True  # or False?
 
     result = True
     for k, v in tags.items():
@@ -119,20 +121,20 @@ def is_area(tags):
         if k in ['building', 'building:part']:
             return True
         # as specified by http://wiki.openstreetmap.org/wiki/Key:area
-        if k in ['aeroway','building','landuse','leisure','natural','amenity']:
+        if k in ['aeroway', 'building', 'landuse', 'leisure', 'natural', 'amenity']:
             return True
-        if k in ['highway','barrier']:
+        if k in ['highway', 'barrier']:
             result = False
         if k == 'railway':
             # There is more to the railway tag then just rails, this excludes the
             # most common railway lines from being detected as areas if they are closed.
             # Since this method is only called if the first and last node are the same
             # this should be safe
-            if v in ['rail','tram','subway','monorail','narrow_gauge','preserved','light_rail','construction']:
+            if v in ['rail', 'tram', 'subway', 'monorail', 'narrow_gauge', 'preserved', 'light_rail', 'construction']:
                 result = False
         if k == 'piste:type':
             # These piste types are supposed to be lines even if closed
-            if v in ['nordic','sled','hike','sleigh']:
+            if v in ['nordic', 'sled', 'hike', 'sleigh']:
                 result = False
 
     return result

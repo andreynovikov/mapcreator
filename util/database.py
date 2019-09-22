@@ -1,4 +1,3 @@
-from os.path import exists
 from sqlite3 import connect
 from spooky import hash64
 
@@ -12,7 +11,6 @@ class MTilesDatabase():
     def __init__(self, filename):
         self.filename = filename
         self.namehashes = []
-
 
     def create(self, name, type, version, timestamp, format, bounds=None):
         self.db = connect(self.filename, check_same_thread=False)
@@ -47,7 +45,7 @@ class MTilesDatabase():
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('type', type))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('version', version))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('timestamp', timestamp))
-        #self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('description', description))
+        # self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('description', description))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('format', format))
 
         if bounds is not None:
@@ -56,10 +54,8 @@ class MTilesDatabase():
         self.db.commit()
         self.db.text_factory = bytes
 
-
     def commit(self):
         self.db.commit()
-
 
     def finish(self):
         self.db.commit()
@@ -67,11 +63,9 @@ class MTilesDatabase():
         self.db.close()
         self.db = None
 
-
     def putTile(self, zoom, x, y, content):
         q = 'REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)'
         self.db.execute(q, (zoom, x, y, memoryview(content)))
-
 
     def putName(self, name):
         h = hash64(name)
@@ -82,7 +76,6 @@ class MTilesDatabase():
         q = 'REPLACE INTO names (ref, name) VALUES (?, ?)'
         self.db.execute(q, (h, name))
         return h
-
 
     def putFeature(self, id, tags, kind, label, geometry):
         h = self.putName(tags['name'])

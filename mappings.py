@@ -1,15 +1,17 @@
 from util import osm
 from util.processing import cutlines, pistes
 
+
 class MapTypes:
     Detailed, Base, Stub = range(3)
+
 
 mapType = MapTypes.Detailed
 
 
 def _admin_level_mapper(tags, renderable, ignorable, mapping):
     admin_level = tags.get('admin_level', '0')
-    is_town = tags.get('place', None) in ('city','town')
+    is_town = tags.get('place', None) in ('city', 'town')
     if mapType == MapTypes.Stub:
         renderable = admin_level == '2' or (is_town and tags.get('population', 0) > 0)
     if is_town:
@@ -17,7 +19,7 @@ def _admin_level_mapper(tags, renderable, ignorable, mapping):
             mapping['zoom-min'] = 4
         if admin_level in ('3', '4'):
             mapping['zoom-min'] = 5
-        if admin_level in ('5','6'):
+        if admin_level in ('5', '6'):
             mapping['zoom-min'] = 6
     return (renderable, ignorable, mapping)
 
@@ -25,8 +27,8 @@ def _admin_level_mapper(tags, renderable, ignorable, mapping):
 def _population_mapper(tags, renderable, ignorable, mapping):
     population = tags.get('population', 0)
     if mapType == MapTypes.Stub:
-        renderable = tags.get('place', None) in ('country','city','town')
-    if tags.get('place', None) in ('city','town'):
+        renderable = tags.get('place', None) in ('country', 'city', 'town')
+    if tags.get('place', None) in ('city', 'town'):
         if population >= 150000:
             mapping['zoom-min'] = 6
         if population >= 300000:
@@ -38,7 +40,7 @@ def _population_mapper(tags, renderable, ignorable, mapping):
 
 def _china_mapper(tags, renderable, ignorable, mapping):
     population = tags.get('population', 0)
-    if tags.get('place', None) in ('city','town') and population < 300000:
+    if tags.get('place', None) in ('city', 'town') and population < 300000:
         renderable = False
     return (renderable, ignorable, mapping)
 
@@ -290,9 +292,7 @@ tags = {
         'miniature': {'zoom-min': 14, 'check-meta': True},
         'subway': {'zoom-min': 14, 'check-meta': True},
         'narrow_gauge': {'zoom-min': 14, 'check-meta': True},
-        'preserved': {'zoom-min': 14, 'check-meta': True},
         'funicular': {'zoom-min': 14, 'check-meta': True},
-        'monorail': {'zoom-min': 14, 'check-meta': True},
         'disused': {'zoom-min': 14, 'check-meta': True},
         'abandoned': {'zoom-min': 14, 'check-meta': True},
         'preserved': {'zoom-min': 14, 'check-meta': True},
@@ -323,7 +323,7 @@ tags = {
         },
         'military': {
             'zoom-min': 7,
-            'filter-type': ['Polygon','MultiPolygon'],
+            'filter-type': ['Polygon', 'MultiPolygon'],
             'union': 'landuse',
             'union-zoom-max': 7,
             'filter-area': 128,
@@ -381,7 +381,7 @@ tags = {
         'wood': {
             'zoom-min': 8,
             'transform': 'filter-rings',
-            'keep-tags': 'natural', # used to strip names
+            'keep-tags': 'natural',  # used to strip names
             'union': 'natural',
             'filter-area': 2,
             'simplify': 0.5,
@@ -436,7 +436,7 @@ tags = {
         },
         'mud': DEFAULT_AREA,
         'glacier': {
-            'keep-tags': 'natural', # used to strip names
+            'keep-tags': 'natural',  # used to strip names
             'union': 'natural',
             'ignore': True,
             'zoom-min': 7,
@@ -665,7 +665,7 @@ tags = {
     'boundary': {
         'national_park': {
             'zoom-min': 6,
-            'filter-type': ['Polygon','MultiPolygon'],
+            'filter-type': ['Polygon', 'MultiPolygon'],
             'union': 'boundary',
             'union-zoom-max': 7,
             'basemap-filter-area': 0.0625,
@@ -684,7 +684,7 @@ tags = {
     },
     'building:part': {
         '__any__': {
-            'filter-type': ['Polygon','MultiPolygon'],
+            'filter-type': ['Polygon', 'MultiPolygon'],
             'adjust': osm.boolean,
             'zoom-min': 14,
             'clip-buffer': 0
@@ -866,7 +866,7 @@ tags = {
     },
     'smoothness': {
         '__any__': {
-            'one-of': ['excellent','good','intermediate','bad','very_bad','horrible','very_horrible','impassable'],
+            'one-of': ['excellent', 'good', 'intermediate', 'bad', 'very_bad', 'horrible', 'very_horrible', 'impassable'],
             'render': False
         },
     },
@@ -893,7 +893,7 @@ tags = {
         },
         'grade5': {
             'rewrite-key': 'smoothness',
-            'rewrite-value': 'horrible', # it's not exactly correct but is often used to mark extremely bad roads
+            'rewrite-value': 'horrible',  # it's not exactly correct but is often used to mark extremely bad roads
             'rewrite-if-missing': True
         },
     },
@@ -956,7 +956,7 @@ tags = {
     },
     'admin_level': {
         '__any__': {
-            'one-of': ['1','2','3','4','5','6'],
+            'one-of': ['1', '2', '3', '4', '5', '6'],
             'modify-mapping': _admin_level_mapper,
             'render': False
         },
@@ -1013,13 +1013,13 @@ tags = {
     },
     'trail_visibility': {
         '__any__': {
-            'one-of': ['excellent','good','intermediate','bad','horrible','no'],
+            'one-of': ['excellent', 'good', 'intermediate', 'bad', 'horrible', 'no'],
             'render': False
         }
     },
     'piste:difficulty': {
         '__any__': {
-            'one-of': ['novice','easy','intermediate','advanced','expert','freeride'],
+            'one-of': ['novice', 'easy', 'intermediate', 'advanced', 'expert', 'freeride'],
             'render': False
         }
     },
@@ -1031,7 +1031,7 @@ tags = {
     },
     'access': {
         '__any__': {
-            'one-of': ['private','no'],
+            'one-of': ['private', 'no'],
             'render': False
         }
     },

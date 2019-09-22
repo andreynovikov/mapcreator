@@ -40,63 +40,64 @@ def _building_calc_height(height, levels_val, levels_calc_fn):
 
 
 def _color(r, g, b):
-    return 0x0ff000000 + (r<<16) + (g<<8) + b
+    return 0x0ff000000 + (r << 16) + (g << 8) + b
 
 
 roof_colors = {
-    "brown" : _color(120, 110, 110),
-    "red" : _color(235, 140, 130),
-    "green" : _color(150, 200, 130),
-    "blue" : _color(100, 50, 200)
+    "brown": _color(120, 110, 110),
+    "red": _color(235, 140, 130),
+    "green": _color(150, 200, 130),
+    "blue": _color(100, 50, 200)
 }
 
 colors = {
-    "white" : _color(240, 240, 240),
-    "black" : _color(86, 86, 86),
-    "gray" : _color(120, 120, 120),
-    "red" : _color(255, 190, 190),
-    "green" : _color(190, 255, 190),
-    "blue" : _color(190, 190, 255),
-    "yellow" : _color(255, 255, 175),
-    "darkgray" : 0xff444444,
-    "lightgray" : 0xffcccccc,
-    "transparent" : 0x000010101
+    "white": _color(240, 240, 240),
+    "black": _color(86, 86, 86),
+    "gray": _color(120, 120, 120),
+    "red": _color(255, 190, 190),
+    "green": _color(190, 255, 190),
+    "blue": _color(190, 190, 255),
+    "yellow": _color(255, 255, 175),
+    "darkgray": 0xff444444,
+    "lightgray": 0xffcccccc,
+    "transparent": 0x000010101
 }
 
 material_colors = {
-    "roof_tiles" : _color(216, 167, 111),
-    "tile" : _color(216, 167, 111),
-    "concrete" : _color(210, 212, 212),
-    "cement_block" : _color(210, 212, 212),
-    "metal" : 0xffc0c0c0,
-    "tin" : 0xffc0c0c0,
-    "tar_paper" : 0xff969998,
-    "eternit" : _color(216, 167, 111),
-    "asbestos" : _color(160, 152, 141),
-    "glass" : _color(130, 224, 255),
-    "slate" : 0xff605960,
-    "zink" : _color(180, 180, 180),
-    "gravel" : _color(170, 130, 80),
-    "copper" : _color(150, 200, 130),
-    "wood" : _color(170, 130, 80),
-    "timber_framing" : _color(170, 130, 80),
-    "grass" : 0xff50aa50,
-    "stone" : _color(206, 207, 181),
-    "marble" : _color(220, 210, 215),
-    "plaster" : _color(236, 237, 181),
-    "brick" : _color(255, 217, 191),
-    "stainless_steel" : _color(153, 157, 160),
-    "gold" : 0xffffd700
+    "roof_tiles": _color(216, 167, 111),
+    "tile": _color(216, 167, 111),
+    "concrete": _color(210, 212, 212),
+    "cement_block": _color(210, 212, 212),
+    "metal": 0xffc0c0c0,
+    "tin": 0xffc0c0c0,
+    "tar_paper": 0xff969998,
+    "eternit": _color(216, 167, 111),
+    "asbestos": _color(160, 152, 141),
+    "glass": _color(130, 224, 255),
+    "slate": 0xff605960,
+    "zink": _color(180, 180, 180),
+    "gravel": _color(170, 130, 80),
+    "copper": _color(150, 200, 130),
+    "wood": _color(170, 130, 80),
+    "timber_framing": _color(170, 130, 80),
+    "grass": 0xff50aa50,
+    "stone": _color(206, 207, 181),
+    "marble": _color(220, 210, 215),
+    "plaster": _color(236, 237, 181),
+    "brick": _color(255, 217, 191),
+    "stainless_steel": _color(153, 157, 160),
+    "gold": 0xffffd700
 }
 
 color_aliases = {
-    "peach" : "peachpuff", # css color
-    "peachpuf" : "peachpuff",
-    "rose" : "mistyrose", # css color
-    "grey" : "gray",
-    "darkgrey" : "darkgray",
-    "lightgrey" : "lightgray",
+    "peach": "peachpuff",  # css color
+    "peachpuf": "peachpuff",
+    "rose": "mistyrose",  # css color
+    "grey": "gray",
+    "darkgrey": "darkgray",
+    "lightgrey": "lightgray",
 }
+
 
 def _get_color(color, roof):
     if len(color) == 0:
@@ -107,11 +108,11 @@ def _get_color(color, roof):
         try:
             c = int(color[1:], 16)
             if len(color) == 7:
-                c = c | 0x0ff000000 # add alpha
-            #/* hardcoded colors are way too saturated for my taste */
-            #return ColorUtil.modHsv(c, 1.0, 0.4, HSV_V, true);
+                c = c | 0x0ff000000  # add alpha
+            # /* hardcoded colors are way too saturated for my taste */
+            # return ColorUtil.modHsv(c, 1.0, 0.4, HSV_V, true);
             return c
-        except ValueError as e:
+        except ValueError:
             logging.warn("Invalid hex color: %s" % color)
             return None
 
@@ -132,14 +133,14 @@ def _get_color(color, roof):
     try:
         # try to get color by name
         r, g, b = name_to_rgb(color)
-        #return ColorUtil.modHsv(css, 1.0, HSV_S, HSV_V, true);
+        # return ColorUtil.modHsv(css, 1.0, HSV_S, HSV_V, true);
         return _color(r, g, b)
-    except ValueError as e:
+    except ValueError:
         # if failed try to treat is a RGB hex without prefix
         if len(color) == 6:
             try:
                 c = int(color, 16)
-                c = c | 0x0ff000000 # add alpha
+                c = c | 0x0ff000000  # add alpha
                 return c
             except:
                 pass

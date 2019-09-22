@@ -49,15 +49,15 @@ def clockwise_polygon(polygon):
 def polylabel(geom):
     label = None
     if geom.type == 'Polygon':
-        label = shapely_polylabel(geom, 1.194) # pixel width at zoom 17
+        label = shapely_polylabel(geom, 1.194)  # pixel width at zoom 17
     elif geom.type == 'MultiPolygon':
         label = []
         area = 0
         for p in geom:
-            l = shapely_polylabel(p, 1.194)
-            if p.area > area: # we need to find largest polygon for main label
+            lbl = shapely_polylabel(p, 1.194)
+            if p.area > area:  # we need to find largest polygon for main label
                 area = p.area
-                label.insert(0, l)
+                label.insert(0, lbl)
             else:
-                label.append(l)
+                label.append(lbl)
     return label

@@ -12,6 +12,7 @@ import psycopg2
 import mapwrite
 import configuration
 
+
 class MapCreator:
 
     def __init__(self, data_dir, dry_run=False, forbid_interactive=False):
@@ -25,9 +26,8 @@ class MapCreator:
         self.mapWriter = mapwrite.MapWriter(self.data_dir, self.dry_run, self.forbid_interactive)
 
         index = open(configuration.MAP_TARGET_PATH + '/nativeindex', 'r+b')
-        index.truncate(6*128*128+6)
+        index.truncate(6 * 128 * 128 + 6)
         index.close()
-
 
     def selectPopularMap(self, percent, period):
         query = "SELECT * FROM popular_map(%.2f, interval '%s') LIMIT 1;"
@@ -41,7 +41,6 @@ class MapCreator:
                     return row[0]
         return None
 
-
     def selectDownloadedMap(self, period):
         query = "SELECT * FROM downloaded_map(interval '%s') LIMIT 1;"
         with psycopg2.connect(configuration.STATS_DB_DSN) as c:
@@ -53,7 +52,6 @@ class MapCreator:
                     self.logger.info("Selected map %s [%s] by download status" % (row[0], row[1]))
                     return row[0]
         return None
-
 
     def selectAnyMap(self, period):
         query = "SELECT * FROM any_map(interval '%s') LIMIT 1;"
@@ -67,7 +65,6 @@ class MapCreator:
                     return row[0]
         return None
 
-
     def selectEmptyMap(self, period):
         query = "SELECT * FROM empty_map(interval '%s') LIMIT 1;"
         with psycopg2.connect(configuration.STATS_DB_DSN) as c:
@@ -80,22 +77,21 @@ class MapCreator:
                     return row[0]
         return None
 
-
     def loop(self, area):
         date = int(os.path.getmtime(configuration.SOURCE_PBF) / 3600 / 24)
         today = int(time.time() / 3600 / 24)
         self.logger.debug("Source file is %d days old" % (today - date))
 
-        if not area and today - date < 3:
-            area = self.selectPopularMap(0.05, '3 days')
+        if not area and today - date < 2:
+            area = self.selectPopularMap(0.05, '2 days')
         if not area and today - date < 4:
             area = self.selectPopularMap(0.1, '4 days')
-        if not area and today - date < 5:
-            area = self.selectPopularMap(0.5, '5 days')
         if not area and today - date < 7:
-            area = self.selectDownloadedMap('1 week')
+            area = self.selectPopularMap(0.5, '1 week')
         if not area and today - date < 14:
-            area = self.selectAnyMap('2 weeks')
+            area = self.selectDownloadedMap('2 weeks')
+        if not area and today - date < 21:
+            area = self.selectAnyMap('3 weeks')
         if not area:
             area = self.selectEmptyMap('2 months')
 
@@ -103,6 +99,9 @@ class MapCreator:
             self.logger.info("No maps to create")
             return -1
         (x, y) = map(int, area.split('-'))
+
+        # raise error flag for current map to prevent dead loops
+        self.writeIndex(area, x, y, None, None, None, True)
 
         cost = time.time()
         try:
@@ -133,7 +132,7 @@ class MapCreator:
             return 0
 
         move_call = ["mv", map_path, map_target_path]
-        self.logger.debug("calling: %s"," ".join(move_call))
+        self.logger.debug("calling: %s", " ".join(move_call))
         if not self.dry_run:
             try:
                 subprocess.check_call(move_call)
@@ -144,7 +143,6 @@ class MapCreator:
                 return 1
             self.writeIndex(area, x, y, size, cost, date)
         return 0
-
 
     def writeIndex(self, area, x, y, size, cost, date, error=False):
         if error:
@@ -208,4 +206,4 @@ if __name__ == "__main__":
             if res == -1:
                 sys.exit(-1)
     except Exception as e:
-        logger.exception("An error occurred:")
+        logger.exception("An error occurred:", e)

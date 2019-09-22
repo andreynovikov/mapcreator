@@ -3,7 +3,7 @@ class Element():
 
     def __init__(self, id, geom, tags, mapping=None):
         self.id = id
-        self.geom = geom # original geometry
+        self.geom = geom  # original geometry
         self.tags = tags
         self.mapping = mapping
         self.label = None
@@ -13,7 +13,7 @@ class Element():
         self.min_height = None
         self.building_color = None
         self.roof_color = None
-        self.geometry = None # tile processed temporary geometry
+        self.geometry = None  # tile processed temporary geometry
 
     def osm_id(self):
         t = 0
@@ -24,8 +24,8 @@ class Element():
         return "%s/%s" % (Element.geom_type[t], id)
 
     def __str__(self):
-        #geom = transform(mercator_to_wgs84, self.geom)
-        #return "%s: %s\n%s\n%s\n" % (str(self.id), geom, self.tags, self.mapping)
+        # geom = transform(mercator_to_wgs84, self.geom)
+        # return "%s: %s\n%s\n%s\n" % (str(self.id), geom, self.tags, self.mapping)
         return "%s: %s\n%s\n%s\n" % (self.osm_id(), self.geom.__repr__(), self.tags, self.mapping)
 
     def __repr__(self):
@@ -41,5 +41,3 @@ class Element():
         el.building_color = self.building_color
         el.roof_color = self.roof_color
         return el
-
-

@@ -10,6 +10,7 @@ def filter_rings(geom, area):
         return MultiPolygon([_filter_polygon_rings(part, area) for part in geom])
     return geom
 
+
 def _filter_polygon_rings(polygon, area):
     exterior = polygon.exterior
     interiors = list(polygon.interiors)
