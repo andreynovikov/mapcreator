@@ -58,7 +58,8 @@ def stat_zoom(zoom, cursor, key=None):
     tag_polygons = defaultdict(lambda: [0, 0, 0])
 
     key_stats = defaultdict(int)
-    key_re = r'(?:(,|^))' + re.escape(key) + r':[^:,]+(?:(,|$))'
+    if key:
+        key_re = r'(?:(,|^))' + re.escape(key) + r':[^:,]+(?:(,|$))'
 
     tile = TileData_pb2.Data()
     cursor.execute("SELECT tile_data FROM tiles WHERE zoom_level = ?", (zoom,))
