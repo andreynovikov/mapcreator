@@ -65,6 +65,12 @@ def _ice_skate_mapper(tags, renderable, ignorable, mapping):
     return (renderable, ignorable, mapping)
 
 
+def _underwater_mapper(tags, renderable, ignorable, mapping):
+    if tags.get('location', None) == 'underwater':
+        ignorable = True
+    return (renderable, ignorable, mapping)
+
+
 """
 Mapping parameters:
 
@@ -77,7 +83,7 @@ Mapping parameters:
    render - mark element as renderable (default True)
    zoom-min - set minimum zoom for element
    zoom-max - set maximum zoom for element
-   ignore
+   ignore - do not render map if this is the only renderable element
    filter-area
    buffer
    enlarge
@@ -1079,6 +1085,13 @@ tags = {
             'keep-for': 'highway',
             'render': False
         }
+    },
+    'location': {
+        'underwater': {
+            'modify-mapping': _underwater_mapper,
+            'render': False,
+        },
+        '__strip__': True
     },
     'service': {'parking_aisle': {'render': False}},
     'iata': {'__any__': {'render': False}},

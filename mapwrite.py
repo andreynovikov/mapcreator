@@ -240,7 +240,7 @@ class OsmFilter(osmium.SimpleHandler):
 
     def finish(self):
         if self.ignorable:
-            if len(self.elements) == self.ignorable:
+            if len(self.elements) < self.ignorable:  # it can be less as closed ways are processed twice
                 self.elements.clear()
                 self.logger.debug("    all elements are ignored")
                 return
