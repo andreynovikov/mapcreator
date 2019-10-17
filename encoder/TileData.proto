@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-// Protocol Version 4
+// Protocol Version 5
 
 package org.oscim.database.oscimap4;
 
@@ -17,7 +17,7 @@ message Data {
 		// (pixel relative to ground meters)
 		// optional bool has_elevation     = 3  [default = false];
 
-		optional uint64 id		= 4;
+		optional uint64 id				= 4;
 		
 		// reference to tile.tags
 		repeated uint32 tags            = 11 [packed = true];
@@ -42,18 +42,23 @@ message Data {
 		optional uint32 layer           = 21 [default = 5];
 
 		// label position
-		repeated sint32 label		= 31 [packed = true];
+		repeated sint32 label			= 31 [packed = true];
 		
 		// amenity kind
 		optional uint32 kind            = 32;
 		
+		// amenity type
+		// used when element is not only amenity but also
+		// something else, e.g. building
+		optional uint32 type            = 22;
+
 		// elevation in meters
 		optional sint32 elevation       = 33;
 		
-		// building height, precision 1/10m
+		// building height, precision 1/100m
 		optional sint32 height          = 34;
 
-		// building height, precision 1/10m
+		// building height, precision 1/100m
 		optional sint32 min_height      = 35;
 
 		// building walls color
@@ -61,6 +66,18 @@ message Data {
 
 		// building roof color
 		optional uint32 roof_color      = 37;
+
+		// building roof height, precision 1/100m
+		optional sint32 roof_height     = 39;
+
+		// building roof shape
+		optional sint32 roof_shape      = 40;
+
+		// building roof direction, degrees * 10
+		optional sint32 roof_direction  = 41;
+
+		// building roof orientation, along - false, across - true
+		optional bool roof_across       = 42  [default = false];
 
 		// building addr:housenumber
 		optional string housenumber     = 38;

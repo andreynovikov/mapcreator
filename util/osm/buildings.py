@@ -2,7 +2,42 @@ import re
 import numbers
 import logging
 
+from collections import namedtuple
+
 from webcolors import name_to_rgb
+
+
+Building = namedtuple('Building', ['height', 'min_height', 'color', 'roof_color', 'roof_height',
+                                   'roof_shape', 'roof_direction', 'roof_across'])
+
+
+ROOF_SHAPES = ['flat', 'skillion', 'gabled', 'half-hipped', 'hipped', 'pyramidal',
+               'gambrel', 'mansard', 'dome', 'onion', 'round', 'saltbox']
+
+roofShapes = dict(zip(ROOF_SHAPES, range(1, len(ROOF_SHAPES) + 1)))
+
+ROOF_DIRECTIONS = {
+    'N': 0,
+    'NNE': 22.5,
+    'NE': 45,
+    'ENE': 67.5,
+    'E': 90,
+    'ESE': 112.5,
+    'SE': 135,
+    'SSE': 157.5,
+    'S': 180,
+    'SSW': 202.5,
+    'SW': 225,
+    'WSW': 247.5,
+    'W': 270,
+    'WNW': 292.5,
+    'NW': 315,
+    'NNW': 337.5,
+    'north': 0,
+    'east': 90,
+    'south': 180,
+    'west': 270
+}
 
 
 def _to_float(x):
@@ -31,6 +66,7 @@ def _building_calc_min_levels(min_levels):
 
 
 def _building_calc_height(height, levels_val, levels_calc_fn):
+    height = _to_float(height)
     if height is not None:
         return height
     levels = _to_float(levels_val)
@@ -58,6 +94,7 @@ colors = {
     "green": _color(190, 255, 190),
     "blue": _color(190, 190, 255),
     "yellow": _color(255, 255, 175),
+    "darkbrown": _color(101, 67, 33),
     "darkgray": 0xff444444,
     "lightgray": 0xffcccccc,
     "transparent": 0x000010101
@@ -68,6 +105,7 @@ material_colors = {
     "tile": _color(216, 167, 111),
     "concrete": _color(210, 212, 212),
     "cement_block": _color(210, 212, 212),
+    "monolith": _color(210, 212, 212),
     "metal": 0xffc0c0c0,
     "tin": 0xffc0c0c0,
     "tar_paper": 0xff969998,
@@ -85,7 +123,9 @@ material_colors = {
     "marble": _color(220, 210, 215),
     "plaster": _color(236, 237, 181),
     "brick": _color(255, 217, 191),
+    "brick_block": _color(255, 217, 191),
     "stainless_steel": _color(153, 157, 160),
+    "steel": _color(153, 157, 160),
     "gold": 0xffffd700
 }
 
@@ -113,7 +153,7 @@ def _get_color(color, roof):
             # return ColorUtil.modHsv(c, 1.0, 0.4, HSV_V, true);
             return c
         except ValueError:
-            logging.warn("Invalid hex color: %s" % color)
+            logging.warning("Invalid hex color: %s" % color)
             return None
 
     # clean all delimiters
@@ -142,7 +182,7 @@ def _get_color(color, roof):
                 c = int(color, 16)
                 c = c | 0x0ff000000  # add alpha
                 return c
-            except:
+            except ValueError:
                 pass
 
     logging.debug("Unknown color: %s" % color)
@@ -168,14 +208,32 @@ def _building_color(color, material, roof):
     return None
 
 
+def _building_roof_direction(direction):
+    degrees = _to_float(direction)
+    if degrees is None:
+        degrees = ROOF_DIRECTIONS.get(direction)
+    return degrees
+
+
 def get_building_properties(tags):
     if 'building' not in tags and 'building:part' not in tags:
-        return (None, None, None, None)
+        return None
 
     height = _building_calc_height(tags.get('height'), tags.get('building:levels'), _building_calc_levels)
     min_height = _building_calc_height(tags.get('min_height'), tags.get('building:min_level'), _building_calc_min_levels)
+    roof_height = _building_calc_height(tags.get('roof:height'), tags.get('roof:levels'), _building_calc_min_levels)
+
+    if roof_height is None and 'roof:angle' in tags:
+        roof_height = None  # calculate from angle
 
     color = _building_color(tags.get('building:colour'), tags.get('building:material'), False)
     roof_color = _building_color(tags.get('roof:colour'), tags.get('roof:material'), True)
 
-    return (height, min_height, color, roof_color)
+    roof_shape = roofShapes.get(tags.get('roof:shape'))
+    roof_direction = _building_roof_direction(tags.get('roof:direction'))
+
+    roof_across = None
+    if tags.get('roof:orientation', 'along') == 'across':
+        roof_across = True
+
+    return Building(height, min_height, color, roof_color, roof_height, roof_shape, roof_direction, roof_across)

@@ -65,7 +65,8 @@ _strings = [
     'piste:border',
     'piste:grooming',
     'piste:lit',
-    'piste:oneway'
+    'piste:oneway',
+    'memorial'
 ]
 
-staticKeys = dict(zip(_strings,range(0, len(_strings))))
+staticKeys = dict(zip(_strings, range(0, len(_strings))))

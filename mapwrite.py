@@ -34,7 +34,7 @@ from util.core import Element
 from util.database import MTilesDatabase
 from util.geometry import wgs84_to_mercator, clockwise, polylabel
 from util.osm import is_area
-from util.osm.kind import is_place, is_building, get_kind
+from util.osm.kind import is_place, is_building, get_kind_and_type
 from util.osm.buildings import get_building_properties
 from util.filters import filter_rings
 
@@ -43,7 +43,7 @@ logging.getLogger('shapely.geos').setLevel(logging.WARNING)
 
 ProcessJob = namedtuple('ProcessJob', ['id', 'wkb', 'tags', 'mapping', 'simple_polygon'])
 DBJob = namedtuple('DBJob', ['zoom', 'x', 'y', 'features'])
-Feature = namedtuple('Feature', ['id', 'geometry', 'tags', 'kind', 'label', 'height', 'min_height', 'building_color', 'roof_color'])
+Feature = namedtuple('Feature', ['id', 'geometry', 'tags', 'kind', 'type', 'label', 'building'])
 
 wkbFactory = osmium.geom.WKBFactory()
 
@@ -94,8 +94,8 @@ class OsmFilter(osmium.SimpleHandler):
                         v = m['adjust'](v)
                     if v is None:
                         continue
-                    if isinstance(v, str) and k not in ('name', 'name:en', 'name:de', 'name:ru',
-                                                        'ref', 'icao', 'iata', 'addr:housenumber'):
+                    if isinstance(v, str) and k not in ('name', 'name:en', 'name:de', 'name:ru', 'ref', 'icao', 'iata',
+                                                        'addr:housenumber', 'opening_hours', 'wikipedia', 'website'):
                         v = v.strip().lower()
                         if ';' in v:
                             v = v.split(';')[0]
@@ -114,7 +114,6 @@ class OsmFilter(osmium.SimpleHandler):
                             mapping[k] = m[k]
                     if 'union' in m:
                         if 'union' in mapping:
-                            combined_union = {}
                             if type(mapping['union']) is dict:
                                 combined_union = mapping['union']
                             else:
@@ -280,6 +279,7 @@ class Tile():
 
 class BBoxCache(defaultdict):
     def __init__(self, tile):
+        super().__init__()
         self.tile = tile
 
     def __missing__(self, key):
@@ -292,19 +292,24 @@ class BBoxCache(defaultdict):
 
 
 def process_element(geom, tags, mapping, basemap=False):
-    kind = get_kind(tags)
-    # TODO process only if kind is building
+    kind, el_type = get_kind_and_type(tags)
     if is_building(kind):
-        height, min_height, color, roof_color = get_building_properties(tags)
+        building = get_building_properties(tags)
     else:
-        height, min_height, color, roof_color = (None, None, None, None)
+        building = None
 
     area = None
     label = None
     new_geom = None
 
-    if mapping.get('label', False) and (not basemap or mapping.get('basemap-label', False)):
-        label = polylabel(geom)
+    if el_type or (mapping.get('label', False) and (not basemap or mapping.get('basemap-label', False))):
+        if building is not None:
+            label = polylabel(geom)
+        else:
+            if geom.type == 'Polygon' or geom.type == 'MultiPolygon':
+                label = geom.centroid
+                if not geom.contains(label):
+                    label = geom.representative_point()
     if 'transform' in mapping:
         if mapping.get('transform') == 'point':
             area = geom.area
@@ -323,18 +328,24 @@ def process_element(geom, tags, mapping, basemap=False):
     if area is None and (mapping.get('filter-area', None) or (basemap and mapping.get('basemap-filter-area', None))):
         area = geom.area
 
-    return (kind, new_geom, area, label, height, min_height, color, roof_color)
+    return (kind, el_type, new_geom, area, label, building)
 
 
 class MapWriter:
 
-    def __init__(self, data_dir, dry_run=False, forbid_interactive=False):
+    def __init__(self, data_dir, dry_run=False, forbid_interactive=False, single_thread=False):
         self.dry_run = dry_run
         self.logger = logging.getLogger(__name__)
         self.data_dir = data_dir
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
         self.interactive = not forbid_interactive and sys.__stdin__.isatty()
+        self.single_thread = single_thread
+        self.stubmap = False
+        self.basemap = False
+        self.timestamp = None
+        self.db = None
+        self.proc_progress = None
 
         try:
             # Enable C-based speedups available from 1.2.10+
@@ -342,8 +353,8 @@ class MapWriter:
             if speedups.available:
                 self.logger.debug("Enabling Shapely speedups")
                 speedups.enable()
-        except:
-            self.logger.warn("Upgrade Shapely for performance improvements")
+        except ImportError:
+            self.logger.warning("Upgrade Shapely for performance improvements")
 
     def createMap(self, x, y, intermediate=False, keep=False, from_file=False):
         self.stubmap = x == -2 and y == -2
@@ -397,7 +408,7 @@ class MapWriter:
         # process map only if it contains relevant data
         has_elements = bool(elements)
         if has_elements:
-            self.multiprocessing = total / used > 4
+            self.multiprocessing = total / used > 4 and not self.single_thread
 
             self.timestamp = int(self.timestamp / 3600 / 24)
 
@@ -407,9 +418,9 @@ class MapWriter:
 
             self.db = MTilesDatabase(map_path)
             if self.basemap:
-                self.db.create("basemap", 'baselayer', '1', self.timestamp, 'maptrek')
+                self.db.create("basemap", 'baselayer', '2', self.timestamp, 'maptrek')
             else:
-                self.db.create("%d-%d" % (x, y), 'baselayer', '1', self.timestamp, 'maptrek')
+                self.db.create("%d-%d" % (x, y), 'baselayer', '2', self.timestamp, 'maptrek')
 
             if self.multiprocessing:
                 num_worker_threads = len(os.sched_getaffinity(0))
@@ -436,7 +447,7 @@ class MapWriter:
             for idx, element in enumerate(elements):
                 def process_result(result, index=idx):
                     el = elements[index]
-                    el.kind, new_geom, el.area, el.label, el.height, el.min_height, el.building_color, el.roof_color = result
+                    el.kind, el.type, new_geom, el.area, el.label, el.building = result
                     if new_geom:
                         el.geom = new_geom
                     # remove overlapping places (point and polygon)
@@ -464,12 +475,16 @@ class MapWriter:
                                             place.tags['name:ru'] = name
                                     el.tags.pop('name', None)
                                     break
-                    # if feature has name save it for future reference
-                    if 'name' in el.tags:
-                        self.db.putFeature(el.id, el.tags, el.kind, el.label, el.geom)
+                    # if feature has type or name save it for future reference
+                    if el.type or 'name' in el.tags:
+                        self.db.putFeature(el.id, el.tags, el.kind, el.type, el.label, el.geom)
                         el.tags.pop('name:en', None)
                         el.tags.pop('name:de', None)
                         el.tags.pop('name:ru', None)
+                        el.tags.pop('opening_hours', None)
+                        el.tags.pop('website', None)
+                        el.tags.pop('phone', None)
+                        el.tags.pop('wikipedia', None)
                         el.tags['id'] = el.id
                     if self.interactive:
                         self.proc_progress.update()
@@ -750,7 +765,7 @@ class MapWriter:
                             unions[key].append(element)
                         continue
                     else:
-                        self.logger.warn("Empty union key for %s, pattern: %s" % (element.osm_id(), pattern))
+                        self.logger.warning("Empty union key for %s, pattern: %s" % (element.osm_id(), pattern))
                 if tile.zoom < 14:
                     if 'transform' in element.mapping:
                         if element.mapping.get('transform') == 'filter-rings':
@@ -770,8 +785,7 @@ class MapWriter:
                                 labels.append(affine_transform(label, tile.matrix))
                     elif prepared_clip.contains(element.label):
                         labels = affine_transform(element.label, tile.matrix)
-                features.append(Feature(element.id, geometry, element.tags, element.kind, labels,
-                                        element.height, element.min_height, element.building_color, element.roof_color))
+                features.append(Feature(element.id, geometry, element.tags, element.kind, element.type, labels, element.building))
 
             # TODO combine union and merge to one logical block
             for union in unions:
@@ -802,7 +816,7 @@ class MapWriter:
                             united_geom = simple_geom
                     geometry = affine_transform(united_geom, tile.matrix)
                     if not geometry.is_empty:
-                        features.append(Feature(None, geometry, united_tags, None, None, None, None, None, None))
+                        features.append(Feature(None, geometry, united_tags, None, None, None, None))
                 except Exception:
                     self.logger.error("Failed to process union %s in tile %s" % (first.mapping['union'], tile))
 
@@ -834,7 +848,7 @@ class MapWriter:
                         united_tags['id'] = first.tags['id']
                     geometry = affine_transform(united_geom, tile.matrix)
                     if not geometry.is_empty:
-                        features.append(Feature(None, geometry, united_tags, None, None, None, None, None, None))
+                        features.append(Feature(None, geometry, united_tags, None, None, None, None))
                 except Exception:
                     self.logger.error("Failed to process merge %s in tile %s" % (first.mapping['union'], tile))
 
@@ -937,6 +951,7 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--dry-run', action='store_true', help='do not generate any files')
     parser.add_argument('-l', '--log', default='ERROR', help='set logging verbosity')
     parser.add_argument('-n', '--noninteractive', action='store_true', help='forbid interactive mode')
+    parser.add_argument('-s', '--single-thread', action='store_true', help='do not use multi-threading')
     parser.add_argument('-i', '--intermediate', action='store_true', help='create intermediate osm.pbf file')
     parser.add_argument('-k', '--keep', action='store_true', help='do not remove intermediate osm.pbf file on success')
     parser.add_argument('-f', '--from-file', action='store_true', help='use file instead of database as data source')
@@ -961,7 +976,7 @@ if __name__ == "__main__":
         logger.setLevel(logging.DEBUG)
 
     try:
-        mapWriter = MapWriter(args.data_path, args.dry_run, args.noninteractive)
+        mapWriter = MapWriter(args.data_path, args.dry_run, args.noninteractive, args.single_thread)
         mapWriter.createMap(args.x, args.y, args.intermediate, args.keep, args.from_file)
     except Exception as e:
         logger.exception("An error occurred:", e)

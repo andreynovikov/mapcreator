@@ -1,18 +1,31 @@
-from sqlite3 import connect
+import re
+
+from typing import Optional
+
+from sqlite3 import connect, Connection
 from spooky import hash64
-
 from shapely.ops import transform
-
 from util.geometry import mercator_to_wgs84
+from util.url import iri2uri
+from util.smaz import compress
+from util.codebooks import WEBSITE_TREE, OPENING_HOURS_TREE, PHONE_TREE
+
+OH_CLEANUP_PATTERN = re.compile(r'\s+([\s,;])')
+PHONE_CLEANUP_PATTERN = re.compile(r'[ ()\-.]')
+TILE_INSERT_QUERY: str = 'REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)'
+NAME_INSERT_QUERY: str = 'REPLACE INTO names (ref, name) VALUES (?, ?)'
+FEATURE_NAME_INSERT_QUERY: str = 'REPLACE INTO feature_names (id, lang, name) VALUES (?, ?, ?)'
+FEATURE_INSERT_QUERY: str = 'REPLACE INTO features (id, kind, type, lat, lon, opening_hours, phone, wikipedia, website) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
 
 
-class MTilesDatabase():
+class MTilesDatabase:
 
-    def __init__(self, filename):
-        self.filename = filename
-        self.namehashes = []
+    def __init__(self, filename: str):
+        self.filename: str = filename
+        self.namehashes: list = []
+        self.db: Optional[Connection] = None
 
-    def create(self, name, type, version, timestamp, format, bounds=None):
+    def create(self, name: str, db_type: str, version: str, timestamp: int, db_format: str, bounds=None):
         self.db = connect(self.filename, check_same_thread=False)
         self.db.execute('PRAGMA journal_mode = OFF')
         self.db.execute('PRAGMA synchronous = NORMAL')
@@ -26,7 +39,7 @@ class MTilesDatabase():
             self.db.execute('CREATE TABLE tiles (zoom_level INTEGER NOT NULL, tile_column INTEGER NOT NULL, tile_row INTEGER NOT NULL, tile_data BLOB NOT NULL)')
             self.db.execute('CREATE TABLE names (ref INTEGER NOT NULL, name TEXT NOT NULL)')
             self.db.execute('CREATE TABLE feature_names (id INTEGER NOT NULL, lang INTEGER NOT NULL, name INTEGER NOT NULL)')
-            self.db.execute('CREATE TABLE features (id INTEGER NOT NULL, kind INTEGER, lat REAL, lon REAL)')
+            self.db.execute('CREATE TABLE features (id INTEGER NOT NULL, kind INTEGER, type INTEGER, lat REAL, lon REAL, opening_hours TEXT, phone TEXT, wikipedia TEXT, website TEXT)')
             self.db.execute('CREATE UNIQUE INDEX coord ON tiles (zoom_level, tile_column, tile_row)')
             self.db.execute('CREATE UNIQUE INDEX property ON metadata (name)')
             self.db.execute('CREATE UNIQUE INDEX name_ref ON names (ref)')
@@ -42,11 +55,11 @@ class MTilesDatabase():
                 self.db.execute('CREATE UNIQUE INDEX map_feature_refs ON map_features (x, y, feature)')
 
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('name', name))
-        self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('type', type))
+        self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('type', db_type))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('version', version))
         self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('timestamp', timestamp))
         # self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('description', description))
-        self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('format', format))
+        self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('format', db_format))
 
         if bounds is not None:
             self.db.execute('INSERT INTO metadata VALUES (?, ?)', ('bounds', bounds))
@@ -63,35 +76,37 @@ class MTilesDatabase():
         self.db.close()
         self.db = None
 
-    def putTile(self, zoom, x, y, content):
-        q = 'REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)'
-        self.db.execute(q, (zoom, x, y, memoryview(content)))
+    def putTile(self, zoom: int, x: int, y: int, content: bytes):
+        self.db.execute(TILE_INSERT_QUERY, (zoom, x, y, memoryview(content)))
 
-    def putName(self, name):
-        h = hash64(name)
-        if (h & 0x8000000000000000):
+    def putName(self, name: str) -> int:
+        h: int = hash64(name)
+        if h & 0x8000000000000000:
             h = -0x10000000000000000 + h
         if h in self.namehashes:
             return h
-        q = 'REPLACE INTO names (ref, name) VALUES (?, ?)'
-        self.db.execute(q, (h, name))
+        self.db.execute(NAME_INSERT_QUERY, (h, name))
         return h
 
-    def putFeature(self, id, tags, kind, label, geometry):
-        h = self.putName(tags['name'])
-        q = 'REPLACE INTO feature_names (id, lang, name) VALUES (?, ?, ?)'
-        self.db.execute(q, (id, 0, h))
-        if 'name:en' in tags:
-            h = self.putName(tags['name:en'])
-            self.db.execute(q, (id, 840, h))
-        if 'name:de' in tags:
-            h = self.putName(tags['name:de'])
-            self.db.execute(q, (id, 276, h))
-        if 'name:ru' in tags:
-            h = self.putName(tags['name:ru'])
-            self.db.execute(q, (id, 643, h))
-        lat = None
-        lon = None
+    def putFeature(self, el_id: int, tags: dict, kind: int, el_type: int, label, geometry):
+        if 'name' in tags:
+            h = self.putName(tags['name'])
+            self.db.execute(FEATURE_NAME_INSERT_QUERY, (el_id, 0, h))
+            if 'name:en' in tags:
+                h = self.putName(tags['name:en'])
+                self.db.execute(FEATURE_NAME_INSERT_QUERY, (el_id, 840, h))
+            if 'name:de' in tags:
+                h = self.putName(tags['name:de'])
+                self.db.execute(FEATURE_NAME_INSERT_QUERY, (el_id, 276, h))
+            if 'name:ru' in tags:
+                h = self.putName(tags['name:ru'])
+                self.db.execute(FEATURE_NAME_INSERT_QUERY, (el_id, 643, h))
+        lat: Optional[float] = None
+        lon: Optional[float] = None
+        opening_hours: Optional[str] = None
+        phone: Optional[str] = None
+        wikipedia: Optional[str] = None
+        website: Optional[str] = None
         if label:
             if isinstance(label, list):
                 geom = transform(mercator_to_wgs84, label[0])
@@ -103,5 +118,21 @@ class MTilesDatabase():
             geom = transform(mercator_to_wgs84, geometry)
             lat = geom.y
             lon = geom.x
-        q = 'REPLACE INTO features (id, kind, lat, lon) VALUES (?, ?, ?, ?)'
-        self.db.execute(q, (id, kind, lat, lon))
+        if kind and kind & 0x0FFBFFF8 != 0:  # skip places, roads, buildings, barriers
+            if 'opening_hours' in tags:
+                oh = tags['opening_hours']
+                oh = oh.replace('"', '')
+                oh = OH_CLEANUP_PATTERN.sub(r'\1', oh)
+                oh = ''.join(c for c in oh if ord(c) < 128)  # strip non-ascii chars, should find better solution
+                opening_hours = compress(oh, compression_tree=OPENING_HOURS_TREE)
+            if 'phone' in tags:
+                ph = tags['phone'].split(',')[0]
+                ph = PHONE_CLEANUP_PATTERN.sub('', ph)
+                ph = ''.join(c for c in ph if ord(c) < 128)  # strip non-ascii chars, should find better solution
+                phone = compress(ph, compression_tree=PHONE_TREE)
+            if 'wikipedia' in tags:
+                wikipedia = tags['wikipedia']
+            if 'website' in tags:
+                website = compress(iri2uri(tags['website']), compression_tree=WEBSITE_TREE)
+
+        self.db.execute(FEATURE_INSERT_QUERY, (el_id, kind, el_type, lat, lon, opening_hours, phone, wikipedia, website))

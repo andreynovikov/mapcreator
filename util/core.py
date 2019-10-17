@@ -1,4 +1,4 @@
-class Element():
+class Element:
     geom_type = {0: 'unknown', 1: 'node', 2: 'way', 3: 'relation'}
 
     def __init__(self, id, geom, tags, mapping=None):
@@ -9,10 +9,8 @@ class Element():
         self.label = None
         self.area = None
         self.kind = None
-        self.height = None
-        self.min_height = None
-        self.building_color = None
-        self.roof_color = None
+        self.type = None
+        self.building = None
         self.geometry = None  # tile processed temporary geometry
 
     def osm_id(self):
@@ -36,8 +34,6 @@ class Element():
         el.label = self.label
         el.area = self.area
         el.kind = self.kind
-        el.height = self.height
-        el.min_height = self.min_height
-        el.building_color = self.building_color
-        el.roof_color = self.roof_color
+        el.type = self.type
+        el.building = self.building
         return el

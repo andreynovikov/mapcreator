@@ -20,6 +20,129 @@ kinds = {
     "barrier":        0x00040000
 }
 
+types = {
+    "wilderness_hut": 1,
+    "alpine_hut": 4,
+    "guest_house": 7,
+    "motel": 10,
+    "hostel": 13,
+    "hotel": 16,
+    "camp_site": 19,
+    "caravan_site": 22,
+    "ice_cream": 25,
+    "confectionery": 28,
+    "alcohol": 31,
+    "beverages": 34,
+    "bakery": 37,
+    "greengrocer": 40,
+    "farm": 40,
+    "supermarket": 43,
+    "convenience": 43,
+    "cafe": 46,
+    "pub": 49,
+    "bar": 52,
+    "fast_food": 55,
+    "restaurant": 58,
+    "marketplace": 61,
+    # "block": 64,
+    # "bollard": 67,
+    # "cycle_barrier": 70,
+    # "lift_gate": 73,
+    # "gate": 76,
+    # "swing_gate": 76,
+    # "chain": 76,
+    "zoo": 82,
+    "picnic_site": 85,
+    "theatre": 88,
+    "cinema": 91,
+    "library": 94,
+    "boat_rental": 97,
+    "water_park": 100,
+    "beach_resort": 103,
+    "sauna": 106,
+    "police": 109,
+    "fire_station": 112,
+    "hospital": 115,
+    "ranger_station": 118,
+    "doctors": 121,
+    "pharmacy": 124,
+    "telephone": 127,
+    "phone": 130,
+    "pet": 133,
+    "veterinary": 136,
+    "toys": 139,
+    "amusement_arcade": 142,
+    # "playground": 145,
+    "bicycle": 148,
+    "outdoor": 151,
+    "sports": 154,
+    "gift": 157,
+    "jewelry": 160,
+    "photo": 163,
+    "books": 166,
+    "variety_store": 169,
+    "doityourself": 172,
+    "hardware": 172,
+    "mall": 175,
+    "department_store": 175,
+    "waterfall": 178,
+    "lighthouse": 181,
+    "windmill": 184,
+    "bust": 185,
+    "stone": 186,
+    "plaque": 187,
+    "statue": 188,
+    "memorial": 189,
+    "castle": 190,
+    "monument": 193,
+    "archaeological_site": 196,
+    "wayside_shrine": 197,
+    "ruins": 199,
+    "museum": 202,
+    "information_office": 205,
+    # "guidepost" > 208
+    # "map" > 211
+    # "information" > 214
+    "artwork": 217,
+    "viewpoint": 220,
+    "attraction": 223,
+    # "fountain": 226,
+    "car": 229,
+    "car_repair": 232,
+    "car_rental": 235,
+    "fuel": 238,
+    # "slipway": 241,
+    # "parking": 244,
+    "bus_station": 247,
+    "bus_stop": 248,
+    "tram_stop": 249,
+    "bicycle_rental": 250,
+    # "drinking_water": 253,
+    "shelter": 256,
+    "toilets": 259,
+    "hairdresser": 262,
+    "copyshop": 265,
+    "laundry": 268,
+    "dry_cleaning": 268,
+    "bank": 271,
+    "post_office": 274,
+    "atm": 277,
+    "bureau_de_change": 280,
+    # "post_box": 283,
+    "shower": 286,
+
+    "jewish": 401,
+    "muslim": 402,
+    "moslem": 402,
+    "buddhist": 403,
+    "hindu": 404,
+    "shinto": 405,
+    "christian": 406,
+    "sikh": 407,
+    "taoist": 408,
+    "place_of_worship": 420,
+}
+
 
 def is_place(kind):
     return kind is not None and (kind & 0x00000001) > 0
@@ -33,132 +156,149 @@ def get_kinds():
     return kinds
 
 
-def get_kind(tags):
-    kind = 0
+def get_kind_and_type(tags):
+    feature_kind = 0
+    feature_type = 0
     for k, v in tags.items():
-        kind = kind | _tag_kind(k, v)
-    if kind:
-        return kind
+        kind, f_type = _tag_kind(k, v)
+        feature_kind = feature_kind | kind
+        if f_type and (feature_type == 0 or f_type < feature_type):
+            feature_type = f_type
+    if feature_kind:
+        return feature_kind, feature_type
     else:
-        return None
+        return None, None
 
 
 def _tag_kind(k, v):
     if v is None:
-        return 0
+        return 0, 0
     if not isinstance(v, str):
-        return 0
+        return 0, 0
 
     key = k.lower()
     value = v.lower()
 
+    f_kind = 0
+    f_type = types.get(value, 0)
+
     if key == 'place':
-        return kinds['place']
+        f_kind = kinds['place']
 
-    if key == 'building' or key == 'building:part':
-        return kinds['building']
+    elif key == 'building' or key == 'building:part':
+        f_kind = kinds['building']
 
-    if key == 'highway':
+    elif key == 'highway':
         if value in ('motorway', 'motorway_link', 'trunk', 'trunk_link', 'primary', 'primary_link',
                      'secondary', 'secondary_link', 'tertiary', 'tertiary_link', 'unclassified', 'service',
                      'living_street', 'residential', 'pedestrian', 'construction', 'road', 'track'):
-            return kinds['road']
-        if value == 'bus_stop':
-            return kinds['transportation']
-        if value == 'traffic_signals':
-            return kinds['vehicles']
+            f_kind = kinds['road']
+        elif value == 'bus_stop':
+            f_kind = kinds['transportation']
+        elif value == 'traffic_signals':
+            f_kind = kinds['vehicles']
 
-    if key == 'barrier':
+    elif key == 'barrier':
         if value in ('block', 'bollard', 'chain', 'cycle_barrier', 'gate', 'lift_gate', 'swing_gate', 'yes'):
-            return kinds['barrier']
+            f_kind = kinds['barrier']
+            if value == 'yes':
+                f_type = types.get('gate', 0)
 
-    if key == 'amenity':
+    elif key == 'amenity':
         if value in ('police', 'fire_station', 'hospital', 'pharmacy', 'doctors', 'clinic', 'telephone'):
-            return kinds['emergency']
-        if value in ('university', 'school', 'college'):
-            return kinds['education']
-        if value in ('kindergarten',):
-            return kinds['kids']
-        if value in ('cafe', 'pub', 'bar', 'fast_food', 'restaurant'):
-            return kinds['food']
-        if value in ('theatre', 'cinema', 'library', 'boat_rental'):
-            return kinds['entertainment']
-        if value in ('parking', 'fuel', 'car_repair', 'car_rental'):
-            return kinds['vehicles']
-        if value in ('bicycle_rental', 'drinking_water', 'shelter', 'toilets'):
-            return kinds['hikebike']
-        if value in ('bank', 'atm', 'bureau_de_change', 'post_office', 'post_box', 'shower'):
-            return kinds['service']
-        if value == 'marketplace':
-            return kinds['food'] | kinds['shopping']
-        if value == 'ranger_station':
-            return kinds['emergency'] | kinds['hikebike']
-        if value == 'veterinary':
-            return kinds['pets']
-        if value == 'bus_station':
-            return kinds['transportation']
-        if value == 'place_of_worship':
-            return kinds['religion']
-        if value == 'fountain':
-            return kinds['urban']
+            f_kind = kinds['emergency']
+        elif value in ('university', 'school', 'college'):
+            f_kind = kinds['education']
+        elif value in ('kindergarten',):
+            f_kind = kinds['kids']
+        elif value in ('cafe', 'pub', 'bar', 'fast_food', 'restaurant'):
+            f_kind = kinds['food']
+        elif value in ('theatre', 'cinema', 'library', 'boat_rental'):
+            f_kind = kinds['entertainment']
+        elif value in ('parking', 'fuel', 'car_repair', 'car_rental'):
+            f_kind = kinds['vehicles']
+        elif value in ('bicycle_rental', 'drinking_water', 'shelter', 'toilets'):
+            f_kind = kinds['hikebike']
+        elif value in ('bank', 'atm', 'bureau_de_change', 'post_office', 'post_box', 'shower'):
+            f_kind = kinds['service']
+        elif value == 'marketplace':
+            f_kind = kinds['food'] | kinds['shopping']
+        elif value == 'ranger_station':
+            f_kind = kinds['emergency'] | kinds['hikebike']
+        elif value == 'veterinary':
+            f_kind = kinds['pets']
+        elif value == 'bus_station':
+            f_kind = kinds['transportation']
+        elif value == 'place_of_worship':
+            f_kind = kinds['religion']
+        elif value == 'fountain':
+            f_kind = kinds['urban']
 
-    if key == 'tourism':
+    elif key == 'tourism':
         if value in ('wilderness_hut', 'alpine_hut'):
-            return kinds['accommodation'] | kinds['hikebike']
-        if value in ('camp_site', 'caravan_site', 'guest_house', 'motel', 'hostel', 'hotel'):
-            return kinds['accommodation']
-        if value in ('attraction', 'viewpoint', 'museum', 'artwork'):
-            return kinds['attraction']
-        if value in ('zoo', 'picnic_site', 'theme_park'):
-            return kinds['entertainment']
-        if value == 'information':
-            return kinds['hikebike']
+            f_kind = kinds['accommodation'] | kinds['hikebike']
+        elif value in ('camp_site', 'caravan_site', 'guest_house', 'motel', 'hostel', 'hotel'):
+            f_kind = kinds['accommodation']
+        elif value in ('attraction', 'viewpoint', 'museum', 'artwork'):
+            f_kind = kinds['attraction']
+        elif value in ('zoo', 'picnic_site', 'theme_park'):
+            f_kind = kinds['entertainment']
+        elif value == 'information':
+            f_kind = kinds['hikebike']
 
-    if key == 'shop':
+    elif key == 'shop':
         if value in ('gift', 'variety_store', 'doityourself', 'hardware', 'department_store', 'mall', 'jewelry',
                      'photo', 'books', 'sports'):
-            return kinds['shopping']
-        if value in ('bakery', 'ice_cream', 'greengrocer', 'farm', 'alcohol', 'beverages', 'confectionery'):
-            return kinds['food']
-        if value in ('supermarket', 'convenience'):
-            return kinds['food'] | kinds['shopping']
-        if value in ('car', 'car_repair'):
-            return kinds['vehicles']
-        if value in ('bicycle', 'outdoor'):
-            return kinds['hikebike'] | kinds['shopping']
-        if value == 'toys':
-            return kinds['kids']
-        if value == 'pet':
-            return kinds['pets']
-        if value in ('hairdresser', 'copyshop', 'dry_cleaning', 'laundry'):
-            return kinds['service']
+            f_kind = kinds['shopping']
+        elif value in ('bakery', 'ice_cream', 'greengrocer', 'farm', 'alcohol', 'beverages', 'confectionery'):
+            f_kind = kinds['food']
+        elif value in ('supermarket', 'convenience'):
+            f_kind = kinds['food'] | kinds['shopping']
+        elif value in ('car', 'car_repair'):
+            f_kind = kinds['vehicles']
+        elif value in ('bicycle', 'outdoor'):
+            f_kind = kinds['hikebike'] | kinds['shopping']
+        elif value == 'toys':
+            f_kind = kinds['kids']
+        elif value == 'pet':
+            f_kind = kinds['pets']
+        elif value in ('hairdresser', 'copyshop', 'dry_cleaning', 'laundry'):
+            f_kind = kinds['service']
 
-    if key == 'historic':
+    elif key == 'historic':
         if value in ('memorial', 'castle', 'ruins', 'monument', 'archaeological_site'):
-            return kinds['attraction']
+            f_kind = kinds['attraction']
 
-    if key == 'leisure':
+    elif key == 'leisure':
         if value in ('sports_centre', 'water_park', 'beach_resort', 'sauna'):
-            return kinds['entertainment']
-        if value in ('playground', 'amusement_arcade'):
-            return kinds['kids']
-        if value == 'slipway':
-            return kinds['vehicles']
+            f_kind = kinds['entertainment']
+        elif value in ('playground', 'amusement_arcade'):
+            f_kind = kinds['kids']
+        elif value == 'slipway':
+            f_kind = kinds['vehicles']
 
-    if key == 'man_made':
+    elif key == 'man_made':
         if value in ('lighthouse', 'windmill'):
-            return kinds['attraction']
+            f_kind = kinds['attraction']
 
-    if key == 'railway':
+    elif key == 'railway':
         if value in ('tram_stop', 'subway_entrance'):
-            return kinds['transportation']
+            f_kind = kinds['transportation']
 
-    if key == 'waterway':
+    elif key == 'waterway':
         if value == 'waterfall':
-            return kinds['attraction']
+            f_kind = kinds['attraction']
 
-    if key == 'emergency':
+    elif key == 'emergency':
         if value == 'phone':
-            return kinds['emergency']
+            f_kind = kinds['emergency']
 
-    return 0
+    elif key == 'information':
+        if value == 'office':
+            f_type = types['information_office']
+
+    elif key == 'religion':
+        if f_type == 0:
+            f_type = types['place_of_worship']
+
+    return f_kind, f_type

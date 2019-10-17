@@ -1,5 +1,4 @@
 import logging
-from numbers import Number
 
 from . import TileData_pb2
 
@@ -8,16 +7,17 @@ from . import StaticVals
 from . import StaticKeys
 
 # custom keys/values start at attrib_offset
-attrib_offset = 1024
+ATTRIB_OFFSET = 1024
 
-# coordindates are scaled to this range within tile
-extents = 4096
+# coordinates are scaled to this range within tile
+EXTENTS = 4096
 
 # tiles are padded by this number of pixels for the current zoom level (OSciMap uses this to cover up seams between tiles)
-padding = 5
+PADDING = 5
+
 
 def encode(features, mappings=None):
-    vector_tile = VectorTile(extents, mappings)
+    vector_tile = VectorTile(EXTENTS, mappings)
     vector_tile.addFeatures(features)
     vector_tile.complete()
     return vector_tile.out.SerializeToString()
@@ -32,10 +32,10 @@ class VectorTile:
 
         # TODO count to sort by number of occurrences
         self.keydict = {}
-        self.cur_key = attrib_offset
+        self.cur_key = ATTRIB_OFFSET
 
         self.valdict = {}
-        self.cur_val = attrib_offset
+        self.cur_val = ATTRIB_OFFSET
 
         self.tagdict = {}
         self.num_tags = 0
@@ -45,24 +45,21 @@ class VectorTile:
 
         self.num_features = 0
 
-
     def complete(self):
         if self.num_features > 0 and self.num_tags == 0:
-            logging.warn("empty tags")
+            logging.warning("empty tags")
 
         self.out.num_tags = self.num_tags
 
-        if self.cur_key - attrib_offset > 0:
-            self.out.num_keys = self.cur_key - attrib_offset
+        if self.cur_key - ATTRIB_OFFSET > 0:
+            self.out.num_keys = self.cur_key - ATTRIB_OFFSET
 
-        if self.cur_val - attrib_offset > 0:
-            self.out.num_vals = self.cur_val - attrib_offset
-
+        if self.cur_val - ATTRIB_OFFSET > 0:
+            self.out.num_vals = self.cur_val - ATTRIB_OFFSET
 
     def addFeatures(self, features):
         for feature in features:
             self.addFeature(feature)
-
 
     def addFeature(self, feature):
         geom = self.geomencoder
@@ -115,31 +112,31 @@ class VectorTile:
 
         try:
             geom.parseGeometry(feature.geometry.wkb)
-        except Exception as e:
+        except Exception:
             logging.error("%s:" % str(feature.tags))
             logging.exception("Error parsing geometry %s" % feature.geometry.wkt)
             return
 
-        f = None;
-        geometry_type = None
+        f = None
+        # geometry_type = None
         if geom.isPoint:
-            geometry_type = 'Point'
+            # geometry_type = 'Point'
             f = self.out.points.add()
             # add number of points (for multi-point)
             if len(geom.coordinates) > 2:
-                logging.info('points %s' %len(geom.coordinates))
-                f.indices.add(geom.coordinates/2)
+                logging.info('points %s' % len(geom.coordinates))
+                f.indices.add(geom.coordinates / 2)
         else:
             # empty geometry
             if len(geom.index) == 0:
-                logging.debug('empty geom: %s %s' % row[1])
+                logging.debug('empty geom: %d %s' % (id, str(feature.tags)))
                 return
 
             if geom.isPoly:
-                geometry_type = 'Polygon'
+                # geometry_type = 'Polygon'
                 f = self.out.polygons.add()
             else:
-                geometry_type = 'LineString'
+                # geometry_type = 'LineString'
                 f = self.out.lines.add()
 
             # add coordinate index list (coordinates per geometry)
@@ -188,41 +185,59 @@ class VectorTile:
         if elevation is not None:
             f.elevation = int(elevation)
 
-        if feature.height is not None:
-            try:
-                f.height = int(feature.height * 100)
-            except:
-                pass
-
-        if feature.min_height is not None:
-            try:
-                f.min_height = int(feature.min_height * 100)
-            except:
-                pass
-
         if feature.kind is not None:
             f.kind = feature.kind
 
-        if feature.building_color is not None:
-            f.building_color = feature.building_color
-
-        if feature.roof_color is not None:
-            f.roof_color = feature.roof_color
+        if feature.type is not None:
+            type = feature.type  # TODO (add f.)
 
         if housenumber is not None:
             f.housenumber = housenumber
 
-        #logging.debug('tags %d, indices %d' %(len(tags),len(f.indices)))
-        self.num_features += 1
+        if feature.building is not None:
+            if feature.building.height is not None:
+                try:
+                    f.height = int(feature.building.height * 100)
+                except ValueError:
+                    pass
 
+            if feature.building.min_height is not None:
+                try:
+                    f.min_height = int(feature.building.min_height * 100)
+                except ValueError:
+                    pass
+
+            if feature.building.color is not None:
+                f.building_color = feature.building.color
+
+            if feature.building.roof_color is not None:
+                f.roof_color = feature.building.roof_color
+
+            if feature.building.roof_height is not None:
+                try:
+                    roof_height = int(feature.building.roof_height * 100)  # TODO (add f.)
+                except ValueError:
+                    pass
+
+            if feature.building.roof_shape is not None:
+                roof_shape = feature.building.roof_shape  # TODO (add f.)
+
+            if feature.building.roof_direction is not None:
+                roof_direction = int(feature.building.roof_direction * 10)  # TODO (add f.)
+
+            if feature.building.roof_across:
+                roof_across = feature.building.roof_across  # TODO (add f.)
+
+        # logging.debug('tags %d, indices %d' %(len(tags),len(f.indices)))
+        self.num_features += 1
 
     def getLayer(self, val):
         try:
-            l = max(min(10, int(val)) + 5, 0)
-            if l != 0:
-                return l
+            layer = max(min(10, int(val)) + 5, 0)
+            if layer != 0:
+                return layer
         except ValueError:
-            logging.warn("layer invalid %s" %val)
+            logging.warning("layer invalid %s" % val)
 
         return None
 
@@ -233,7 +248,7 @@ class VectorTile:
         if key in self.keydict:
             return self.keydict[key]
 
-        self.out.keys.append(key);
+        self.out.keys.append(key)
 
         r = self.cur_key
         self.keydict[key] = r
@@ -247,13 +262,12 @@ class VectorTile:
         if var in self.valdict:
             return self.valdict[var]
 
-        self.out.values.append(var);
+        self.out.values.append(var)
 
         r = self.cur_val
         self.valdict[var] = r
         self.cur_val += 1
         return r
-
 
     def getTagId(self, tag):
         if tag in self.tagdict:
@@ -264,9 +278,9 @@ class VectorTile:
 
         self.out.tags.append(key)
         self.out.tags.append(val)
-        if tag[0] not in ('ref','iata','icao','building','religion','building:part','osmc:symbol') \
-           and (key >= attrib_offset or val >= attrib_offset):
-            logging.warn("add tag %s - %d/%d" % (tag, key, val))
+        if tag[0] not in ('ref', 'iata', 'icao', 'religion', 'osmc:symbol') \
+           and (key >= ATTRIB_OFFSET or val >= ATTRIB_OFFSET):
+            logging.warning("add tag %s - %d/%d" % (tag, key, val))
         r = self.num_tags
         self.tagdict[tag] = r
         self.num_tags += 1

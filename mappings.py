@@ -89,14 +89,13 @@ Mapping parameters:
    enlarge
    simplify
    label
-   filter-type
    clip-buffer
    keep-tags - force keeping tags with keys in the specified list
    keep-for
    union
    union-zoom-max
    transform - transform geom ['point', 'filter-rings']
-   transform-exclusive - apply transform only this is the only renderable tag
+   transform-exclusive - apply transform only if this is the only renderable tag
    force-line - treat closed line as line instead of area
    check-meta - get additional data from database
    modify-mapping - call predefined routine that post-modifies mapping (stacked)
@@ -646,7 +645,8 @@ tags = {
         'castle': DEFAULT_PLACE,
         'ruins': DEFAULT_PLACE,
         'monument': DEFAULT_PLACE,
-        'archaeological_site': DEFAULT_PLACE
+        'archaeological_site': DEFAULT_PLACE,
+        'wayside_shrine': DEFAULT_PLACE
     },
     'route': {
         'ferry': {
@@ -767,6 +767,44 @@ tags = {
         '__strip__': True
     },
     'name:ru': {
+        '__any__': {
+            'render': False
+        },
+        '__strip__': True
+    },
+    'opening_hours': {
+        '__any__': {
+            'render': False
+        },
+        '__strip__': True
+    },
+    'contact:website': {
+        '__any__': {
+            'rewrite-key': 'website',
+            'rewrite-if-missing': True
+        },
+        '__strip__': True
+    },
+    'website': {
+        '__any__': {
+            'render': False
+        },
+        '__strip__': True
+    },
+    'contact:phone': {
+        '__any__': {
+            'rewrite-key': 'phone',
+            'rewrite-if-missing': True
+        },
+        '__strip__': True
+    },
+    'phone': {
+        '__any__': {
+            'render': False
+        },
+        '__strip__': True
+    },
+    'wikipedia': {
         '__any__': {
             'render': False
         },
@@ -996,6 +1034,13 @@ tags = {
         },
         '__strip__': True
     },
+    'memorial': {
+        'statue': {'render': False},
+        'bust': {'render': False},
+        'stone': {'render': False},
+        'plaque': {'render': False},
+        'blue_plaque': {'rewrite-value': 'blue_plaque'}
+    },
     'information': {
         'guidepost': {'render': False},
         'map': {'render': False},
@@ -1104,8 +1149,15 @@ tags = {
     'building:min_level': {'__any__': {'render': False}, '__strip__': True},
     'building:colour': {'__any__': {'render': False}, '__strip__': True},
     'building:material': {'__any__': {'render': False}, '__strip__': True},
+    'roof:height': {'__any__': {'render': False}, '__strip__': True},
+    'roof:levels': {'__any__': {'render': False}, '__strip__': True},
     'roof:colour': {'__any__': {'render': False}, '__strip__': True},
     'roof:material': {'__any__': {'render': False}, '__strip__': True},
+    'roof:shape': {'__any__': {'render': False}, '__strip__': True},
+    'roof:direction': {'__any__': {'render': False}, '__strip__': True},
+    'roof:angle': {'__any__': {'render': False}, '__strip__': True},
+    'roof:orientation': {'__any__': {'render': False}, '__strip__': True},
+    'location': {'underwater': {'render': False, 'ignore': True}, '__strip__': True},
     'network': {},
     'route:network': {},
     'contour': {},
