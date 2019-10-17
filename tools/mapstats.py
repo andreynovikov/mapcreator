@@ -16,7 +16,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 
-from encoder import attrib_offset, TileData_pb2, StaticKeys, StaticVals
+from encoder import ATTRIB_OFFSET, TileData_pb2, StaticKeys, StaticVals
 
 import configuration
 import mappings
@@ -27,14 +27,14 @@ vals = {v: k for k, v in StaticVals.staticValues.items()}
 
 
 def getKey(k):
-    if k < attrib_offset:
+    if k < ATTRIB_OFFSET:
         return keys[k]
     else:
         return k
 
 
 def getValue(v):
-    if v < attrib_offset:
+    if v < ATTRIB_OFFSET:
         return vals[v]
     else:
         return v

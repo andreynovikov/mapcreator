@@ -1,8 +1,9 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import argparse
 import logging.config
 from operator import itemgetter
+from collections import defaultdict
 
 import osmium
 
@@ -15,9 +16,10 @@ class OsmFilter(osmium.SimpleHandler):
     def __init__(self, logger):
         super(OsmFilter, self).__init__()
         self.logger = logger
-        self.mapped = {}
-        self.keys = {}
-        self.values = {}
+        self.mapped = defaultdict(int)
+        self.keys = defaultdict(int)
+        self.values = defaultdict(int)
+        self.hours = defaultdict(int)
 
     def filter(self, id, tags):
         filtered_tags = {}
@@ -29,7 +31,7 @@ class OsmFilter(osmium.SimpleHandler):
                 if m is None:
                     m = mappings.tags[tag.k].get(tag.v, None)
                     from_any = False
-                if m is not None: #empty dictionaries should be also accounted
+                if m is not None:  # empty dictionaries should be also accounted
                     k = tag.k
                     v = tag.v
                     if 'rewrite-key' in m or 'rewrite-value' in m:
@@ -51,10 +53,12 @@ class OsmFilter(osmium.SimpleHandler):
                             mapping = k
                         else:
                             mapping = k + ":" + v
-                        self.mapped[mapping] = self.mapped.get(mapping, 0) + 1
+                        self.mapped[mapping] += 1
         if renderable:
             for k, v in filtered_tags.items():
-                self.keys[k] = self.keys.get(k, 0) + 1
+                self.keys[k] += 1
+                if k == 'opening_hours':
+                    self.hours[v] += 1
                 if mappings.tags[k].get('__strip__', False):
                     continue
                 if k in ['ref', 'iata', 'icao']:
@@ -63,9 +67,9 @@ class OsmFilter(osmium.SimpleHandler):
                     number = float(v)
                     if number > 10:
                         continue
-                except (ValueError,TypeError):
+                except (ValueError, TypeError):
                     pass
-                self.values[v] = self.values.get(v, 0) + 1
+                self.values[v] += 1
 
     def node(self, n):
         self.filter(n.id, n.tags)
@@ -105,6 +109,13 @@ class MapStatistics:
 
         i = 1
         for k, v in sorted(handler.values.items(), key=itemgetter(1), reverse=True):
+            print('{:<3d} {:35s} {:12,d}'.format(i, str(k), v))
+            i = i + 1
+
+        print("")
+
+        i = 1
+        for k, v in sorted(handler.hours.items(), key=itemgetter(1), reverse=True)[:300]:
             print('{:<3d} {:35s} {:12,d}'.format(i, str(k), v))
             i = i + 1
 
