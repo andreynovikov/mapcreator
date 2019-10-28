@@ -1,4 +1,4 @@
-from smaz import make_trie
+from util.smaz import make_trie
 
 # Based on 1,440,929 osm website urls
 WEBSITE_DECODE = [
