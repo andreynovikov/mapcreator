@@ -282,9 +282,6 @@ tags = {
             'zoom-min': 14,
             'check-meta': True
         },
-        'traffic_signals': {
-            'zoom-min': 14
-        },
         'bus_stop': {
             'zoom-min': 14
         },
@@ -991,12 +988,6 @@ tags = {
             'render': False
         },
         '__strip__': True
-    },
-    'via_ferrata': {
-        '__any__': {
-            'adjust': osm.boolean,
-            'render': False
-        },
     },
     'admin_level': {
         '__any__': {
