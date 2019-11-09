@@ -9,7 +9,7 @@ class MapTypes:
 mapType = MapTypes.Detailed
 
 
-def _admin_level_mapper(tags, renderable, ignorable, mapping):
+def _admin_level_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
     admin_level = tags.get('admin_level', '0')
     is_town = tags.get('place', None) in ('city', 'town')
     if mapType == MapTypes.Stub:
@@ -21,10 +21,10 @@ def _admin_level_mapper(tags, renderable, ignorable, mapping):
             mapping['zoom-min'] = 5
         if admin_level in ('5', '6'):
             mapping['zoom-min'] = 6
-    return (renderable, ignorable, mapping)
+    return renderable, ignorable, mapping
 
 
-def _population_mapper(tags, renderable, ignorable, mapping):
+def _population_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
     population = tags.get('population', 0)
     if mapType == MapTypes.Stub:
         renderable = tags.get('place', None) in ('country', 'city', 'town')
@@ -35,17 +35,17 @@ def _population_mapper(tags, renderable, ignorable, mapping):
             mapping['zoom-min'] = 5
         if population >= 1000000:
             mapping['zoom-min'] = 4
-    return (renderable, ignorable, mapping)
+    return renderable, ignorable, mapping
 
 
-def _china_mapper(tags, renderable, ignorable, mapping):
+def _china_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
     population = tags.get('population', 0)
     if tags.get('place', None) in ('city', 'town') and population < 300000:
         renderable = False
-    return (renderable, ignorable, mapping)
+    return renderable, ignorable, mapping
 
 
-def _ice_skate_mapper(tags, renderable, ignorable, mapping):
+def _ice_skate_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
     skating = False
     leisure = tags.get('leisure', None)
     if leisure == 'pitch':
@@ -62,13 +62,19 @@ def _ice_skate_mapper(tags, renderable, ignorable, mapping):
         mapping['label'] = True
         if tags.get('covered', 'no') == 'yes':
             tags['area'] = 'no'
-    return (renderable, ignorable, mapping)
+    return renderable, ignorable, mapping
 
 
-def _underwater_mapper(tags, renderable, ignorable, mapping):
+def _underwater_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
     if tags.get('location', None) == 'underwater':
         ignorable = True
-    return (renderable, ignorable, mapping)
+    return renderable, ignorable, mapping
+
+
+def _indoor_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
+    if any(k in ('highway', 'railway', 'barrier') for k in tags.keys()):
+        renderable = False
+    return renderable, ignorable, mapping
 
 
 """
@@ -91,7 +97,7 @@ Mapping parameters:
    label
    clip-buffer
    keep-tags - force keeping tags with keys in the specified list
-   keep-for
+   keep-for - keep tag only if element contains one of specified keys
    union
    union-zoom-max
    transform - transform geom ['point', 'filter-rings']
@@ -705,10 +711,10 @@ tags = {
         'toll_booth': {'zoom-min': 14},
         'yes': {'zoom-min': 14},
         'city_wall': {'zoom-min': 13},
-        'fence': {'zoom-min': 16},
-        'hedge': {'zoom-min': 16},
-        'retaining_wall': {'zoom-min': 16},
-        'wall': {'zoom-min': 15},
+        'fence': {'zoom-min': 14},
+        'hedge': {'zoom-min': 14},
+        'retaining_wall': {'zoom-min': 14},
+        'wall': {'zoom-min': 14},
     },
     'man_made': {
         'cutline': {'zoom-min': 14, 'pre-process': cutlines.process, '__strip__': True},
@@ -1129,6 +1135,13 @@ tags = {
         },
         '__strip__': True
     },
+    'indoor': {
+        '__any__': {
+            'modify-mapping': _indoor_mapper,
+            'render': False,
+        },
+        '__strip__': True
+    },
     'service': {'parking_aisle': {'render': False}},
     'iata': {'__any__': {'render': False}},
     'icao': {'__any__': {'render': False}},
@@ -1148,7 +1161,6 @@ tags = {
     'roof:direction': {'__any__': {'render': False}, '__strip__': True},
     'roof:angle': {'__any__': {'render': False}, '__strip__': True},
     'roof:orientation': {'__any__': {'render': False}, '__strip__': True},
-    'location': {'underwater': {'render': False, 'ignore': True}, '__strip__': True},
     'network': {},
     'route:network': {},
     'contour': {},
@@ -1157,11 +1169,11 @@ tags = {
 
 
 def _water_z2_mapper(row):
-    return ({'natural': 'sea'}, {'zoom-min': 0, 'zoom-max': 2})
+    return {'natural': 'sea'}, {'zoom-min': 0, 'zoom-max': 2}
 
 
 def _water_z3_mapper(row):
-    return ({'natural': 'sea'}, {'zoom-min': 3, 'zoom-max': 3})
+    return {'natural': 'sea'}, {'zoom-min': 3, 'zoom-max': 3}
 
 
 def _water_z4_mapper(row):
