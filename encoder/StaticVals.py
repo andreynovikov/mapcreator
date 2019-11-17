@@ -617,7 +617,12 @@ _strings = [
     'statue',
     'bust',
     'stone',
-    'plaque'
+    'plaque',
+    'massage',
+    'dentist',
+    'embassy',
+    'horse_riding',
+    'gallery'
 ]
 
 staticValues = dict(zip(_strings,range(0, len(_strings))))

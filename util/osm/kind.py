@@ -24,6 +24,7 @@ types = {
     "wilderness_hut": 1,
     "alpine_hut": 4,
     "guest_house": 7,
+    "chalet": 8,
     "motel": 10,
     "hostel": 13,
     "hotel": 16,
@@ -52,19 +53,24 @@ types = {
     # "swing_gate": 76,
     # "chain": 76,
     "zoo": 82,
+    "theme_park": 83,
     "picnic_site": 85,
     "theatre": 88,
     "cinema": 91,
     "library": 94,
     "boat_rental": 97,
     "water_park": 100,
+    "horse_riding": 101,
     "beach_resort": 103,
     "sauna": 106,
+    "massage": 107,
+    "embassy": 108,
     "police": 109,
     "fire_station": 112,
     "hospital": 115,
     "ranger_station": 118,
     "doctors": 121,
+    "dentist": 122,
     "pharmacy": 124,
     "telephone": 127,
     "phone": 130,
@@ -99,6 +105,7 @@ types = {
     "wayside_shrine": 197,
     "ruins": 199,
     "museum": 202,
+    "gallery": 203,
     "information_office": 205,
     # "guidepost" > 208
     # "map" > 211
@@ -205,7 +212,8 @@ def _tag_kind(k, v):
                 f_type = types.get('gate', 0)
 
     elif key == 'amenity':
-        if value in ('police', 'fire_station', 'hospital', 'pharmacy', 'doctors', 'clinic', 'telephone'):
+        if value in ('embassy', 'police', 'fire_station', 'hospital', 'pharmacy', 'doctors', 'dentist', 'clinic',
+                     'telephone'):
             f_kind = kinds['emergency']
         elif value in ('university', 'school', 'college'):
             f_kind = kinds['education']
@@ -239,7 +247,7 @@ def _tag_kind(k, v):
             f_kind = kinds['accommodation'] | kinds['hikebike']
         elif value in ('camp_site', 'caravan_site', 'guest_house', 'motel', 'hostel', 'hotel'):
             f_kind = kinds['accommodation']
-        elif value in ('attraction', 'viewpoint', 'museum', 'artwork'):
+        elif value in ('attraction', 'viewpoint', 'museum', 'gallery', 'artwork'):
             f_kind = kinds['attraction']
         elif value in ('zoo', 'picnic_site', 'theme_park'):
             f_kind = kinds['entertainment']
@@ -258,6 +266,8 @@ def _tag_kind(k, v):
             f_kind = kinds['vehicles']
         elif value in ('bicycle', 'outdoor'):
             f_kind = kinds['hikebike'] | kinds['shopping']
+        elif value == 'massage':
+            f_kind = kinds['entertainment']
         elif value == 'toys':
             f_kind = kinds['kids']
         elif value == 'pet':
@@ -270,7 +280,7 @@ def _tag_kind(k, v):
             f_kind = kinds['attraction']
 
     elif key == 'leisure':
-        if value in ('sports_centre', 'water_park', 'beach_resort', 'sauna'):
+        if value in ('sports_centre', 'horse_riding', 'water_park', 'beach_resort', 'sauna'):
             f_kind = kinds['entertainment']
         elif value in ('playground', 'amusement_arcade'):
             f_kind = kinds['kids']
@@ -288,6 +298,10 @@ def _tag_kind(k, v):
     elif key == 'waterway':
         if value == 'waterfall':
             f_kind = kinds['attraction']
+
+    elif key == 'diplomatic':
+        if value == 'embassy':
+            f_kind = kinds['emergency']
 
     elif key == 'emergency':
         if value == 'phone':

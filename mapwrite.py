@@ -489,8 +489,10 @@ class MapWriter:
                     if self.interactive:
                         self.proc_progress.update()
                 if pool:
-                    results.append(pool.apply_async(process_element, [element.geom, element.tags, element.mapping, self.basemap],
-                                                    callback=process_result))
+                    results.append(pool.apply_async(
+                        process_element, [element.geom, element.tags, element.mapping, self.basemap],
+                        callback=process_result
+                    ))
                 else:
                     process_result(process_element(element.geom, element.tags, element.mapping, self.basemap))
             if pool:

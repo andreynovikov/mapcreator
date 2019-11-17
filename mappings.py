@@ -544,7 +544,8 @@ tags = {
         'slipway': DEFAULT_PLACE,
         'swimming_pool': DEFAULT_PLACE,
         'sauna': DEFAULT_PLACE,
-        'amusement_arcade': DEFAULT_PLACE
+        'amusement_arcade': DEFAULT_PLACE,
+        'horse_riding': DEFAULT_PLACE,
     },
     'amenity': {
         'university': DEFAULT_PLACE,
@@ -588,8 +589,14 @@ tags = {
         'ferry_terminal': DEFAULT_PLACE,
         'shower': DEFAULT_PLACE,
         'boat_rental': DEFAULT_PLACE,
+        'dentist': DEFAULT_PLACE,
         'grave_yard': {'rewrite-key': 'landuse', 'rewrite-value': 'cemetery'},
         'swimming_pool': {'rewrite-key': 'leisure'},
+        'embassy': {'rewrite-key': 'diplomatic', 'rewrite-if-missing': True},
+    },
+    'diplomatic': {
+        'embassy': DEFAULT_PLACE,
+        'consulate': {'rewrite-value': 'embassy'},  # temporary
     },
     'emergency': {
         'phone': DEFAULT_PLACE,
@@ -623,11 +630,13 @@ tags = {
         'copyshop': DEFAULT_PLACE,
         'dry_cleaning': DEFAULT_PLACE,
         'laundry': DEFAULT_PLACE,
-        'sports': DEFAULT_PLACE
+        'sports': DEFAULT_PLACE,
+        'massage': DEFAULT_PLACE
     },
     'tourism': {
         'picnic_site': DEFAULT_LABELED_AREA,
         'zoo': DEFAULT_LABELED_AREA,
+        'gallery': DEFAULT_LABELED_AREA,
         'theme_park': DEFAULT_LABELED_AREA,
         'wilderness_hut': DEFAULT_PLACE,
         'alpine_hut': DEFAULT_PLACE,
@@ -717,7 +726,7 @@ tags = {
         'wall': {'zoom-min': 14},
     },
     'man_made': {
-        'cutline': {'zoom-min': 14, 'pre-process': cutlines.process, '__strip__': True},
+        # 'cutline': {'zoom-min': 14, 'pre-process': cutlines.process, '__strip__': True},
         'pier': {'zoom-min': 14},
         'bridge': DEFAULT_PLACE,
         'tower': {'zoom-min': 14},
