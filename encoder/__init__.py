@@ -174,11 +174,11 @@ class VectorTile:
         if len(tags) > 1:
             f.num_tags = len(tags)
 
-        # add id
         if id is not None and id >= 0:
             f.id = id
+            if feature.area:
+                area = int(feature.area)  # TODO (add f.)
 
-        # add osm layer
         if layer is not None and layer != 5:
             f.layer = layer
 

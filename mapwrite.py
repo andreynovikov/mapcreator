@@ -43,7 +43,7 @@ logging.getLogger('shapely.geos').setLevel(logging.WARNING)
 
 ProcessJob = namedtuple('ProcessJob', ['id', 'wkb', 'tags', 'mapping', 'simple_polygon'])
 DBJob = namedtuple('DBJob', ['zoom', 'x', 'y', 'features'])
-Feature = namedtuple('Feature', ['id', 'geometry', 'tags', 'kind', 'type', 'label', 'building'])
+Feature = namedtuple('Feature', ['id', 'geometry', 'area', 'tags', 'kind', 'type', 'label', 'building'])
 
 wkbFactory = osmium.geom.WKBFactory()
 
@@ -304,22 +304,24 @@ def process_element(geom, tags, mapping, basemap=False):
 
     if el_type or (mapping.get('label', False) and (not basemap or mapping.get('basemap-label', False))):
         if building is not None:
-            label = polylabel(geom)
+            label, area = polylabel(geom)
         else:
             if geom.type == 'Polygon' or geom.type == 'MultiPolygon':
+                area = geom.area
                 label = geom.centroid
                 if not geom.contains(label):
                     label = geom.representative_point()
     if 'transform' in mapping:
         if mapping.get('transform') == 'point':
-            area = geom.area
             if label:
+                if not area:
+                    area = geom.area
                 if isinstance(label, list):
                     new_geom = label[0]
                 else:
                     new_geom = label
             else:
-                point = polylabel(geom)
+                point, area = polylabel(geom)
                 if isinstance(point, list):
                     new_geom = point[0]
                 else:
@@ -328,7 +330,7 @@ def process_element(geom, tags, mapping, basemap=False):
     if area is None and (mapping.get('filter-area', None) or (basemap and mapping.get('basemap-filter-area', None))):
         area = geom.area
 
-    return (kind, el_type, new_geom, area, label, building)
+    return kind, el_type, new_geom, area, label, building
 
 
 class MapWriter:
@@ -787,7 +789,7 @@ class MapWriter:
                                 labels.append(affine_transform(label, tile.matrix))
                     elif prepared_clip.contains(element.label):
                         labels = affine_transform(element.label, tile.matrix)
-                features.append(Feature(element.id, geometry, element.tags, element.kind, element.type, labels, element.building))
+                features.append(Feature(element.id, geometry, element.area, element.tags, element.kind, element.type, labels, element.building))
 
             # TODO combine union and merge to one logical block
             for union in unions:
@@ -818,7 +820,7 @@ class MapWriter:
                             united_geom = simple_geom
                     geometry = affine_transform(united_geom, tile.matrix)
                     if not geometry.is_empty:
-                        features.append(Feature(None, geometry, united_tags, None, None, None, None))
+                        features.append(Feature(None, geometry, None, united_tags, None, None, None, None))
                 except Exception:
                     self.logger.error("Failed to process union %s in tile %s" % (first.mapping['union'], tile))
 
@@ -850,7 +852,7 @@ class MapWriter:
                         united_tags['id'] = first.tags['id']
                     geometry = affine_transform(united_geom, tile.matrix)
                     if not geometry.is_empty:
-                        features.append(Feature(None, geometry, united_tags, None, None, None, None))
+                        features.append(Feature(None, geometry, None, united_tags, None, None, None, None))
                 except Exception:
                     self.logger.error("Failed to process merge %s in tile %s" % (first.mapping['union'], tile))
 
