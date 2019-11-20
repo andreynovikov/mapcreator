@@ -10,7 +10,7 @@ kinds = {
     "shopping":       0x00000100,
     "service":        0x00000200,
     "religion":       0x00000400,
-    "education":      0x00000800,
+    "healthbeauty":   0x00000800,
     "kids":           0x00001000,
     "pets":           0x00002000,
     "vehicles":       0x00004000,
@@ -215,8 +215,6 @@ def _tag_kind(k, v):
         if value in ('embassy', 'police', 'fire_station', 'hospital', 'pharmacy', 'doctors', 'dentist', 'clinic',
                      'telephone'):
             f_kind = kinds['emergency']
-        elif value in ('university', 'school', 'college'):
-            f_kind = kinds['education']
         elif value in ('kindergarten',):
             f_kind = kinds['kids']
         elif value in ('cafe', 'pub', 'bar', 'fast_food', 'restaurant'):
@@ -267,12 +265,14 @@ def _tag_kind(k, v):
         elif value in ('bicycle', 'outdoor'):
             f_kind = kinds['hikebike'] | kinds['shopping']
         elif value == 'massage':
-            f_kind = kinds['entertainment']
+            f_kind = kinds['healthbeauty'] | kinds['entertainment']
+        elif value == 'hairdresser':
+            f_kind = kinds['healthbeauty'] | kinds['service']
         elif value == 'toys':
             f_kind = kinds['kids']
         elif value == 'pet':
             f_kind = kinds['pets']
-        elif value in ('hairdresser', 'copyshop', 'dry_cleaning', 'laundry'):
+        elif value in ('copyshop', 'dry_cleaning', 'laundry'):
             f_kind = kinds['service']
 
     elif key == 'historic':
@@ -280,8 +280,10 @@ def _tag_kind(k, v):
             f_kind = kinds['attraction']
 
     elif key == 'leisure':
-        if value in ('sports_centre', 'horse_riding', 'water_park', 'beach_resort', 'sauna'):
+        if value in ('sports_centre', 'horse_riding', 'water_park', 'beach_resort'):
             f_kind = kinds['entertainment']
+        elif value == 'sauna':
+            f_kind = kinds['healthbeauty'] | kinds['entertainment']
         elif value in ('playground', 'amusement_arcade'):
             f_kind = kinds['kids']
         elif value == 'slipway':
