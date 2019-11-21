@@ -622,7 +622,10 @@ _strings = [
     'dentist',
     'embassy',
     'horse_riding',
-    'gallery'
+    'gallery',
+    'kissing_gate',
+    'stile',
+    'firepit'
 ]
 
-staticValues = dict(zip(_strings,range(0, len(_strings))))
+staticValues = dict(zip(_strings, range(0, len(_strings))))

@@ -47,14 +47,17 @@ types = {
     "marketplace": 61,
     # "block": 64,
     # "bollard": 67,
+    # "stile": 68,
     # "cycle_barrier": 70,
     # "lift_gate": 73,
+    # "kissing_gate": 74,
     # "gate": 76,
     # "swing_gate": 76,
     # "chain": 76,
     "zoo": 82,
     "theme_park": 83,
     "picnic_site": 85,
+    # "firepit": 86,
     "theatre": 88,
     "cinema": 91,
     "library": 94,
@@ -206,7 +209,8 @@ def _tag_kind(k, v):
             f_kind = kinds['vehicles']
 
     elif key == 'barrier':
-        if value in ('block', 'bollard', 'chain', 'cycle_barrier', 'gate', 'lift_gate', 'swing_gate', 'yes'):
+        if value in ('block', 'bollard', 'stile', 'chain', 'cycle_barrier', 'gate', 'lift_gate', 'swing_gate',
+                     'kissing_gate', 'yes'):
             f_kind = kinds['barrier']
             if value == 'yes':
                 f_type = types.get('gate', 0)
@@ -265,7 +269,7 @@ def _tag_kind(k, v):
         elif value in ('bicycle', 'outdoor'):
             f_kind = kinds['hikebike'] | kinds['shopping']
         elif value == 'massage':
-            f_kind = kinds['healthbeauty'] | kinds['entertainment']
+            f_kind = kinds['healthbeauty']
         elif value == 'hairdresser':
             f_kind = kinds['healthbeauty'] | kinds['service']
         elif value == 'toys':
@@ -288,6 +292,8 @@ def _tag_kind(k, v):
             f_kind = kinds['kids']
         elif value == 'slipway':
             f_kind = kinds['vehicles']
+        elif value == 'firepit':
+            f_kind = kinds['hikebike']
 
     elif key == 'man_made':
         if value in ('lighthouse', 'windmill'):

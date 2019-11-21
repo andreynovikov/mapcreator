@@ -546,6 +546,7 @@ tags = {
         'sauna': DEFAULT_PLACE,
         'amusement_arcade': DEFAULT_PLACE,
         'horse_riding': DEFAULT_PLACE,
+        'firepit': {'zoom-min': 14}
     },
     'amenity': {
         'university': DEFAULT_PLACE,
@@ -579,7 +580,7 @@ tags = {
         'bicycle_rental': DEFAULT_PLACE,
         'telephone': DEFAULT_PLACE,
         'parking': DEFAULT_PLACE,
-        'post_box': DEFAULT_PLACE,
+        'post_box': {'zoom-min': 14},
         'library': DEFAULT_PLACE,
         'marketplace': DEFAULT_PLACE,
         'car_repair': {'rewrite-key': 'shop'},
@@ -716,7 +717,9 @@ tags = {
         'chain': {'zoom-min': 14},
         'cycle_barrier': {'zoom-min': 14},
         'gate': {'zoom-min': 14},
+        'kissing_gate': {'zoom-min': 14},
         'lift_gate': {'zoom-min': 14},
+        'stile': {'zoom-min': 14},
         'toll_booth': {'zoom-min': 14},
         'yes': {'zoom-min': 14},
         'city_wall': {'zoom-min': 13},
@@ -726,7 +729,7 @@ tags = {
         'wall': {'zoom-min': 14},
     },
     'man_made': {
-        # 'cutline': {'zoom-min': 14, 'pre-process': cutlines.process, '__strip__': True},
+        'cutline': {'zoom-min': 14, 'pre-process': cutlines.process, '__strip__': True},
         'pier': {'zoom-min': 14},
         'bridge': DEFAULT_PLACE,
         'tower': {'zoom-min': 14},
