@@ -259,6 +259,14 @@ tags = {
             'clip-buffer': 8,
             'check-meta': True
         },
+        'services': {
+            'zoom-min': 14,
+            'check-meta': True
+        },
+        'rest_area': {
+            'zoom-min': 14,
+            'check-meta': True
+        },
         'pedestrian': {
             'zoom-min': 14,
             'clip-buffer': 8,
@@ -476,9 +484,20 @@ tags = {
         'river': {'zoom-min': 10, 'check-meta': True},
         'canal': {'zoom-min': 10, 'check-meta': True},
         'dam': {'zoom-min': 12, 'check-meta': True},
+        'weir': {'zoom-min': 13, 'check-meta': True},
         'stream': {'zoom-min': 13, 'check-meta': True},
         'drain': {'zoom-min': 14, 'check-meta': True},
         'ditch': {'zoom-min': 14, 'check-meta': True},
+    },
+    'water': {  # natural=water supplement
+        'river': {
+            'keep-tags': 'natural,intermittent',  # used to strip names
+            'render': False
+        },
+        'canal': {
+            'keep-tags': 'natural,intermittent',  # used to strip names
+            'render': False
+        },
     },
     'wetland': {
         '__any__': {
@@ -531,11 +550,17 @@ tags = {
             'zoom-min': 12,
             'filter-area': 8
         },
+        'marina': {
+            'zoom-min': 14,
+            'label': True
+        },
+        'dog_park': {
+            'zoom-min': 14
+        },
         'garden': DEFAULT_AREA,
         'golf_course': DEFAULT_AREA,
         'stadium': DEFAULT_AREA,
         'common': DEFAULT_AREA,
-        'dog_park': {'zoom-min': 14},
         'park': DEFAULT_AREA,
         'playground': DEFAULT_PLACE,
         'sports_centre': DEFAULT_LABELED_AREA,
@@ -731,6 +756,7 @@ tags = {
     'man_made': {
         'cutline': {'zoom-min': 14, 'pre-process': cutlines.process, '__strip__': True},
         'pier': {'zoom-min': 14},
+        'embankment': {'zoom-min': 14},
         'bridge': DEFAULT_PLACE,
         'tower': {'zoom-min': 14},
         'lighthouse': DEFAULT_PLACE,
@@ -1155,6 +1181,7 @@ tags = {
         '__strip__': True
     },
     'service': {'parking_aisle': {'render': False}},
+    'intermittent': {'yes': {'render': False}},
     'iata': {'__any__': {'render': False}},
     'icao': {'__any__': {'render': False}},
     'station': {'__any__': {'render': False}},

@@ -117,13 +117,16 @@ def is_area(tags):
     result = True
     for k, v in tags.items():
         if k == 'area':
-            return (v == 'yes')
+            return v == 'yes'
         if k in ['building', 'building:part']:
             return True
         # as specified by http://wiki.openstreetmap.org/wiki/Key:area
         if k in ['aeroway', 'building', 'landuse', 'leisure', 'natural', 'amenity']:
             return True
-        if k in ['highway', 'barrier']:
+        if k == 'highway':
+            if v not in ['services', 'rest_area']:
+                result = False
+        if k == 'barrier':
             result = False
         if k == 'railway':
             # There is more to the railway tag then just rails, this excludes the
