@@ -68,6 +68,9 @@ message Data {
 		// elevation in meters
 		optional sint32 elevation       = 33;
 		
+		// depth, precision 1/100m
+		optional sint32 depth           = 24;
+
 		// building height, precision 1/100m
 		optional sint32 height          = 34;
 

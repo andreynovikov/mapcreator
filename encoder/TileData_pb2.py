@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='org.oscim.database.oscimap4',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x0eTileData.proto\x12\x1borg.oscim.database.oscimap4\"\xdf\x06\n\x04\x44\x61ta\x12\x0f\n\x07version\x18\x01 \x02(\r\x12\x11\n\ttimestamp\x18\x02 \x01(\x04\x12\r\n\x05water\x18\x03 \x01(\x08\x12\x10\n\x08num_tags\x18\x0b \x02(\r\x12\x13\n\x08num_keys\x18\x0c \x01(\r:\x01\x30\x12\x13\n\x08num_vals\x18\r \x01(\r:\x01\x30\x12\x0c\n\x04keys\x18\x0e \x03(\t\x12\x0e\n\x06values\x18\x0f \x03(\t\x12\x10\n\x04tags\x18\x10 \x03(\rB\x02\x10\x01\x12\x38\n\x05lines\x18\x15 \x03(\x0b\x32).org.oscim.database.oscimap4.Data.Element\x12;\n\x08polygons\x18\x16 \x03(\x0b\x32).org.oscim.database.oscimap4.Data.Element\x12\x39\n\x06points\x18\x17 \x03(\x0b\x32).org.oscim.database.oscimap4.Data.Element\x1a\x85\x04\n\x07\x45lement\x12\x16\n\x0bnum_indices\x18\x01 \x01(\r:\x01\x31\x12\x13\n\x08num_tags\x18\x02 \x01(\r:\x01\x31\x12\n\n\x02id\x18\x04 \x01(\x04\x12\x11\n\treserved5\x18\x05 \x01(\x04\x12\x11\n\treserved6\x18\x06 \x01(\r\x12\x11\n\treserved7\x18\x07 \x01(\x11\x12\x11\n\treserved8\x18\x08 \x01(\x08\x12\x11\n\treserved9\x18\t \x01(\t\x12\x10\n\x04tags\x18\x0b \x03(\rB\x02\x10\x01\x12\x13\n\x07indices\x18\x0c \x03(\rB\x02\x10\x01\x12\x17\n\x0b\x63oordinates\x18\r \x03(\x11\x42\x02\x10\x01\x12\x10\n\x05layer\x18\x15 \x01(\r:\x01\x35\x12\x0c\n\x04\x61rea\x18\x17 \x01(\x04\x12\x11\n\x05label\x18\x1f \x03(\x11\x42\x02\x10\x01\x12\x0c\n\x04kind\x18  \x01(\r\x12\x0c\n\x04type\x18\x16 \x01(\r\x12\x11\n\televation\x18! \x01(\x11\x12\x0e\n\x06height\x18\" \x01(\x11\x12\x12\n\nmin_height\x18# \x01(\x11\x12\x16\n\x0e\x62uilding_color\x18$ \x01(\r\x12\x12\n\nroof_color\x18% \x01(\r\x12\x13\n\x0broof_height\x18\' \x01(\x11\x12\x12\n\nroof_shape\x18( \x01(\x11\x12\x16\n\x0eroof_direction\x18) \x01(\x11\x12\x1a\n\x0broof_across\x18* \x01(\x08:\x05\x66\x61lse\x12\x13\n\x0bhousenumber\x18& \x01(\t')
+  serialized_pb=_b('\n\x0eTileData.proto\x12\x1borg.oscim.database.oscimap4\"\xee\x06\n\x04\x44\x61ta\x12\x0f\n\x07version\x18\x01 \x02(\r\x12\x11\n\ttimestamp\x18\x02 \x01(\x04\x12\r\n\x05water\x18\x03 \x01(\x08\x12\x10\n\x08num_tags\x18\x0b \x02(\r\x12\x13\n\x08num_keys\x18\x0c \x01(\r:\x01\x30\x12\x13\n\x08num_vals\x18\r \x01(\r:\x01\x30\x12\x0c\n\x04keys\x18\x0e \x03(\t\x12\x0e\n\x06values\x18\x0f \x03(\t\x12\x10\n\x04tags\x18\x10 \x03(\rB\x02\x10\x01\x12\x38\n\x05lines\x18\x15 \x03(\x0b\x32).org.oscim.database.oscimap4.Data.Element\x12;\n\x08polygons\x18\x16 \x03(\x0b\x32).org.oscim.database.oscimap4.Data.Element\x12\x39\n\x06points\x18\x17 \x03(\x0b\x32).org.oscim.database.oscimap4.Data.Element\x1a\x94\x04\n\x07\x45lement\x12\x16\n\x0bnum_indices\x18\x01 \x01(\r:\x01\x31\x12\x13\n\x08num_tags\x18\x02 \x01(\r:\x01\x31\x12\n\n\x02id\x18\x04 \x01(\x04\x12\x11\n\treserved5\x18\x05 \x01(\x04\x12\x11\n\treserved6\x18\x06 \x01(\r\x12\x11\n\treserved7\x18\x07 \x01(\x11\x12\x11\n\treserved8\x18\x08 \x01(\x08\x12\x11\n\treserved9\x18\t \x01(\t\x12\x10\n\x04tags\x18\x0b \x03(\rB\x02\x10\x01\x12\x13\n\x07indices\x18\x0c \x03(\rB\x02\x10\x01\x12\x17\n\x0b\x63oordinates\x18\r \x03(\x11\x42\x02\x10\x01\x12\x10\n\x05layer\x18\x15 \x01(\r:\x01\x35\x12\x0c\n\x04\x61rea\x18\x17 \x01(\x04\x12\x11\n\x05label\x18\x1f \x03(\x11\x42\x02\x10\x01\x12\x0c\n\x04kind\x18  \x01(\r\x12\x0c\n\x04type\x18\x16 \x01(\r\x12\x11\n\televation\x18! \x01(\x11\x12\r\n\x05\x64\x65pth\x18\x18 \x01(\x11\x12\x0e\n\x06height\x18\" \x01(\x11\x12\x12\n\nmin_height\x18# \x01(\x11\x12\x16\n\x0e\x62uilding_color\x18$ \x01(\r\x12\x12\n\nroof_color\x18% \x01(\r\x12\x13\n\x0broof_height\x18\' \x01(\x11\x12\x12\n\nroof_shape\x18( \x01(\x11\x12\x16\n\x0eroof_direction\x18) \x01(\x11\x12\x1a\n\x0broof_across\x18* \x01(\x08:\x05\x66\x61lse\x12\x13\n\x0bhousenumber\x18& \x01(\t')
 )
 
 
@@ -152,63 +152,70 @@ _DATA_ELEMENT = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='height', full_name='org.oscim.database.oscimap4.Data.Element.height', index=17,
+      name='depth', full_name='org.oscim.database.oscimap4.Data.Element.depth', index=17,
+      number=24, type=17, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='height', full_name='org.oscim.database.oscimap4.Data.Element.height', index=18,
       number=34, type=17, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='min_height', full_name='org.oscim.database.oscimap4.Data.Element.min_height', index=18,
+      name='min_height', full_name='org.oscim.database.oscimap4.Data.Element.min_height', index=19,
       number=35, type=17, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='building_color', full_name='org.oscim.database.oscimap4.Data.Element.building_color', index=19,
+      name='building_color', full_name='org.oscim.database.oscimap4.Data.Element.building_color', index=20,
       number=36, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='roof_color', full_name='org.oscim.database.oscimap4.Data.Element.roof_color', index=20,
+      name='roof_color', full_name='org.oscim.database.oscimap4.Data.Element.roof_color', index=21,
       number=37, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='roof_height', full_name='org.oscim.database.oscimap4.Data.Element.roof_height', index=21,
+      name='roof_height', full_name='org.oscim.database.oscimap4.Data.Element.roof_height', index=22,
       number=39, type=17, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='roof_shape', full_name='org.oscim.database.oscimap4.Data.Element.roof_shape', index=22,
+      name='roof_shape', full_name='org.oscim.database.oscimap4.Data.Element.roof_shape', index=23,
       number=40, type=17, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='roof_direction', full_name='org.oscim.database.oscimap4.Data.Element.roof_direction', index=23,
+      name='roof_direction', full_name='org.oscim.database.oscimap4.Data.Element.roof_direction', index=24,
       number=41, type=17, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='roof_across', full_name='org.oscim.database.oscimap4.Data.Element.roof_across', index=24,
+      name='roof_across', full_name='org.oscim.database.oscimap4.Data.Element.roof_across', index=25,
       number=42, type=8, cpp_type=7, label=1,
       has_default_value=True, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='housenumber', full_name='org.oscim.database.oscimap4.Data.Element.housenumber', index=25,
+      name='housenumber', full_name='org.oscim.database.oscimap4.Data.Element.housenumber', index=26,
       number=38, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -227,7 +234,7 @@ _DATA_ELEMENT = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=394,
-  serialized_end=911,
+  serialized_end=926,
 )
 
 _DATA = _descriptor.Descriptor(
@@ -334,7 +341,7 @@ _DATA = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=48,
-  serialized_end=911,
+  serialized_end=926,
 )
 
 _DATA_ELEMENT.containing_type = _DATA
