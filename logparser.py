@@ -56,10 +56,16 @@ def process_map(fields):
     size = sizes.get(area, None)
     if not size:
         filename = map_file_path % (x, area)
-        size = path.getsize(filename)
-        sizes[area] = size
-    # header size is 254-261 bytes
-    ratio = (total - 258) / size
+        try:
+            size = path.getsize(filename)
+            sizes[area] = size
+        except FileNotFoundError:
+            size = 0
+    if size:
+        # header size is 254-261 bytes
+        ratio = (total - 258) / size
+    else:  # no map (removed)
+        ratio = 0
     areas = hits.get(month, None)
     if not areas:
         areas = {}
@@ -82,13 +88,16 @@ with open(configuration.MAP_DOWNLOAD_LOG, 'r') as f:
 
 """
 create table trekarta_stats(at timestamp not null, android varchar(10), model varchar(20), running_time integer, tracking_time integer,
-                            waypoint_count integer, data_set_count integer, native_map_count integer, map_count integer, fullscreen_times integer);
+                            waypoint_count integer, data_set_count integer, native_map_count integer, map_count integer, fullscreen_times integer,
+                            hiking_times integer, skiing_times integer);
 create table map_downloads(month integer, area varchar(7), downloads real, primary key(month, area));
 """
 
 with psycopg2.connect(configuration.STATS_DB_DSN) as c:
     cur = c.cursor()
     for line in stats:
+        if len(line) < 12:
+            line.extend([0] * (12 - len(line)))
         cur.execute("INSERT INTO trekarta_stats VALUES (%s)" % ', '.join(['%s'] * len(line)), line)
     c.commit()
     cur = c.cursor()
