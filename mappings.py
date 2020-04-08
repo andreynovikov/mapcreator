@@ -312,6 +312,7 @@ tags = {
         'disused': {'zoom-min': 14, 'check-meta': True},
         'abandoned': {'zoom-min': 14, 'check-meta': True},
         'preserved': {'zoom-min': 14, 'check-meta': True},
+        'turntable': {'zoom-min': 14},
         'station': {'zoom-min': 14},
         'platform': {'zoom-min': 14},
         'halt': {'zoom-min': 14},
@@ -1144,6 +1145,14 @@ tags = {
         },
         '__strip__': True
     },
+    'depth': {
+        '__any__': {
+            'adjust': osm.height,
+            'keep-for': 'waterway,ford',
+            'render': False
+        },
+        '__strip__': True
+    },
     'height': {
         '__any__': {
             'adjust': osm.height,
@@ -1166,6 +1175,28 @@ tags = {
             'render': False
         }
     },
+    'service': {
+        'parking_aisle': {
+            'keep-for': 'highway',
+            'render': False
+        },
+        'yes': {  # do not distinguish railway service tracks
+            'keep-for': 'railway',
+            'render': False
+        },
+        'yard': {
+            'rewrite-value': 'yes'
+        },
+        'siding': {
+            'rewrite-value': 'yes'
+        },
+        'spur': {
+            'rewrite-value': 'yes'
+        },
+        'crossover': {
+            'rewrite-value': 'yes'
+        }
+    },
     'location': {
         'underwater': {
             'modify-mapping': _underwater_mapper,
@@ -1180,7 +1211,6 @@ tags = {
         },
         '__strip__': True
     },
-    'service': {'parking_aisle': {'render': False}},
     'intermittent': {'yes': {'render': False}},
     'iata': {'__any__': {'render': False}},
     'icao': {'__any__': {'render': False}},

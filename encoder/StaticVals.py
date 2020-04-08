@@ -630,7 +630,8 @@ _strings = [
     'weir',
     'services',
     'rest_area',
-    'embankment'
+    'embankment',
+    'turntable'
 ]
 
 staticValues = dict(zip(_strings, range(0, len(_strings))))
