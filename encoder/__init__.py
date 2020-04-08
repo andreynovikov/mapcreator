@@ -69,6 +69,7 @@ class VectorTile:
         layer = None
         housenumber = None
         elevation = None
+        depth = None
 
         for k, v in feature.tags.items():
             if v is None:
@@ -83,6 +84,10 @@ class VectorTile:
 
             if k == 'ele':
                 elevation = v
+                continue
+
+            if k == 'depth':
+                depth = v
                 continue
 
             # use unsigned int for layer. i.e. map to 0..10
@@ -105,7 +110,7 @@ class VectorTile:
 
         if len(tags) == 0:
             if feature.id:
-                logging.error('missing tags in element %s' % str(feature.id))
+                logging.error('missing tags in %s' % feature.osm_id())
             else:
                 logging.error('missing tags in geom %s' % feature.geometry.type)
             return
@@ -177,7 +182,7 @@ class VectorTile:
         if id is not None and id >= 0:
             f.id = id
             if feature.area:
-                area = int(feature.area)  # TODO (add f.)
+                f.area = int(feature.area)
 
         if layer is not None and layer != 5:
             f.layer = layer
@@ -185,11 +190,14 @@ class VectorTile:
         if elevation is not None:
             f.elevation = int(elevation)
 
+        if depth is not None:
+            f.depth = int(depth * 100)
+
         if feature.kind is not None:
             f.kind = feature.kind
 
         if feature.type is not None:
-            type = feature.type  # TODO (add f.)
+            f.type = feature.type
 
         if housenumber is not None:
             f.housenumber = housenumber
@@ -215,18 +223,18 @@ class VectorTile:
 
             if feature.building.roof_height is not None:
                 try:
-                    roof_height = int(feature.building.roof_height * 100)  # TODO (add f.)
+                    f.roof_height = int(feature.building.roof_height * 100)
                 except ValueError:
                     pass
 
             if feature.building.roof_shape is not None:
-                roof_shape = feature.building.roof_shape  # TODO (add f.)
+                f.roof_shape = feature.building.roof_shape
 
             if feature.building.roof_direction is not None:
-                roof_direction = int(feature.building.roof_direction * 10)  # TODO (add f.)
+                f.roof_direction = int(feature.building.roof_direction * 10)
 
             if feature.building.roof_across:
-                roof_across = feature.building.roof_across  # TODO (add f.)
+                f.roof_across = feature.building.roof_across
 
         # logging.debug('tags %d, indices %d' %(len(tags),len(f.indices)))
         self.num_features += 1
