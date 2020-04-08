@@ -15,11 +15,11 @@ class Element:
 
     def osm_id(self):
         t = 0
-        id = None
+        osm_id = None
         if self.id:
             t = self.id & 0x0000000000000003
-            id = self.id >> 2
-        return "%s/%s" % (Element.geom_type[t], id)
+            osm_id = self.id >> 2
+        return "%s/%s" % (Element.geom_type[t], osm_id)
 
     def __str__(self):
         # geom = transform(mercator_to_wgs84, self.geom)
