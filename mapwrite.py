@@ -216,7 +216,13 @@ class OsmFilter(osmium.SimpleHandler):
                 id = (id << 2) + t
                 self.elements.append(Element(id, geom, tags, mapping))
             except Exception as e:
-                self.logger.error("%s: %s" % (id, e))
+                if t == 1:
+                    st = 'node'
+                elif t == 2 or o.from_way():
+                    st = 'way'
+                else:
+                    st = 'relation'
+                self.logger.error("   %s/%s: %s" % (st, o.id, e))
 
     def node(self, n):
         self.process(1, n)
@@ -578,6 +584,16 @@ class MapWriter:
                 self.proc_progress.close()
             else:
                 self.logger.info("    finished processing elements")
+
+            # remove elements without tags (due to tag cleaning)
+            def has_tags(el):
+                if len(el.tags):
+                    return True
+                else:
+                    logging.warning(" missing tags in %s" % el.osm_id())
+                    return False
+
+            elements[:] = [el for el in elements if has_tags(el)]
 
             gc.collect()
 
