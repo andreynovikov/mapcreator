@@ -127,7 +127,7 @@ types = {
     "bus_stop": 248,
     "tram_stop": 249,
     "bicycle_rental": 250,
-    # "drinking_water": 253,
+    "drinking_water": 253,
     "shelter": 256,
     "toilets": 259,
     "hairdresser": 262,
