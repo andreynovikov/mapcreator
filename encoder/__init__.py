@@ -1,5 +1,7 @@
 import logging
 
+from util.core import Element
+
 from . import TileData_pb2
 
 from . import GeomEncoder
@@ -110,7 +112,9 @@ class VectorTile:
 
         if len(tags) == 0:
             if feature.id:
-                logging.error('missing tags in %s' % feature.osm_id())
+                t = feature.id & 0x0000000000000003
+                osm_id = feature.id >> 2
+                logging.error('missing tags in %s/%s' % (Element.geom_type[t], osm_id))
             else:
                 logging.error('missing tags in geom %s' % feature.geometry.type)
             return
@@ -147,7 +151,7 @@ class VectorTile:
             # add coordinate index list (coordinates per geometry)
             f.indices.extend(geom.index)
 
-            # add indice count (number of geometries)
+            # add indices count (number of geometries)
             if len(f.indices) > 1:
                 f.num_indices = len(f.indices)
 
@@ -241,12 +245,10 @@ class VectorTile:
 
     def getLayer(self, val):
         try:
-            layer = max(min(10, int(val)) + 5, 0)
-            if layer != 0:
-                return layer
+            layer = max(min(5, int(val)), -5)
+            return layer + 5
         except ValueError:
-            logging.warning("layer invalid %s" % val)
-
+            logging.warning(" layer invalid %s" % val)
         return None
 
     def getKeyId(self, key):
