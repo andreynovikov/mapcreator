@@ -86,32 +86,32 @@ def _indoor_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict)
 """
 Mapping parameters:
 
-   rewrite-key - rewrite tag key
-   rewrite-if-missing - rewrite only if there is no target tag key
-   rewrite-value - rewrite tag value
-   one-of - apply only if value is in the specified list
+   rewrite-key         - rewrite tag key
+   rewrite-if-missing  - rewrite only if there is no target tag key
+   rewrite-value       - rewrite tag value
+   one-of              - apply only if value is in the specified list
    adjust
    filter-type
-   render - mark element as renderable (default True)
-   zoom-min - set minimum zoom for element
-   zoom-max - set maximum zoom for element
-   ignore - do not render map if this is the only renderable element
-   filter-area
+   render              - mark element as renderable (default True)
+   zoom-min            - set minimum zoom for element
+   zoom-max            - set maximum zoom for element
+   ignore              - do not render map if this is the only renderable element
+   filter-area         - drop element if its pixel area is less then threshold
    buffer
    enlarge
-   simplify
+   simplify            - simplify geometry by pixel width multiplied by specified factor
    label
    clip-buffer
-   keep-tags - force keeping tags with keys in the specified list
-   keep-for - keep tag only if element contains one of specified keys
+   keep-tags           - force keeping tags with keys in the specified list
+   keep-for            - keep tag only if element contains one of specified keys
    union
    union-zoom-max
-   transform - transform geom ['point', 'filter-rings']
+   transform           - transform geom ['point', 'filter-rings']
    transform-exclusive - apply transform only if this is the only renderable tag
-   force-line - treat closed line as line instead of area
-   check-meta - get additional data from database
-   modify-mapping - call predefined routine that post-modifies mapping (stacked)
-   pre-process - apply pre-processing routine (stacked)
+   force-line          - treat closed line as line instead of area
+   check-meta          - get additional data from database
+   modify-mapping      - call predefined routine that post-modifies mapping (stacked)
+   pre-process         - apply pre-processing routine (stacked)
 
    basemap-label
    basemap-keep-tags
@@ -120,12 +120,12 @@ Mapping parameters:
 
 DEFAULT_AREA = {
     'zoom-min': 12,
-    'filter-area': 8
+    'filter-area': 128
 }
 
 DEFAULT_LABELED_AREA = {
     'zoom-min': 12,
-    'filter-area': 8,
+    'filter-area': 128,
     'label': True
 }
 
@@ -352,26 +352,26 @@ tags = {
             'filter-type': ['Polygon', 'MultiPolygon'],
             'union': 'landuse',
             'union-zoom-max': 7,
-            'filter-area': 128,
+            'filter-area': 256,
             'buffer': 4,
             'transform': 'filter-rings',
             'basemap-keep-tags': 'landuse'
         },
         'residential': {
             'zoom-min': 10,
-            'filter-area': 8
+            'filter-area': 128
         },
         'retail': {
             'zoom-min': 10,
-            'filter-area': 8
+            'filter-area': 128
         },
         'commercial': {
             'zoom-min': 10,
-            'filter-area': 8
+            'filter-area': 128
         },
         'industrial': {
             'zoom-min': 10,
-            'filter-area': 8
+            'filter-area': 128
         },
         'brownfield': DEFAULT_AREA,
         'construction': DEFAULT_AREA,
@@ -384,13 +384,13 @@ tags = {
         'orchard': DEFAULT_AREA,
         'cemetery': {
             'zoom-min': 11,
-            'filter-area': 8
+            'filter-area': 128
         },
         'basin': {
-            'filter-area': 2
+            'filter-area': 32
         },
         'reservoir': {
-            'filter-area': 2
+            'filter-area': 32
         },
         'meadow': DEFAULT_AREA,
         'grass': DEFAULT_AREA,
@@ -409,33 +409,34 @@ tags = {
             'transform': 'filter-rings',
             'keep-tags': 'natural',  # used to strip names
             'union': 'natural',
-            'filter-area': 2,
-            'simplify': 0.5,
+            'filter-area': 32,
+            'simplify': 2,
             'buffer': 1
         },
         'marsh': {
             'zoom-min': 10,
-            'filter-area': 8
+            'filter-area': 256
         },
         'wetland': {
             'zoom-min': 10,
-            'filter-area': 8
+            'filter-area': 256
         },
         'water': {
             'zoom-min': 8,
             'transform': 'filter-rings',
-            'filter-area': 4,
-            'buffer': 0.3
+            'filter-area': 32,
+            'simplify': 2,
+            'buffer': 1
         },
         'bay': {
             'zoom-min': 8,
-            'filter-area': 4,
+            'filter-area': 512,
             'transform': 'point',
             'label': True
         },
         'strait': {
             'zoom-min': 8,
-            'filter-area': 4,
+            'filter-area': 512,
             'transform': 'point',
             'label': True
         },
@@ -443,21 +444,21 @@ tags = {
         'heath': DEFAULT_AREA,
         'scrub': {
             'zoom-min': 10,
-            'filter-area': 8
+            'filter-area': 256
         },
         'scree': {
             'zoom-min': 10,
-            'filter-area': 8
+            'filter-area': 256
         },
         'bare_rock': {
             'zoom-min': 10,
-            'filter-area': 8
+            'filter-area': 256
         },
         'shingle': DEFAULT_AREA,
         'sand': DEFAULT_AREA,
         'beach': {
             'zoom-min': 10,
-            'filter-area': 8,
+            'filter-area': 256,
             'label': True
         },
         'mud': DEFAULT_AREA,
@@ -466,7 +467,7 @@ tags = {
             'union': 'natural',
             'ignore': True,
             'zoom-min': 7,
-            'filter-area': 8
+            'filter-area': 128
         },
         'cliff': {'zoom-min': 13},
         'volcano': {'zoom-min': 13},
@@ -481,11 +482,11 @@ tags = {
     'waterway': {
         'riverbank': {
             'zoom-min': 8,
-            'filter-area': 2
+            'filter-area': 32
         },
         'dock': {
             'zoom-min': 8,
-            'filter-area': 2
+            'filter-area': 32
         },
         'lock_gate': {
             'zoom-min': 12
@@ -551,14 +552,14 @@ tags = {
         'ice_rink': {
             'modify-mapping': _ice_skate_mapper,
             'zoom-min': 13,
-            'filter-area': 8,
+            'filter-area': 64,
             'render': False,
             '__strip__': True
         },
         'pitch': {
             'modify-mapping': _ice_skate_mapper,
             'zoom-min': 12,
-            'filter-area': 8
+            'filter-area': 64
         },
         'marina': {
             'zoom-min': 14,
