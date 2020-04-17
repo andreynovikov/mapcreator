@@ -65,6 +65,12 @@ def _ice_skate_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: di
     return renderable, ignorable, mapping
 
 
+def _covered_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
+    if any(k in ('highway', 'railway') for k in tags.keys()):
+        tags['tunnel'] = 'yes'
+    return renderable, ignorable, mapping
+
+
 def _underwater_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
     if tags.get('location', None) == 'underwater':
         ignorable = True
@@ -299,6 +305,9 @@ tags = {
         'bus_stop': {
             'zoom-min': 14
         },
+        'platform': {
+            'zoom-min': 14
+        },
     },
     'railway': {
         'rail': {'zoom-min': 12, 'check-meta': True},
@@ -523,9 +532,9 @@ tags = {
     },
     'place': {
         'ocean': {'ignore': True, 'zoom-min': 2, 'transform': 'point', 'transform-exclusive': True},
-        'sea': {'ignore': True, 'zoom-min': 5, 'transform': 'point', 'transform-exclusive': True},
+        'sea': {'ignore': True, 'zoom-min': 4, 'transform': 'point', 'transform-exclusive': True},
         'country': {'ignore': True, 'zoom-min': 3, 'transform': 'point', 'transform-exclusive': True},
-        'state': {'ignore': True, 'zoom-min': 5, 'transform': 'point', 'transform-exclusive': True},
+        'state': {'ignore': True, 'zoom-min': 4, 'transform': 'point', 'transform-exclusive': True},
         'island': {'zoom-min': 12, 'transform': 'point', 'transform-exclusive': True},
         'city': {'filter-type': ['Point'], 'zoom-min': 7},
         'town': {'filter-type': ['Point'], 'zoom-min': 7},
@@ -1029,6 +1038,7 @@ tags = {
     },
     'covered': {
         '__any__': {
+            'modify-mapping': _covered_mapper,
             'adjust': osm.boolean,
             'render': False
         },
@@ -1179,6 +1189,12 @@ tags = {
         'parking_aisle': {
             'keep-for': 'highway',
             'render': False
+        },
+        'drive-through': {
+            'rewrite-value': 'parking_aisle'
+        },
+        'driveway': {
+            'rewrite-value': 'parking_aisle'
         },
         'yes': {  # do not distinguish railway service tracks
             'keep-for': 'railway',
