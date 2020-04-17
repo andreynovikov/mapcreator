@@ -9,11 +9,11 @@ class MapTypes:
 mapType = MapTypes.Detailed
 
 
-def _admin_level_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
-    admin_level = tags.get('admin_level', '0')
-    is_town = tags.get('place', None) in ('city', 'town')
+def _admin_level_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
+    admin_level = element_tags.get('admin_level', '0')
+    is_town = element_tags.get('place', None) in ('city', 'town')
     if mapType == MapTypes.Stub:
-        renderable = admin_level == '2' or (is_town and tags.get('population', 0) > 0)
+        renderable = admin_level == '2' or (is_town and element_tags.get('population', 0) > 0)
     if is_town:
         if admin_level == '2':
             mapping['zoom-min'] = 4
@@ -24,11 +24,11 @@ def _admin_level_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: 
     return renderable, ignorable, mapping
 
 
-def _population_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
-    population = tags.get('population', 0)
+def _population_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
+    population = element_tags.get('population', 0)
     if mapType == MapTypes.Stub:
-        renderable = tags.get('place', None) in ('country', 'city', 'town')
-    if tags.get('place', None) in ('city', 'town'):
+        renderable = element_tags.get('place', None) in ('country', 'city', 'town')
+    if element_tags.get('place', None) in ('city', 'town'):
         if population >= 150000:
             mapping['zoom-min'] = 6
         if population >= 300000:
@@ -38,47 +38,47 @@ def _population_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: d
     return renderable, ignorable, mapping
 
 
-def _china_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
-    population = tags.get('population', 0)
-    if tags.get('place', None) in ('city', 'town') and population < 300000:
+def _china_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
+    population = element_tags.get('population', 0)
+    if element_tags.get('place', None) in ('city', 'town') and population < 300000:
         renderable = False
     return renderable, ignorable, mapping
 
 
-def _ice_skate_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
+def _ice_skate_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
     skating = False
-    leisure = tags.get('leisure', None)
+    leisure = element_tags.get('leisure', None)
     if leisure == 'pitch':
-        if tags.get('sport', None) == 'ice_skating':
+        if element_tags.get('sport', None) == 'ice_skating':
             skating = True
     if leisure == 'ice_rink':
-        sport = tags.get('sport', None)
+        sport = element_tags.get('sport', None)
         if sport is None or sport == 'ice_skating':
             skating = True
             renderable = True
-            tags['area'] = 'yes'
+            element_tags['area'] = 'yes'
     if skating:
-        tags['piste:type'] = 'ice_skate'
+        element_tags['piste:type'] = 'ice_skate'
         mapping['label'] = True
-        if tags.get('covered', 'no') == 'yes':
-            tags['area'] = 'no'
+        if element_tags.get('covered', 'no') == 'yes':
+            element_tags['area'] = 'no'
     return renderable, ignorable, mapping
 
 
-def _covered_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
-    if any(k in ('highway', 'railway') for k in tags.keys()):
-        tags['tunnel'] = 'yes'
+def _covered_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
+    if any(k in ('highway', 'railway') for k in element_tags.keys()):
+        element_tags['tunnel'] = 'yes'
     return renderable, ignorable, mapping
 
 
-def _underwater_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
-    if tags.get('location', None) == 'underwater':
+def _underwater_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
+    if element_tags.get('location', None) == 'underwater':
         ignorable = True
     return renderable, ignorable, mapping
 
 
-def _indoor_mapper(tags: dict, renderable: bool, ignorable: bool, mapping: dict):
-    if any(k in ('highway', 'railway', 'barrier') for k in tags.keys()):
+def _indoor_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
+    if any(k in ('highway', 'railway', 'barrier') for k in element_tags.keys()):
         renderable = False
     return renderable, ignorable, mapping
 
@@ -512,7 +512,8 @@ tags = {
     },
     'wetland': {
         '__any__': {
-            'one-of': ['marsh', 'reedbed', 'saltmarsh', 'wet_meadow', 'swamp', 'mangrove', 'bog', 'fen', 'string_bog', 'tidalflat'],
+            'one-of': ['marsh', 'reedbed', 'saltmarsh', 'wet_meadow', 'swamp', 'mangrove', 'bog', 'fen', 'string_bog',
+                       'tidalflat'],
             'buffer': 0.5,
             'render': False
         },
@@ -962,7 +963,8 @@ tags = {
     },
     'smoothness': {
         '__any__': {
-            'one-of': ['excellent', 'good', 'intermediate', 'bad', 'very_bad', 'horrible', 'very_horrible', 'impassable'],
+            'one-of': ['excellent', 'good', 'intermediate', 'bad', 'very_bad', 'horrible', 'very_horrible',
+                       'impassable'],
             'render': False
         },
     },
@@ -1254,56 +1256,69 @@ tags = {
 }
 
 
+# noinspection PyUnusedLocal
 def _water_z2_mapper(row):
     return {'natural': 'sea'}, {'zoom-min': 0, 'zoom-max': 2}
 
 
+# noinspection PyUnusedLocal
 def _water_z3_mapper(row):
     return {'natural': 'sea'}, {'zoom-min': 3, 'zoom-max': 3}
 
 
+# noinspection PyUnusedLocal
 def _water_z4_mapper(row):
-    return ({'natural': 'sea'}, {'zoom-min': 4, 'zoom-max': 4})
+    return {'natural': 'sea'}, {'zoom-min': 4, 'zoom-max': 4}
 
 
+# noinspection PyUnusedLocal
 def _water_z5_mapper(row):
-    return ({'natural': 'sea'}, {'zoom-min': 5, 'zoom-max': 5})
+    return {'natural': 'sea'}, {'zoom-min': 5, 'zoom-max': 5}
 
 
+# noinspection PyUnusedLocal
 def _water_z6_mapper(row):
-    return ({'natural': 'sea'}, {'zoom-min': 6, 'zoom-max': 6})
+    return {'natural': 'sea'}, {'zoom-min': 6, 'zoom-max': 6}
 
 
+# noinspection PyUnusedLocal
 def _water_z7_mapper(row):
-    return ({'natural': 'sea'}, {'zoom-min': 7, 'zoom-max': 7})
+    return {'natural': 'sea'}, {'zoom-min': 7, 'zoom-max': 7}
 
 
+# noinspection PyUnusedLocal
 def _water_z8_mapper(row):
-    return ({'natural': 'sea'}, {'zoom-min': 8, 'buffer': 0.2, 'transform': 'filter-rings', 'zoom-max': 8, 'union': 'natural'})
+    return {'natural': 'sea'}, {'zoom-min': 8, 'buffer': 0.2, 'transform': 'filter-rings', 'zoom-max': 8,
+                                'union': 'natural'}
 
 
+# noinspection PyUnusedLocal
 def _water_mapper(row):
-    return ({'natural': 'sea'}, {'zoom-min': 9, 'buffer': 1, 'transform': 'filter-rings', 'union': 'natural'})
+    return {'natural': 'sea'}, {'zoom-min': 9, 'buffer': 1, 'transform': 'filter-rings', 'union': 'natural'}
 
 
+# noinspection PyUnusedLocal
 def _lakes_50m_mapper(row):
     if mapType == MapTypes.Stub:
         zoom_max = 7
     else:
         zoom_max = 4
-    return ({'natural': 'water'}, {'zoom-min': 2, 'zoom-max': zoom_max, 'filter-area': 32})
+    return {'natural': 'water'}, {'zoom-min': 2, 'zoom-max': zoom_max, 'filter-area': 32}
 
 
+# noinspection PyUnusedLocal
 def _rivers_50m_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 4, 'zoom-max': 4})
+    return {'natural': 'water'}, {'zoom-min': 4, 'zoom-max': 4}
 
 
+# noinspection PyUnusedLocal
 def _lakes_rivers_10m_mapper(row):
-    return ({'natural': 'water'}, {'zoom-min': 5})
+    return {'natural': 'water'}, {'zoom-min': 5}
 
 
+# noinspection PyUnusedLocal
 def _urban_areas(row):
-    return ({'landuse': 'residential'}, {'zoom-min': 6})
+    return {'landuse': 'residential'}, {'zoom-min': 6}
 
 
 def _contours_mapper(row):
@@ -1316,12 +1331,12 @@ def _contours_mapper(row):
         contour = 'elevation_medium'
     else:
         contour = 'elevation_minor'
-    return ({'contour': contour, 'ele': elevation}, {'zoom-min': zoom})
+    return {'contour': contour, 'ele': elevation}, {'zoom-min': zoom}
 
 
 def _boundaries_mapper(row):
     admin_level = str(row['admin_level'])
-    tags = {'boundary': 'administrative', 'admin_level': admin_level}
+    element_tags = {'boundary': 'administrative', 'admin_level': admin_level}
     zoom = 14
     if admin_level == '2':
         zoom = 2
@@ -1329,13 +1344,13 @@ def _boundaries_mapper(row):
         zoom = 5
     if row['maritime'] and row['maritime'] == 'yes':
         zoom = 8
-        tags['maritime'] = row['maritime']
-    return (tags, {'zoom-min': zoom, 'union': 'boundary,admin_level,maritime', 'simplify': 2})
+        element_tags['maritime'] = row['maritime']
+    return element_tags, {'zoom-min': zoom, 'union': 'boundary,admin_level,maritime', 'simplify': 2}
 
 
 def _routes_mapper(row):
-    tags = {'route': row['route'], 'network': row['network'], 'osmc:symbol': row['osmc_symbol'],
-            'ref': row['ref']}
+    element_tags = {'route': row['route'], 'network': row['network'], 'osmc:symbol': row['osmc_symbol'],
+                    'ref': row['ref']}
     zoom = 11
     if row['network'] == 'iwn':
         zoom = 8
@@ -1343,7 +1358,7 @@ def _routes_mapper(row):
         zoom = 9
     elif row['network'] == 'rwn':
         zoom = 10
-    return (tags, {'zoom-min': zoom, 'simplify': 2})
+    return element_tags, {'zoom-min': zoom, 'simplify': 2}
 
 
 queries = [
