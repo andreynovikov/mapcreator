@@ -20,7 +20,7 @@ import psycopg2
 import psycopg2.extras
 import osmium
 import mercantile
-import shapely.wkb as shapelyWkb
+import shapely.wkb as shapely_wkb
 import shapely.speedups
 from shapely.geometry import MultiLineString, Polygon
 from shapely.prepared import prep
@@ -176,6 +176,7 @@ class OsmFilter(osmium.SimpleHandler):
             elif 'keep-tags' in mapping:
                 tag_filter = mapping['keep-tags']
             if tag_filter:
+                # noinspection PyUnresolvedReferences
                 keep = [x.strip() for x in tag_filter.split(',')]
                 filtered_tags = {k: filtered_tags[k] for k in set(keep) & set(filtered_tags.keys())}
             if ignorable:
@@ -194,15 +195,17 @@ class OsmFilter(osmium.SimpleHandler):
                 if t == 3 and o.from_way() and not area:
                     return  # have added it already in ways handler
             try:
-                id = o.id
+                el_id = o.id
                 if t == 1:
                     wkb = wkbFactory.create_point(o)
-                if t == 2:
+                elif t == 2:
                     wkb = wkbFactory.create_linestring(o)
-                if t == 3:
-                    id = o.orig_id()
+                elif t == 3:
+                    el_id = o.orig_id()
                     wkb = wkbFactory.create_multipolygon(o)
-                geom = transform(wgs84_to_mercator, shapelyWkb.loads(wkb, hex=True))
+                else:  # can not happen but is required by lint
+                    return
+                geom = transform(wgs84_to_mercator, shapely_wkb.loads(wkb, hex=True))
                 if t == 3 and not o.is_multipolygon():
                     geom = geom[0]  # simplify geometry
                 if mapping.pop('force-line', False) and geom.type in ['Polygon', 'MultiPolygon']:
@@ -213,16 +216,16 @@ class OsmFilter(osmium.SimpleHandler):
                 # construct unique id
                 if t == 3 and o.from_way():
                     t = 2
-                id = (id << 2) + t
-                self.elements.append(Element(id, geom, tags, mapping))
-            except Exception as e:
+                el_id = (el_id << 2) + t
+                self.elements.append(Element(el_id, geom, tags, mapping))
+            except Exception as ex:
                 if t == 1:
                     st = 'node'
                 elif t == 2 or o.from_way():
                     st = 'way'
                 else:
                     st = 'relation'
-                self.logger.error("   %s/%s: %s" % (st, o.id, e))
+                self.logger.error("   %s/%s: %s" % (st, o.id, ex))
 
     def node(self, n):
         self.process(1, n)
@@ -259,12 +262,12 @@ class OsmFilter(osmium.SimpleHandler):
         return self.processors
 
 
-class Tile():
-    RADIUS = 6378137
-    CIRCUM = 2 * math.pi * RADIUS
-    SIZE = 256
+class Tile:
+    RADIUS = 6378137  # this R is calculated from circumference defined in org.oscim.core.MercatorProjection
+    CIRCUMFERENCE = 2 * math.pi * RADIUS
+    SIZE = 512
     SCALE = 4096
-    INITIAL_RESOLUTION = CIRCUM / SIZE
+    INITIAL_RESOLUTION = CIRCUMFERENCE / SIZE
 
     def __init__(self, zoom, x, y, elements=None):
         self.zoom = zoom
@@ -278,6 +281,8 @@ class Tile():
                        -self.bounds.bottom * Tile.SCALE / (self.bounds.top - self.bounds.bottom)]
         self.bbox = Polygon([[self.bounds.left, self.bounds.bottom], [self.bounds.left, self.bounds.top],
                              [self.bounds.right, self.bounds.top], [self.bounds.right, self.bounds.bottom]])
+        ll = mercantile.lnglat((self.bounds.right + self.bounds.left) / 2, (self.bounds.top + self.bounds.bottom) / 2, False)
+        self.groundScale = math.cos(ll.lat * (math.pi / 180)) * self.pixelWidth
 
     def __str__(self):
         return "%d/%d/%d" % (self.zoom, self.x, self.y)
@@ -336,9 +341,24 @@ def process_element(geom, tags, mapping, basemap=False):
     if area is None and (mapping.get('filter-area', None) or (basemap and mapping.get('basemap-filter-area', None))):
         area = geom.area
 
+    if area:
+        # convert area to true meters
+        if label:
+            point = label
+        elif new_geom:
+            point = new_geom
+        else:
+            point = geom.representative_point()
+        if isinstance(point, list):
+            point = point[0]
+        # https://en.wikipedia.org/wiki/Mercator_projection#Area_scale
+        k = math.cosh(point.y / Tile.RADIUS)
+        area = area / math.pow(k, 2)
+
     return kind, el_type, new_geom, area, label, building
 
 
+# noinspection PyPep8Naming
 class MapWriter:
 
     def __init__(self, data_dir, dry_run=False, forbid_interactive=False, single_thread=False):
@@ -353,7 +373,11 @@ class MapWriter:
         self.basemap = False
         self.timestamp = None
         self.db = None
+        self.tile_queue = None
+        self.db_queue = None
+        self.multiprocessing = True
         self.proc_progress = None
+        self.gen_progress = None
 
         try:
             # Enable C-based speedups available from 1.2.10+
@@ -543,7 +567,7 @@ class MapWriter:
                         self.logger.debug("      %s", cur.query)
                         self.logger.debug("      fetched %d elements", len(rows))
                         for row in rows:
-                            geom = shapelyWkb.loads(bytes(row['geometry']))
+                            geom = shapely_wkb.loads(bytes(row['geometry']))
                             if data['srid'] != 3857:  # we support only 3857 and 4326 projections
                                 geom = transform(wgs84_to_mercator, geom)
                             tags, mapping = data['mapper'](row)
@@ -691,25 +715,26 @@ class MapWriter:
         else:
             return None
 
-    def dbWorker(self, queue):
+    def dbWorker(self, db_queue):
         while True:
-            job = queue.get()
+            job = db_queue.get()
             if job is None:
-                queue.task_done()
+                db_queue.task_done()
                 break
             self.db.putTile(job.zoom, job.x, job.y, job.features)
-            queue.task_done()
+            db_queue.task_done()
             if self.interactive:
                 self.gen_progress.update()
 
     def tileWorker(self, tile_queue, db_queue):
-        self.tileQueue = tile_queue
-        self.dbQueue = db_queue
+        self.tile_queue = tile_queue
+        self.db_queue = db_queue
         while True:
             tile = tile_queue.get()
             if tile is None:
                 tile_queue.task_done()
                 break
+            # noinspection PyBroadException
             try:
                 self.generateTile(tile)
             except Exception:
@@ -724,7 +749,8 @@ class MapWriter:
             unions = defaultdict(list)
             merges = defaultdict(list)
             features = []
-            pixelArea = tile.pixelWidth * tile.pixelWidth
+            tile_pixel_area = tile.pixelWidth * tile.pixelWidth
+            tile_ground_square_scale = tile.groundScale ** 2
             prepared_clip = prep(tile.bbox)
 
             building_parts_geom = None
@@ -732,6 +758,7 @@ class MapWriter:
             if tile.zoom == 14:
                 building_parts = [element.geom for element in tile.elements if 'building:part' in element.tags and 'building' not in element.tags]
                 if building_parts:
+                    # noinspection PyBroadException
                     try:
                         building_parts_geom = cascaded_union(building_parts)
                         building_parts_prepared = prep(building_parts_geom)
@@ -747,11 +774,12 @@ class MapWriter:
                          and geom.type in ['LineString', 'MultiLineString', 'Polygon', 'MultiPolygon']
                 if tile.zoom < 14:
                     if element.area:
+                        pixel_area = element.area / tile_ground_square_scale
                         if self.basemap and 'basemap-filter-area' in element.mapping:
-                            area = (element.mapping.get('basemap-filter-area', 0) * (2 << (tile.zoom))) ** 2
+                            area = (element.mapping.get('basemap-filter-area', 0) * (2 << tile.zoom)) ** 2
                         else:
                             area = element.mapping.get('filter-area', 1)
-                        if element.area < pixelArea * area:
+                        if pixel_area < area:
                             continue
                     if 'buffer' in element.mapping:
                         geom = geom.buffer(tile.pixelWidth * element.mapping.get('buffer', 1))
@@ -789,7 +817,7 @@ class MapWriter:
                 if tile.zoom < 14:
                     if 'transform' in element.mapping:
                         if element.mapping.get('transform') == 'filter-rings':
-                            geom = filter_rings(geom, pixelArea)
+                            geom = filter_rings(geom, tile_pixel_area)
                     if 'buffer' in element.mapping:
                         geom = geom.buffer(tile.pixelWidth * -element.mapping.get('buffer', 1))
                 geometry = affine_transform(geom, tile.matrix)
@@ -809,6 +837,7 @@ class MapWriter:
 
             # TODO combine union and merge to one logical block
             for union in unions:
+                # noinspection PyBroadException
                 try:
                     first = unions[union][0]
                     # create united geometry
@@ -827,7 +856,7 @@ class MapWriter:
                     if tile.zoom < 14:
                         if 'transform' in first.mapping:
                             if first.mapping.get('transform') == 'filter-rings':
-                                united_geom = filter_rings(united_geom, pixelArea)
+                                united_geom = filter_rings(united_geom, tile_pixel_area)
                         if 'buffer' in first.mapping:
                             united_geom = united_geom.buffer(tile.pixelWidth * -first.mapping.get('buffer', 1))
                         # simplify after union
@@ -842,6 +871,7 @@ class MapWriter:
 
             for merge in merges:
                 first = merges[merge][0]
+                # noinspection PyBroadException
                 try:
                     # create united geometry
                     lines = []
@@ -873,7 +903,7 @@ class MapWriter:
                     self.logger.error("Failed to process merge %s in tile %s" % (first.mapping['union'], tile))
 
             encoded = encode(features, mappings.tags)
-            self.dbQueue.put(DBJob(tile.zoom, tile.x, tile.y, encoded))
+            self.db_queue.put(DBJob(tile.zoom, tile.x, tile.y, encoded))
 
         # propagate elements to lower zoom
         if (not self.basemap and tile.zoom < 14) or tile.zoom < 7:
@@ -896,12 +926,13 @@ class MapWriter:
             if prepared_clip.covers(element.geom):
                 subtile.elements.append(element)
             elif prepared_clip.intersects(element.geom):
+                # noinspection PyBroadException
                 try:
                     subtile.elements.append(element.clone(clipCache[element.mapping.get('clip-buffer', 4)].intersection(element.geom)))
                 except Exception:
                     self.logger.exception("Error clipping element for tile %s" % subtile)
                     self.logger.error("Element was: %s" % element)
-        self.tileQueue.put(subtile)
+        self.tile_queue.put(subtile)
 
     def generateIntermediateFile(self, source_pbf_path, x, y, z, name):
         ax = x >> (7 - z)
