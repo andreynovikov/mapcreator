@@ -45,6 +45,17 @@ def _china_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping
     return renderable, ignorable, mapping
 
 
+def _protected_area_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
+    protect_class = element_tags.get('protect_class', None)
+    if protect_class in ['1', '2']:
+        element_tags['boundary'] = 'national_park'
+    elif protect_class == '24':
+        element_tags['boundary'] = 'aboriginal_lands'
+    else:
+        renderable = False
+    return renderable, ignorable, mapping
+
+
 def _ice_skate_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
     skating = False
     leisure = element_tags.get('leisure', None)
@@ -598,7 +609,7 @@ tags = {
         'fire_station': DEFAULT_PLACE,
         'pharmacy': DEFAULT_PLACE,
         'doctors': DEFAULT_PLACE,
-        'clinic': DEFAULT_PLACE,
+        'clinic': {'rewrite-value': 'doctors'},
         'veterinary': DEFAULT_PLACE,
         'cafe': DEFAULT_PLACE,
         'pub': DEFAULT_PLACE,
@@ -730,6 +741,29 @@ tags = {
             'transform': 'filter-rings',
             'basemap-keep-tags': 'boundary'
         },
+        'aboriginal_lands': {
+            'zoom-min': 6,
+            'filter-type': ['Polygon', 'MultiPolygon'],
+            'union': 'boundary',
+            'union-zoom-max': 7,
+            'basemap-filter-area': 0.0625,
+            'filter-area': 128,
+            'buffer': 4,
+            'transform': 'filter-rings',
+            'basemap-keep-tags': 'boundary'
+        },
+        'protected_area': {
+            'zoom-min': 6,
+            'filter-type': ['Polygon', 'MultiPolygon'],
+            'union': 'boundary',
+            'union-zoom-max': 7,
+            'basemap-filter-area': 0.0625,
+            'filter-area': 128,
+            'buffer': 4,
+            'transform': 'filter-rings',
+            'basemap-keep-tags': 'boundary',
+            'modify-mapping': _protected_area_mapper
+        }
     },
     'building': {
         '__any__': {
@@ -1237,6 +1271,7 @@ tags = {
     'religion': {'__any__': {'render': False}},
     'osmc:symbol': {'__any__': {'render': False}},
     'generator:source': {'__any__': {'render': False}},
+    'protect_class': {'__any__': {'render': False}, '__strip__': True},
     'building:levels': {'__any__': {'render': False}, '__strip__': True},
     'building:min_level': {'__any__': {'render': False}, '__strip__': True},
     'building:colour': {'__any__': {'render': False}, '__strip__': True},

@@ -2,7 +2,7 @@
 place=ocean =sea =country =state =region =city =town
 landuse=military
 leisure=nature_reserve
-boundary=national_park
+boundary=national_park =aboriginal_lands =protected_area
 highway=motorway =trunk =primary =secondary
 aerodrome=international
 aerodrome:type=international
@@ -15,6 +15,7 @@ place=
 population=
 capital=
 admin_level=
+protect_class=
 route=
 boundary=
 landuse=
