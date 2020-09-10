@@ -110,7 +110,7 @@ class VectorTile:
 
             tags.append(self.getTagId(tag))
 
-        if len(tags) == 0:
+        if len(tags) == 0 and not housenumber:
             if feature.id:
                 t = feature.id & 0x0000000000000003
                 osm_id = feature.id >> 2
@@ -180,7 +180,10 @@ class VectorTile:
 
         # add tags
         f.tags.extend(tags)
-        if len(tags) > 1:
+        if len(tags) == 0:  # TODO remove after 2020.09 will spread (house numbers)
+            tag = str("ref"), str("1")
+            tags.append(self.getTagId(tag))
+        if len(tags) != 1:
             f.num_tags = len(tags)
 
         if id is not None and id >= 0:

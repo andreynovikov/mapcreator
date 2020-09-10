@@ -85,6 +85,16 @@ def _covered_mapper(element_tags: dict, renderable: bool, ignorable: bool, mappi
 def _underwater_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
     if element_tags.get('location', None) == 'underwater':
         ignorable = True
+        if element_tags.get('man_made', None) == 'pipeline':
+            renderable = False
+    return renderable, ignorable, mapping
+
+
+def _underground_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
+    if element_tags.get('location', None) == 'underground':
+        ignorable = True
+        if element_tags.get('man_made', None) == 'pipeline':
+            renderable = False
     return renderable, ignorable, mapping
 
 
@@ -780,6 +790,19 @@ tags = {
             'clip-buffer': 0
         },
     },
+    'addr:housenumber': {
+        '__any__': {
+            'zoom-min': 14,
+            'label': True,
+        },
+    },
+    'addr:interpolation': {
+        '__any__': {
+            'rewrite-value': 'yes',
+            'filter-type': ['LineString', 'MultiLineString'],
+            'zoom-min': 14,
+        },
+    },
     'barrier': {
         'ditch': {'zoom-min': 14},
         'block': {'zoom-min': 14},
@@ -803,6 +826,7 @@ tags = {
         'cutline': {'zoom-min': 14, 'pre-process': cutlines.process, '__strip__': True},
         'pier': {'zoom-min': 14},
         'embankment': {'zoom-min': 14},
+        'pipeline': {'zoom-min': 14},
         'bridge': DEFAULT_PLACE,
         'tower': {'zoom-min': 14},
         'lighthouse': DEFAULT_PLACE,
@@ -893,14 +917,6 @@ tags = {
     },
     'wikipedia': {
         '__any__': {
-            'render': False
-        },
-        '__strip__': True
-    },
-    'addr:housenumber': {
-        '__any__': {
-            'label': True,
-            'keep-for': 'building,building:part',
             'render': False
         },
         '__strip__': True
@@ -1250,9 +1266,40 @@ tags = {
             'rewrite-value': 'yes'
         }
     },
+    'substance': {
+        'water': {
+            'keep-for': 'man_made',
+            'render': False
+        },
+        'oil': {
+            'keep-for': 'man_made',
+            'render': False
+        },
+        'gas': {
+            'keep-for': 'man_made',
+            'render': False
+        },
+        'lng': {
+            'rewrite-value': 'gas'
+        },
+        'cng': {
+            'rewrite-value': 'gas'
+        },
+        'hot_water': {
+            'keep-for': 'man_made',
+            'render': False
+        },
+        'heat': {
+            'rewrite-value': 'hot_water'
+        }
+    },
     'location': {
         'underwater': {
             'modify-mapping': _underwater_mapper,
+            'render': False,
+        },
+        'underground': {
+            'modify-mapping': _underground_mapper,
             'render': False,
         },
         '__strip__': True
