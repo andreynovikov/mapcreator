@@ -151,6 +151,8 @@ def _get_color(color, roof):
                 c = c | 0x0ff000000  # add alpha
             # /* hardcoded colors are way too saturated for my taste */
             # return ColorUtil.modHsv(c, 1.0, 0.4, HSV_V, true);
+            if c.bit_length() > 32:
+                raise ValueError
             return c
         except ValueError:
             logging.warning("Invalid hex color: %s" % color)
