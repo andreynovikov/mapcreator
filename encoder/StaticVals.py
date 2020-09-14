@@ -636,7 +636,8 @@ _strings = [
     'pipeline',
     'hot_water',
     'watermill',
-    'water_well'
+    'water_well',
+    'motorcycle'
 ]
 
 staticValues = dict(zip(_strings, range(0, len(_strings))))

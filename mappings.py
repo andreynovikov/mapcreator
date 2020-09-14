@@ -686,6 +686,7 @@ tags = {
         'pet': DEFAULT_PLACE,
         'car': DEFAULT_PLACE,
         'car_repair': DEFAULT_PLACE,
+        'motorcycle': DEFAULT_PLACE,
         'copyshop': DEFAULT_PLACE,
         'dry_cleaning': DEFAULT_PLACE,
         'laundry': DEFAULT_PLACE,

@@ -119,6 +119,7 @@ types = {
     "attraction": 223,
     # "fountain": 226,
     "car": 229,
+    "motorcycle": 230,
     "car_repair": 232,
     "car_rental": 235,
     "fuel": 238,
@@ -264,7 +265,7 @@ def _tag_kind(k, v):
             f_kind = kinds['food']
         elif value in ('supermarket', 'convenience'):
             f_kind = kinds['food'] | kinds['shopping']
-        elif value in ('car', 'car_repair'):
+        elif value in ('car', 'car_repair', 'motorcycle'):
             f_kind = kinds['vehicles']
         elif value in ('bicycle', 'outdoor'):
             f_kind = kinds['hikebike'] | kinds['shopping']
