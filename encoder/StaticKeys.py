@@ -69,7 +69,8 @@ _strings = [
     'memorial',
     'diplomatic',
     'addr:interpolation',
-    'substance'
+    'substance',
+    'pump'
 ]
 
 staticKeys = dict(zip(_strings, range(0, len(_strings))))

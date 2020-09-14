@@ -96,6 +96,7 @@ types = {
     "department_store": 175,
     "waterfall": 178,
     "lighthouse": 181,
+    "watermill": 183,
     "windmill": 184,
     "bust": 185,
     "stone": 186,
@@ -216,8 +217,7 @@ def _tag_kind(k, v):
                 f_type = types.get('gate', 0)
 
     elif key == 'amenity':
-        if value in ('embassy', 'police', 'fire_station', 'hospital', 'pharmacy', 'doctors', 'dentist', 'clinic',
-                     'telephone'):
+        if value in ('embassy', 'police', 'fire_station', 'hospital', 'pharmacy', 'doctors', 'dentist', 'telephone'):
             f_kind = kinds['emergency']
         elif value in ('kindergarten',):
             f_kind = kinds['kids']
@@ -296,7 +296,7 @@ def _tag_kind(k, v):
             f_kind = kinds['hikebike']
 
     elif key == 'man_made':
-        if value in ('lighthouse', 'windmill'):
+        if value in ('lighthouse', 'watermill', 'windmill'):
             f_kind = kinds['attraction']
 
     elif key == 'railway':

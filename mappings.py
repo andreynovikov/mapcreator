@@ -830,7 +830,9 @@ tags = {
         'bridge': DEFAULT_PLACE,
         'tower': {'zoom-min': 14},
         'lighthouse': DEFAULT_PLACE,
+        'watermill': DEFAULT_PLACE,
         'windmill': DEFAULT_PLACE,
+        'water_well': {'zoom-min': 13}
     },
     'mountain_pass': {
         'yes': {'zoom-min': 13},
@@ -1291,6 +1293,18 @@ tags = {
         },
         'heat': {
             'rewrite-value': 'hot_water'
+        }
+    },
+    'pump': {
+        'yes': {  # do not distinguish pumps
+            'keep-for': 'man_made',
+            'render': False
+        },
+        'powered': {
+            'rewrite-value': 'yes'
+        },
+        'manual': {
+            'rewrite-value': 'yes'
         }
     },
     'location': {
