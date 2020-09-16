@@ -521,13 +521,13 @@ tags = {
         'drain': {'zoom-min': 14, 'check-meta': True},
         'ditch': {'zoom-min': 14, 'check-meta': True},
     },
-    'water': {  # natural=water supplement
+    'water': {  # natural=water supplement (not always true)
         'river': {
-            'keep-tags': 'natural,intermittent',  # used to strip names
+            'keep-tags': 'natural,intermittent,waterway',  # used to strip names
             'render': False
         },
         'canal': {
-            'keep-tags': 'natural,intermittent',  # used to strip names
+            'keep-tags': 'natural,intermittent,waterway',  # used to strip names
             'render': False
         },
     },
