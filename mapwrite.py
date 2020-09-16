@@ -194,14 +194,14 @@ class OsmFilter(osmium.SimpleHandler):
                     return  # will get it later in area handler
                 if t == 3 and o.from_way() and not area:
                     return  # have added it already in ways handler
+            osm_id = o.id
             try:
-                el_id = o.id
                 if t == 1:
                     wkb = wkbFactory.create_point(o)
                 elif t == 2:
                     wkb = wkbFactory.create_linestring(o)
                 elif t == 3:
-                    el_id = o.orig_id()
+                    osm_id = o.orig_id()
                     wkb = wkbFactory.create_multipolygon(o)
                 else:  # can not happen but is required by lint
                     return
@@ -216,7 +216,7 @@ class OsmFilter(osmium.SimpleHandler):
                 # construct unique id
                 if t == 3 and o.from_way():
                     t = 2
-                el_id = (el_id << 2) + t
+                el_id = (osm_id << 2) + t
                 self.elements.append(Element(el_id, geom, tags, mapping))
             except Exception as ex:
                 if t == 1:
@@ -225,7 +225,7 @@ class OsmFilter(osmium.SimpleHandler):
                     st = 'way'
                 else:
                     st = 'relation'
-                self.logger.error("   %s/%s: %s" % (st, o.id, ex))
+                self.logger.error("   %s/%s: %s" % (st, osm_id, ex))
 
     def node(self, n):
         self.process(1, n)
