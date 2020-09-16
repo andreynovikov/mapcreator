@@ -281,7 +281,7 @@ def _tag_kind(k, v):
             f_kind = kinds['service']
 
     elif key == 'historic':
-        if value in ('memorial', 'castle', 'ruins', 'monument', 'archaeological_site'):
+        if value in ('memorial', 'castle', 'ruins', 'monument', 'archaeological_site', 'wayside_shrine'):
             f_kind = kinds['attraction']
 
     elif key == 'leisure':
