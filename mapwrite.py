@@ -454,6 +454,12 @@ class MapWriter:
             else:
                 self.db.create("%d-%d" % (x, y), 'baselayer', '2', self.timestamp, 'maptrek')
 
+            used = process.memory_info().rss // 1048576
+            self.logger.info("    memory used: {:,}M out of {:,}M".format(used, total))
+
+            if self.multiprocessing and total / used < 4:
+                self.multiprocessing = False
+
             if self.multiprocessing:
                 num_worker_threads = len(os.sched_getaffinity(0))
                 if self.basemap and not self.stubmap:
