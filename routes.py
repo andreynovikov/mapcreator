@@ -21,15 +21,15 @@ What to do with untagged lines: http://www.openstreetmap.org/way/337351731 ?
 
 wkbFactory = osmium.geom.WKBFactory()
 
-NETWORKS = ['iwn','nwn','rwn','lwn',None]
+NETWORKS = ['iwn', 'nwn', 'rwn', 'lwn', None]
 
 
-class Way():
+class Way:
     def __init__(self, network):
         self.network = network
 
 
-class Route():
+class Route:
     def __init__(self, geom, route=None, network=None, osmc_symbol=None, state=None, ref=None, name=None, name_en=None, name_de=None, name_ru=None, way=None):
         self.geom = geom
         self.route = route
@@ -70,11 +70,11 @@ class OsmFilter(osmium.SimpleHandler):
             way = None
             for tag in w.tags:
                 if tag.k == 'route':
-                    if tag.v in ('hiking','foot'):
+                    if tag.v in ('hiking', 'foot'):
                         route = 'hiking'
                     elif tag.v == 'ferry':
                         way = tag.v
-                if tag.k == 'network' and tag.v in ('iwn','nwn','rwn','lwn'):
+                if tag.k == 'network' and tag.v in ('iwn', 'nwn', 'rwn', 'lwn'):
                     network = tag.v
                 if tag.k == 'osmc:symbol':
                     osmc_symbol = tag.v[:60]
@@ -90,19 +90,18 @@ class OsmFilter(osmium.SimpleHandler):
                     name_de = tag.v
                 if tag.k == 'name:ru':
                     name_ru = tag.v
-                if tag.k in ('highway','railway','aerialway','waterway'):
+                if tag.k in ('highway', 'railway', 'aerialway', 'waterway'):
                     way = tag.v
             if route:
                 geom = transform(wgs84_to_mercator, shapelyWkb.loads(wkb, hex=True))
-                id = (w.id << 2) + 2
-                self.routes[id] = Route(geom, route, network, osmc_symbol, state, ref, name, name_en, name_de, name_ru, way)
+                element_id = (w.id << 2) + 2
+                self.routes[element_id] = Route(geom, route, network, osmc_symbol, state, ref, name, name_en, name_de, name_ru, way)
                 if network:
-                    self.routeways[id] = Way(network)
+                    self.routeways[element_id] = Way(network)
             else:
                 self.ways[w.id] = {'wkb': wkb, 'way': way, 'closed': w.is_closed()}
-        except Exception as e:
-            self.logger.error("%s: %s" % (w.id, e))
-
+        except Exception as ex:
+            self.logger.error("%s: %s" % (w.id, ex))
 
     def relation(self, r):
         geoms = []
@@ -119,9 +118,9 @@ class OsmFilter(osmium.SimpleHandler):
         for tag in r.tags:
             if tag.k == 'type':
                 t = tag.v
-            if tag.k == 'route' and tag.v in ('hiking','foot'):
+            if tag.k == 'route' and tag.v in ('hiking', 'foot'):
                 route = 'hiking'
-            if tag.k == 'network' and tag.v in ('iwn','nwn','rwn','lwn'):
+            if tag.k == 'network' and tag.v in ('iwn', 'nwn', 'rwn', 'lwn'):
                 network = tag.v
             if tag.k == 'osmc:symbol':
                 osmc_symbol = tag.v[:60]
@@ -141,13 +140,13 @@ class OsmFilter(osmium.SimpleHandler):
             return
         for member in r.members:
             if member.type == 'w':
-                id = (member.ref << 2) + 2
-                if id in self.routes:
-                    geoms.append(self.routes[id].geom)
-                    if self.routes[id].ref == ref:
-                        self.ways[member.ref] = {'wkb': self.routes[id].geom.wkb.hex(), 'way': self.routes[id].way,
+                element_id = (member.ref << 2) + 2
+                if element_id in self.routes:
+                    geoms.append(self.routes[element_id].geom)
+                    if self.routes[element_id].ref == ref:
+                        self.ways[member.ref] = {'wkb': self.routes[element_id].geom.wkb.hex(), 'way': self.routes[element_id].way,
                                                  'closed': False}
-                        del self.routes[id]
+                        del self.routes[element_id]
                 else:
                     way = self.ways.get(member.ref, {'wkb': None, 'closed': False})
                     if way['closed']:
@@ -157,11 +156,11 @@ class OsmFilter(osmium.SimpleHandler):
                         geom = transform(wgs84_to_mercator, shapelyWkb.loads(wkb, hex=True))
                         geoms.append(geom)
                         if way.get('way', None):
-                            if id in self.routeways:
-                                if NETWORKS.index(network) < NETWORKS.index(self.routeways[id].network):
-                                    self.routeways[id].network = network
+                            if element_id in self.routeways:
+                                if NETWORKS.index(network) < NETWORKS.index(self.routeways[element_id].network):
+                                    self.routeways[element_id].network = network
                             elif network:
-                                self.routeways[id] = Way(network)
+                                self.routeways[element_id] = Way(network)
                         else:
                             self.logger.warn("Way %s is not a motion way" % member.ref)
                     else:
@@ -177,8 +176,8 @@ class OsmFilter(osmium.SimpleHandler):
             self.logger.error("Empty relation: %s" % r.id)
             return
         united_geom = linemerge(lines)
-        id = (r.id << 2) + 3
-        self.routes[id] = Route(united_geom, route, network, osmc_symbol, state, ref, name, name_en, name_de, name_ru)
+        element_id = (r.id << 2) + 3
+        self.routes[element_id] = Route(united_geom, route, network, osmc_symbol, state, ref, name, name_en, name_de, name_ru)
 
     def finish(self):
         with psycopg2.connect(configuration.DATA_DB_DSN) as c:
@@ -194,13 +193,13 @@ class OsmFilter(osmium.SimpleHandler):
                             osmc_symbol varchar(60), state varchar(255), ref varchar(30), name varchar(255),
                             name_en varchar(255), name_de varchar(255), name_ru varchar(255))""")
             cur.execute("SELECT AddGeometryColumn('osm_routes','geom','3857','GEOMETRY',2)")
-            for id, route in self.routes.items():
+            for element_id, route in self.routes.items():
                 try:
                     cur.execute("""INSERT INTO osm_routes (id, route, network, osmc_symbol, state, ref, name, name_en, name_de, name_ru, geom)
-                                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 3857))""", \
-                                (id, route.route, route.network, route.osmc_symbol, route.state, route.ref, route.name,
+                                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 3857))""",
+                                (element_id, route.route, route.network, route.osmc_symbol, route.state, route.ref, route.name,
                                  route.name_en, route.name_de, route.name_ru, route.geom.wkt))
-                except psycopg2.DataError as e:
+                except psycopg2.DataError:
                     self.logger.exception("Insertion error: %s" % str(route))
             c.commit()
             cur.execute('CREATE INDEX ON osm_routes USING GIST ("geom")')
@@ -209,10 +208,10 @@ class OsmFilter(osmium.SimpleHandler):
             cur.execute('DROP TABLE IF EXISTS osm_features_meta')
             c.commit()
             cur.execute('CREATE TABLE osm_features_meta (id bigint PRIMARY KEY, network varchar(10))')
-            for id, way in self.routeways.items():
+            for element_id, way in self.routeways.items():
                 try:
-                    cur.execute('INSERT INTO osm_features_meta (id, network) VALUES (%s, %s)', (id, way.network))
-                except psycopg2.DataError as e:
+                    cur.execute('INSERT INTO osm_features_meta (id, network) VALUES (%s, %s)', (element_id, way.network))
+                except psycopg2.DataError:
                     self.logger.exception("Insertion error: %s" % str(route))
             c.commit()
 
