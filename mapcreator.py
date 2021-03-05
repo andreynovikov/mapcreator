@@ -107,8 +107,7 @@ class MapCreator:
         try:
             map_path = self.mapWriter.createMap(x, y, True, False, True)
         except Exception as e:
-            print("An error occurred:")
-            print(e)
+            logger.exception("An error occurred")
             if not self.dry_run:
                 self.writeIndex(area, x, y, None, None, None, True)
             return 1
@@ -182,7 +181,7 @@ if __name__ == "__main__":
         print("Invalid log level: %s" % args.log)
         exit(1)
 
-    logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s - %(message)s')
+    logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s - %(message)s', datefmt='%H:%M:%S')
     logger = logging.getLogger(__name__)
     # during a dry run the console should receive all logs
     if args.dry_run:
@@ -206,4 +205,4 @@ if __name__ == "__main__":
             if res == -1:
                 sys.exit(-1)
     except Exception as e:
-        logger.exception("An error occurred:", e)
+        logger.exception("An error occurred")
