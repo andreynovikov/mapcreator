@@ -60,7 +60,7 @@ _strings = [
     'trail_visibility',
     'osmc:symbol',
     'network',
-    'route:network',
+    'foot',
     'information',
     'piste:border',
     'piste:grooming',
@@ -70,7 +70,17 @@ _strings = [
     'diplomatic',
     'addr:interpolation',
     'substance',
-    'pump'
+    'pump',
+    'cycleway',
+    'cycleway:right',
+    'cycleway:left',
+    'bicycle',
+    'ramp:bicycle',
+    'oneway:bicycle',
+    'mtb:scale',
+    'mtb:scale:uphill',
+    'mtb:scale:imba',
+    'artwork_type'
 ]
 
 staticKeys = dict(zip(_strings, range(0, len(_strings))))
