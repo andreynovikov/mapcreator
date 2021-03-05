@@ -1,4 +1,5 @@
 from util import osm
+from util.osm.kind import kinds
 from util.processing import cutlines, pistes
 
 
@@ -40,14 +41,14 @@ def _population_mapper(element_tags: dict, renderable: bool, ignorable: bool, ma
 
 def _china_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
     population = element_tags.get('population', 0)
-    if element_tags.get('place', None) in ('city', 'town') and population < 300000:
+    if element_tags.get('place', None) in ('city', 'town') and population < 400000:
         renderable = False
     return renderable, ignorable, mapping
 
 
 def _protected_area_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
     protect_class = element_tags.get('protect_class', None)
-    if protect_class in ['1', '2']:
+    if protect_class in ['1', '2', '1a', '1b']:
         element_tags['boundary'] = 'national_park'
     elif protect_class == '24':
         element_tags['boundary'] = 'aboriginal_lands'
@@ -73,6 +74,21 @@ def _ice_skate_mapper(element_tags: dict, renderable: bool, ignorable: bool, map
         mapping['label'] = True
         if element_tags.get('covered', 'no') == 'yes':
             element_tags['area'] = 'no'
+    return renderable, ignorable, mapping
+
+
+def _operator_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
+    amenity = element_tags.get('amenity', None)
+    if amenity in ('fuel', 'charging_station', 'bicycle_rental'):
+        if 'operator' in element_tags and 'name' not in element_tags:
+            element_tags['name'] = element_tags['operator']
+            mapping['label'] = True
+        if 'operator:en' in element_tags and 'name:en' not in element_tags:
+            element_tags['name:en'] = element_tags['operator:en']
+        if 'operator:de' in element_tags and 'name:de' not in element_tags:
+            element_tags['name:de'] = element_tags['operator:de']
+        if 'operator:ru' in element_tags and 'name:ru' not in element_tags:
+            element_tags['name:ru'] = element_tags['operator:ru']
     return renderable, ignorable, mapping
 
 
@@ -107,9 +123,9 @@ def _indoor_mapper(element_tags: dict, renderable: bool, ignorable: bool, mappin
 """
 Mapping parameters:
 
-   rewrite-key         - rewrite tag key
+   rewrite-key         - rewrite tag key (accounts original add-tags, keep-for, zoom-min, render)
    rewrite-if-missing  - rewrite only if there is no target tag key
-   rewrite-value       - rewrite tag value
+   rewrite-value       - rewrite tag value (accounts original zoom-min, render)
    one-of              - apply only if value is in the specified list
    adjust
    filter-type
@@ -121,16 +137,17 @@ Mapping parameters:
    buffer
    enlarge
    simplify            - simplify geometry by pixel width multiplied by specified factor
-   label
+   label               - calculate representative point for label placement
    clip-buffer
    keep-tags           - force keeping tags with keys in the specified list
-   keep-for            - keep tag only if element contains one of specified keys
+   keep-for            - keep tag only if element contains one of specified keys (work before and after key rewrite)
+   add-tags            - add specified set of tags
    union
    union-zoom-max
    transform           - transform geom ['point', 'filter-rings']
    transform-exclusive - apply transform only if this is the only renderable tag
    force-line          - treat closed line as line instead of area
-   check-meta          - get additional data from database
+   check-meta          - get additional data from database (deprecated)
    modify-mapping      - call predefined routine that post-modifies mapping (stacked)
    pre-process         - apply pre-processing routine (stacked)
 
@@ -165,16 +182,14 @@ tags = {
                       'name': 10, 'tunnel': 10, 'layer': 12, 'piste:type': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
-            'basemap-keep-tags': 'highway',
-            'check-meta': True
+            'basemap-keep-tags': 'highway'
         },
         'motorway_link': {
             'zoom-min': 8,
             'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8,
                       'name': 10, 'tunnel': 10, 'layer': 12, 'piste:type': 12},
             'union-zoom-max': 13,
-            'clip-buffer': 8,
-            'check-meta': True
+            'clip-buffer': 8
         },
         'trunk': {
             'zoom-min': 6,
@@ -182,16 +197,14 @@ tags = {
                       'name': 10, 'tunnel': 10, 'layer': 12, 'piste:type': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
-            'basemap-keep-tags': 'highway',
-            'check-meta': True
+            'basemap-keep-tags': 'highway'
         },
         'trunk_link': {
             'zoom-min': 8,
             'union': {'highway': 0, 'ref': 8, 'winter_road': 8, 'ice_road': 8, 'surface': 8, 'toll': 8,
                       'name': 10, 'tunnel': 10, 'layer': 12, 'piste:type': 12},
             'union-zoom-max': 13,
-            'clip-buffer': 8,
-            'check-meta': True
+            'clip-buffer': 8
         },
         'primary': {
             'zoom-min': 7,
@@ -199,15 +212,13 @@ tags = {
                       'name': 10, 'tunnel': 10, 'layer': 12, 'piste:type': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
-            'basemap-keep-tags': 'highway',
-            'check-meta': True
+            'basemap-keep-tags': 'highway'
         },
         'primary_link': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll,piste:type',
             'union-zoom-max': 13,
-            'clip-buffer': 8,
-            'check-meta': True
+            'clip-buffer': 8
         },
         'secondary': {
             'zoom-min': 7,
@@ -215,113 +226,93 @@ tags = {
                       'name': 10, 'tunnel': 10, 'layer': 12, 'piste:type': 12},
             'union-zoom-max': 13,
             'clip-buffer': 8,
-            'basemap-keep-tags': 'highway',
-            'check-meta': True
+            'basemap-keep-tags': 'highway'
         },
         'secondary_link': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll,piste:type',
             'union-zoom-max': 13,
-            'clip-buffer': 8,
-            'check-meta': True
+            'clip-buffer': 8
         },
         'tertiary': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll,piste:type',
             'union-zoom-max': 13,
-            'clip-buffer': 8,
-            'check-meta': True
+            'clip-buffer': 8
         },
         'tertiary_link': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll,piste:type',
             'union-zoom-max': 13,
-            'clip-buffer': 8,
-            'check-meta': True
+            'clip-buffer': 8
         },
         'unclassified': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll,piste:type',
             'union-zoom-max': 13,
-            'clip-buffer': 8,
-            'check-meta': True
+            'clip-buffer': 8
         },
         'living_street': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,piste:type',
             'union-zoom-max': 13,
-            'clip-buffer': 8,
-            'check-meta': True
+            'clip-buffer': 8
         },
         'residential': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,piste:type',
             'union-zoom-max': 13,
-            'clip-buffer': 8,
-            'check-meta': True
+            'clip-buffer': 8
         },
         'construction': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,toll,piste:type',
             'union-zoom-max': 13,
-            'clip-buffer': 8,
-            'check-meta': True
+            'clip-buffer': 8
         },
         'road': {
             'zoom-min': 12,
             'union': 'highway,ref,name,tunnel,layer,winter_road,ice_road,surface,piste:type',
             'union-zoom-max': 13,
-            'clip-buffer': 8,
-            'check-meta': True
+            'clip-buffer': 8
         },
         'track': {
             'zoom-min': 13,
             'union': 'highway,tunnel,layer,smoothness,winter_road,ice_road,piste:type',
             'union-zoom-max': 13,
-            'clip-buffer': 8,
-            'check-meta': True
+            'clip-buffer': 8
         },
         'service': {
             'zoom-min': 14,
-            'clip-buffer': 8,
-            'check-meta': True
+            'clip-buffer': 8
         },
         'services': {
-            'zoom-min': 14,
-            'check-meta': True
+            'zoom-min': 14
         },
         'rest_area': {
-            'zoom-min': 14,
-            'check-meta': True
+            'zoom-min': 14
         },
         'pedestrian': {
             'zoom-min': 14,
-            'clip-buffer': 8,
-            'check-meta': True
+            'clip-buffer': 8
         },
         'bridleway': {
-            'zoom-min': 14,
-            'check-meta': True
+            'zoom-min': 14
         },
         'cycleway': {
-            'zoom-min': 14,
-            'check-meta': True
+            'zoom-min': 14
         },
         'path': {
-            'zoom-min': 14,
-            'check-meta': True
+            'zoom-min': 14
         },
         'footway': {
-            'zoom-min': 14,
-            'check-meta': True
+            'zoom-min': 14
         },
         'steps': {
-            'zoom-min': 14,
-            'check-meta': True
+            'zoom-min': 14
         },
         'via_ferrata': {
-            'zoom-min': 14,
-            'check-meta': True
+            'zoom-min': 14
         },
         'bus_stop': {
             'zoom-min': 14
@@ -331,17 +322,17 @@ tags = {
         },
     },
     'railway': {
-        'rail': {'zoom-min': 12, 'check-meta': True},
-        'tram': {'zoom-min': 14, 'check-meta': True},
-        'light_rail': {'zoom-min': 14, 'check-meta': True},
-        'monorail': {'zoom-min': 14, 'check-meta': True},
-        'miniature': {'zoom-min': 14, 'check-meta': True},
-        'subway': {'zoom-min': 14, 'check-meta': True},
-        'narrow_gauge': {'zoom-min': 14, 'check-meta': True},
-        'funicular': {'zoom-min': 14, 'check-meta': True},
-        'disused': {'zoom-min': 14, 'check-meta': True},
-        'abandoned': {'zoom-min': 14, 'check-meta': True},
-        'preserved': {'zoom-min': 14, 'check-meta': True},
+        'rail': {'zoom-min': 12},
+        'tram': {'zoom-min': 14},
+        'light_rail': {'zoom-min': 14},
+        'monorail': {'zoom-min': 14},
+        'miniature': {'zoom-min': 14},
+        'subway': {'zoom-min': 14},
+        'narrow_gauge': {'zoom-min': 14},
+        'funicular': {'zoom-min': 14},
+        'disused': {'zoom-min': 14},
+        'abandoned': {'zoom-min': 14},
+        'preserved': {'zoom-min': 14},
         'turntable': {'zoom-min': 14},
         'station': {'zoom-min': 14},
         'platform': {'zoom-min': 14},
@@ -494,11 +485,15 @@ tags = {
         'volcano': {'zoom-min': 13},
         'peak': {'zoom-min': 13},
         'saddle': {'zoom-min': 13},
+        'ridge': {'zoom-min': 13},
+        'arete': {'zoom-min': 13},
         'cave_entrance': {'zoom-min': 14},
+        'rock': {'zoom-min': 14},
         'spring': {'zoom-min': 13},
         'tree_row': {'zoom-min': 14},
         'tree': {'zoom-min': 14},
         'waterfall': {'rewrite-key': 'waterway'},
+        'fell': {'rewrite-value': 'heath'}
     },
     'waterway': {
         'riverbank': {
@@ -513,13 +508,13 @@ tags = {
             'zoom-min': 12
         },
         'waterfall': DEFAULT_PLACE,
-        'river': {'zoom-min': 10, 'check-meta': True},
-        'canal': {'zoom-min': 10, 'check-meta': True},
-        'dam': {'zoom-min': 12, 'check-meta': True},
-        'weir': {'zoom-min': 13, 'check-meta': True},
-        'stream': {'zoom-min': 13, 'check-meta': True},
-        'drain': {'zoom-min': 14, 'check-meta': True},
-        'ditch': {'zoom-min': 14, 'check-meta': True},
+        'river': {'zoom-min': 10},
+        'canal': {'zoom-min': 10},
+        'dam': {'zoom-min': 12},
+        'weir': {'zoom-min': 13},
+        'stream': {'zoom-min': 13},
+        'drain': {'zoom-min': 14},
+        'ditch': {'zoom-min': 14},
     },
     'water': {  # natural=water supplement (not always true)
         'river': {
@@ -545,12 +540,12 @@ tags = {
         'j-bar': {'rewrite-value': 'drag_lift'},
         'platter': {'rewrite-value': 'drag_lift'},
         'rope_tow': {'rewrite-value': 'drag_lift'},
-        'cable_car': {'zoom-min': 12, 'check-meta': True},
-        'gondola': {'zoom-min': 12, 'check-meta': True},
-        'chair_lift': {'zoom-min': 13, 'check-meta': True},
-        'magic_carpet': {'zoom-min': 13, 'check-meta': True},
-        'drag_lift': {'zoom-min': 13, 'check-meta': True},
-        'zip_line': {'zoom-min': 14, 'check-meta': True},
+        'cable_car': {'zoom-min': 12},
+        'gondola': {'zoom-min': 12},
+        'chair_lift': {'zoom-min': 13},
+        'magic_carpet': {'zoom-min': 13},
+        'drag_lift': {'zoom-min': 13},
+        'zip_line': {'zoom-min': 14},
         'station': {'zoom-min': 14},
     },
     'place': {
@@ -631,11 +626,14 @@ tags = {
         'bureau_de_change': DEFAULT_PLACE,
         'bus_station': DEFAULT_PLACE,
         'fuel': DEFAULT_PLACE,
+        'charging_station': DEFAULT_PLACE,
         'post_office': DEFAULT_PLACE,
         'theatre': DEFAULT_PLACE,
         'cinema': DEFAULT_PLACE,
         'shelter': DEFAULT_PLACE,
         'bicycle_rental': DEFAULT_PLACE,
+        'bicycle_repair_station': DEFAULT_PLACE,
+        'bicycle_parking': DEFAULT_PLACE,
         'telephone': DEFAULT_PLACE,
         'parking': DEFAULT_PLACE,
         'post_box': {'zoom-min': 14},
@@ -649,6 +647,7 @@ tags = {
         'shower': DEFAULT_PLACE,
         'boat_rental': DEFAULT_PLACE,
         'dentist': DEFAULT_PLACE,
+        'hunting_stand': {'zoom-min': 14},
         'grave_yard': {'rewrite-key': 'landuse', 'rewrite-value': 'cemetery'},
         'swimming_pool': {'rewrite-key': 'leisure'},
         'embassy': {'rewrite-key': 'diplomatic', 'rewrite-if-missing': True},
@@ -710,11 +709,13 @@ tags = {
         'viewpoint': DEFAULT_PLACE,
         'museum': DEFAULT_PLACE,
         'information': DEFAULT_PLACE,
-        'artwork': {'zoom-min': 14}
+        'artwork': DEFAULT_PLACE
     },
     'historic': {
         'memorial': DEFAULT_PLACE,
         'castle': DEFAULT_PLACE,
+        'fort': DEFAULT_PLACE,
+        'city_gate': DEFAULT_PLACE,
         'ruins': DEFAULT_PLACE,
         'monument': DEFAULT_PLACE,
         'archaeological_site': DEFAULT_PLACE,
@@ -886,6 +887,34 @@ tags = {
         },
         '__strip__': True
     },
+    'operator': {
+        '__any__': {
+            'modify-mapping': _operator_mapper,
+            'render': False
+        },
+        '__strip__': True
+    },
+    'operator:en': {
+        '__any__': {
+            'modify-mapping': _operator_mapper,
+            'render': False
+        },
+        '__strip__': True
+    },
+    'operator:de': {
+        '__any__': {
+            'modify-mapping': _operator_mapper,
+            'render': False
+        },
+        '__strip__': True
+    },
+    'operator:ru': {
+        '__any__': {
+            'modify-mapping': _operator_mapper,
+            'render': False
+        },
+        '__strip__': True
+    },
     'opening_hours': {
         '__any__': {
             'render': False
@@ -1048,6 +1077,93 @@ tags = {
             'rewrite-if-missing': True
         },
     },
+    'foot': {
+        '__any__': {
+            'one-of': ['yes', 'designated', 'no'],
+            'keep-for': 'highway',
+            'render': False
+        }
+    },
+    'cycleway': {
+        'track': {
+            'keep-for': 'highway',
+            'render': False
+        },
+        'lane': {
+            'rewrite-value': 'track'
+        },
+        'shared_lane': {
+            'rewrite-value': 'track'
+        },
+        'share_busway': {
+            'rewrite-value': 'track'
+        }
+    },
+    'cycleway:right': {
+        'track': {
+            'keep-for': 'highway',
+            'render': False
+        },
+        'lane': {
+            'rewrite-value': 'track'
+        },
+        'shared_lane': {
+            'rewrite-value': 'track'
+        },
+        'share_busway': {
+            'rewrite-value': 'track'
+        }
+    },
+    'cycleway:left': {
+        'track': {
+            'keep-for': 'highway',
+            'render': False
+        },
+        'lane': {
+            'rewrite-value': 'track'
+        },
+        'shared_lane': {
+            'rewrite-value': 'track'
+        },
+        'share_busway': {
+            'rewrite-value': 'track'
+        }
+    },
+    'cycleway:both': {
+        'track': {
+            'rewrite-key': 'cycleway',
+            'keep-for': 'highway',
+            'render': False
+        },
+        'lane': {
+            'rewrite-key': 'cycleway',
+            'rewrite-value': 'track'
+        },
+        'shared_lane': {
+            'rewrite-key': 'cycleway',
+            'rewrite-value': 'track'
+        },
+        'share_busway': {
+            'rewrite-key': 'cycleway',
+            'rewrite-value': 'track'
+        }
+    },
+    'bicycle': {
+        'yes': {
+            'keep-for': 'highway',
+            'render': False
+        },
+        'designated': {
+            'keep-for': 'highway',
+            'render': False
+        }
+    },
+    'ramp:bicycle': {
+        'yes': {
+            'keep-for': 'highway',
+            'render': False
+        }
+    },
     'toll': {
         '__any__': {
             'adjust': osm.boolean,
@@ -1069,6 +1185,12 @@ tags = {
     'oneway': {
         '__any__': {
             'adjust': osm.direction,
+            'render': False
+        },
+    },
+    'oneway:bicycle': {
+        '__any__': {
+            'adjust': osm.boolean,
             'render': False
         },
     },
@@ -1141,7 +1263,12 @@ tags = {
         'bust': {'render': False},
         'stone': {'render': False},
         'plaque': {'render': False},
-        'blue_plaque': {'rewrite-value': 'blue_plaque'}
+        'blue_plaque': {'rewrite-value': 'plaque'}
+    },
+    'artwork_type': {
+        'statue': {'render': False},
+        'bust': {'render': False},
+        'stone': {'render': False}
     },
     'information': {
         'guidepost': {'render': False},
@@ -1170,6 +1297,42 @@ tags = {
             'render': False
         }
     },
+    'mtb:scale': {
+        '__any__': {
+            'one-of': ['0', '1', '2', '3', '4', '5', '6'],
+            'render': False
+        },
+    },
+    'mtb:scale:uphill': {
+        '__any__': {
+            'one-of': ['0', '1', '2', '3', '4', '5'],
+            'render': False
+        },
+    },
+    'mtb:scale:imba': {
+        '__any__': {
+            'one-of': ['0', '1', '2', '3', '4'],
+            'render': False
+        },
+    },
+    'rcn_ref': {
+        '__any__': {
+            'filter-type': ['Point'],
+            'add-tags': {'network': 'rcn'},
+            'rewrite-key': 'ref',
+            'zoom-min': 10,
+            'render': True
+        }
+    },
+    'lcn_ref': {
+        '__any__': {
+            'filter-type': ['Point'],
+            'add-tags': {'network': 'lcn'},
+            'rewrite-key': 'ref',
+            'zoom-min': 11,
+            'render': True
+        }
+    },
     'piste:difficulty': {
         '__any__': {
             'one-of': ['novice', 'easy', 'intermediate', 'advanced', 'expert', 'freeride'],
@@ -1187,6 +1350,13 @@ tags = {
             'one-of': ['private', 'no'],
             'render': False
         }
+    },
+    'wheelchair': {
+        '__any__': {
+            'one-of': ['yes', 'no', 'limited'],
+            'render': False
+        },
+        '__strip__': True
     },
     'aerodrome': {
         'international': {
@@ -1237,9 +1407,15 @@ tags = {
     },
     'ref': {
         '__any__': {
-            'keep-for': 'highway',
+            'keep-for': 'highway,network',
             'render': False
         }
+    },
+    'capacity': {
+        '__any__': {
+            'keep-for': 'amenity',
+            'rewrite-key': 'enum1',
+        },
     },
     'service': {
         'parking_aisle': {
@@ -1346,6 +1522,15 @@ tags = {
     'roof:direction': {'__any__': {'render': False}, '__strip__': True},
     'roof:angle': {'__any__': {'render': False}, '__strip__': True},
     'roof:orientation': {'__any__': {'render': False}, '__strip__': True},
+    'enum1': {
+        '__any__': {
+            'adjust': osm.integer,
+            'render': False
+        },
+        '__strip__': True
+    },
+    # tags from external sources
+    'colour': {'__strip__': True},
     'network': {},
     'route:network': {},
     'contour': {},
@@ -1355,43 +1540,43 @@ tags = {
 
 # noinspection PyUnusedLocal
 def _water_z2_mapper(row):
-    return {'natural': 'sea'}, {'zoom-min': 0, 'zoom-max': 2}
+    return None, {'natural': 'sea'}, {'zoom-min': 0, 'zoom-max': 2}
 
 
 # noinspection PyUnusedLocal
 def _water_z3_mapper(row):
-    return {'natural': 'sea'}, {'zoom-min': 3, 'zoom-max': 3}
+    return None, {'natural': 'sea'}, {'zoom-min': 3, 'zoom-max': 3}
 
 
 # noinspection PyUnusedLocal
 def _water_z4_mapper(row):
-    return {'natural': 'sea'}, {'zoom-min': 4, 'zoom-max': 4}
+    return None, {'natural': 'sea'}, {'zoom-min': 4, 'zoom-max': 4}
 
 
 # noinspection PyUnusedLocal
 def _water_z5_mapper(row):
-    return {'natural': 'sea'}, {'zoom-min': 5, 'zoom-max': 5}
+    return None, {'natural': 'sea'}, {'zoom-min': 5, 'zoom-max': 5}
 
 
 # noinspection PyUnusedLocal
 def _water_z6_mapper(row):
-    return {'natural': 'sea'}, {'zoom-min': 6, 'zoom-max': 6}
+    return None, {'natural': 'sea'}, {'zoom-min': 6, 'zoom-max': 6}
 
 
 # noinspection PyUnusedLocal
 def _water_z7_mapper(row):
-    return {'natural': 'sea'}, {'zoom-min': 7, 'zoom-max': 7}
+    return None, {'natural': 'sea'}, {'zoom-min': 7, 'zoom-max': 7}
 
 
 # noinspection PyUnusedLocal
 def _water_z8_mapper(row):
-    return {'natural': 'sea'}, {'zoom-min': 8, 'buffer': 0.2, 'transform': 'filter-rings', 'zoom-max': 8,
-                                'union': 'natural'}
+    return None, {'natural': 'sea'}, {'zoom-min': 8, 'buffer': 0.2, 'transform': 'filter-rings', 'zoom-max': 8,
+                                      'union': 'natural'}
 
 
 # noinspection PyUnusedLocal
 def _water_mapper(row):
-    return {'natural': 'sea'}, {'zoom-min': 9, 'buffer': 1, 'transform': 'filter-rings', 'union': 'natural'}
+    return None, {'natural': 'sea'}, {'zoom-min': 9, 'buffer': 1, 'transform': 'filter-rings', 'union': 'natural'}
 
 
 # noinspection PyUnusedLocal
@@ -1400,22 +1585,22 @@ def _lakes_50m_mapper(row):
         zoom_max = 7
     else:
         zoom_max = 4
-    return {'natural': 'water'}, {'zoom-min': 2, 'zoom-max': zoom_max, 'filter-area': 32}
+    return None, {'natural': 'water'}, {'zoom-min': 2, 'zoom-max': zoom_max, 'filter-area': 32}
 
 
 # noinspection PyUnusedLocal
 def _rivers_50m_mapper(row):
-    return {'natural': 'water'}, {'zoom-min': 4, 'zoom-max': 4}
+    return None, {'natural': 'water'}, {'zoom-min': 4, 'zoom-max': 4}
 
 
 # noinspection PyUnusedLocal
 def _lakes_rivers_10m_mapper(row):
-    return {'natural': 'water'}, {'zoom-min': 5}
+    return None, {'natural': 'water'}, {'zoom-min': 5}
 
 
 # noinspection PyUnusedLocal
 def _urban_areas(row):
-    return {'landuse': 'residential'}, {'zoom-min': 6}
+    return None, {'landuse': 'residential'}, {'zoom-min': 6}
 
 
 def _contours_mapper(row):
@@ -1428,7 +1613,7 @@ def _contours_mapper(row):
         contour = 'elevation_medium'
     else:
         contour = 'elevation_minor'
-    return {'contour': contour, 'ele': elevation}, {'zoom-min': zoom}
+    return None, {'contour': contour, 'ele': elevation}, {'zoom-min': zoom}
 
 
 def _boundaries_mapper(row):
@@ -1442,20 +1627,20 @@ def _boundaries_mapper(row):
     if row['maritime'] and row['maritime'] == 'yes':
         zoom = 8
         element_tags['maritime'] = row['maritime']
-    return element_tags, {'zoom-min': zoom, 'union': 'boundary,admin_level,maritime', 'simplify': 2}
+    return None, element_tags, {'zoom-min': zoom, 'union': 'boundary,admin_level,maritime', 'simplify': 2}
 
 
 def _routes_mapper(row):
     element_tags = {'route': row['route'], 'network': row['network'], 'osmc:symbol': row['osmc_symbol'],
-                    'ref': row['ref']}
+                    'ref': row['ref'], 'colour': row['colour']}
     zoom = 11
-    if row['network'] == 'iwn':
+    if row['network'] in ['iwn', 'icn']:
         zoom = 8
-    elif row['network'] == 'nwn':
+    elif row['network'] in ['nwn', 'ncn']:
         zoom = 9
-    elif row['network'] == 'rwn':
+    elif row['network'] in ['rwn', 'rcn']:
         zoom = 10
-    return element_tags, {'zoom-min': zoom, 'simplify': 2}
+    return kinds['route'], element_tags, {'zoom-min': zoom, 'simplify': 4, 'force-line': True}
 
 
 queries = [
@@ -1475,7 +1660,7 @@ queries = [
         'mapper': _boundaries_mapper
     },
     {
-        'query': 'SELECT geom, id, route, network, osmc_symbol, state, ref FROM osm_routes',
+        'query': 'SELECT geom, id, route, network, osmc_symbol, colour, state, ref FROM osm_routes',
         'srid': 3857,
         'mapper': _routes_mapper
     },
@@ -1524,6 +1709,16 @@ basemap_queries = [
     },
     {
         'query': 'SELECT geom FROM ne_10m_lakes',
+        'srid': 3857,
+        'mapper': _lakes_rivers_10m_mapper
+    },
+    {
+        'query': 'SELECT geom FROM ne_10m_lakes_europe',
+        'srid': 3857,
+        'mapper': _lakes_rivers_10m_mapper
+    },
+    {
+        'query': 'SELECT geom FROM ne_10m_lakes_north_america',
         'srid': 3857,
         'mapper': _lakes_rivers_10m_mapper
     },
