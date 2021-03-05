@@ -88,6 +88,8 @@ def stat_zoom(zoom, cursor, key=None):
                     continue
                 tags.append("{}:{}".format(k, v))
             tag = ','.join(sorted(tags))
+            if not tag and point.housenumber:
+                tag = 'addr:housenumber'
             tag_points[tag][0] += 1
             tag_points[tag][1] += len(point.coordinates) >> 1
             tag_points[tag][2] += size
@@ -132,6 +134,8 @@ def stat_zoom(zoom, cursor, key=None):
                     continue
                 tags.append("{}:{}".format(k, v))
             tag = ','.join(sorted(tags))
+            if not tag and polygon.housenumber:
+                tag = 'addr:housenumber'
             tag_polygons[tag][0] += 1
             tag_polygons[tag][1] += len(polygon.coordinates) >> 1
             tag_polygons[tag][2] += size
@@ -194,7 +198,7 @@ if __name__ == "__main__":
 
             key_stats = {}
 
-            for zoom in range(8, 15):
+            for zoom in [row[0] for row in zoom_sizes]:
                 ks = stat_zoom(zoom, cursor, args.key)
                 key_stats = merge_dicts(key_stats, ks)
 
