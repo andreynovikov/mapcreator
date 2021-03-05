@@ -12,6 +12,7 @@ class Element:
         self.type = None
         self.building = None
         self.geometry = None  # tile processed temporary geometry
+        self.merged = False  # flag merged element for potential cleaning
 
     def osm_id(self):
         t = 0
