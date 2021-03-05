@@ -1,10 +1,18 @@
 --keep=
-route=hiking
+route=hiking =foot =bicycle =mtb
+icn=yes
+ncn=yes
+rcn=yes
+lcn=yes
 
 --keep-tags=
 all
 type=
 route=
+icn=
+ncn=
+rcn=
+lcn=
 ref=
 name=
 name:en=
@@ -12,6 +20,7 @@ name:de=
 name:ru=
 network=
 osmc:symbol=
+colour=
 state=
 highway=
 aerialway=
