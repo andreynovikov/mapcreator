@@ -86,6 +86,18 @@ class OsmFilter(osmium.SimpleHandler):
                         if m.get('rewrite-if-missing', False) and filtered_tags.get(k, None):
                             continue
                         v = m.get('rewrite-value', v)
+                        if 'add-tags' in m and 'rewrite-key' in m:  # preserve original setting
+                            add = mapping.get('add-tags', {})
+                            mapping['add-tags'] = {**add, **m['add-tags']}
+                        if 'keep-for' in m and 'rewrite-key' in m:  # preserve original setting
+                            keep = mapping.get('keep-for', {})
+                            keep[k] = m['keep-for']
+                            mapping['keep-for'] = keep
+                        if 'zoom-min' in m:  # account original setting
+                            if 'zoom-min' not in mapping or m['zoom-min'] < mapping['zoom-min']:
+                                mapping['zoom-min'] = m['zoom-min']
+                        render = m.get('render', False)  # account original render flag if it is explicitly set
+                        renderable = renderable or render
                         m = mappings.tags[k].get(v, mappings.tags[k].get('__any__', {}))
                     if 'one-of' in m:
                         if v not in m['one-of']:
@@ -93,6 +105,8 @@ class OsmFilter(osmium.SimpleHandler):
                     if 'adjust' in m:
                         v = m['adjust'](v)
                     if v is None:
+                        if k in mapping.get('keep-for', {}):
+                            del mapping['keep-for'][k]
                         continue
                     if isinstance(v, str) and k not in ('name', 'name:en', 'name:de', 'name:ru', 'ref', 'icao', 'iata',
                                                         'addr:housenumber', 'opening_hours', 'wikipedia', 'website'):
@@ -144,8 +158,8 @@ class OsmFilter(osmium.SimpleHandler):
                             if 'transform' not in m or transform_exclusive:
                                 del mapping['transform']
                         mapping['transform-exclusive'] = transform_exclusive
-                    if 'check-meta' in m:
-                        mapping['check-meta'] = m['check-meta'] or mapping.get('check-meta', False)
+                    # if 'check-meta' in m:
+                    #     mapping['check-meta'] = m['check-meta'] or mapping.get('check-meta', False)
                     if 'union-zoom-max' in m:
                         if 'union-zoom-max' not in mapping or m['union-zoom-max'] < mapping['union-zoom-max']:
                             mapping['union-zoom-max'] = m['union-zoom-max']
@@ -165,6 +179,9 @@ class OsmFilter(osmium.SimpleHandler):
         if self.basemap and mapping.get('zoom-min', 0) > 7:
             renderable = False
         if renderable:
+            if 'add-tags' in mapping:
+                for k, v in mapping['add-tags'].items():
+                    filtered_tags[k] = v
             if 'keep-for' in mapping:
                 for k, v in mapping['keep-for'].items():
                     keep = [x.strip() for x in v.split(',')]
@@ -213,6 +230,19 @@ class OsmFilter(osmium.SimpleHandler):
                 if 'filter-type' in mapping and geom.type not in mapping.pop('filter-type', []):
                     return
                 geom = clockwise(geom)
+                if not geom.is_valid:
+                    geom = geom.buffer(0)
+                    if t == 1:
+                        st = 'node'
+                    elif t == 2 or o.from_way():
+                        st = 'way'
+                    else:
+                        st = 'relation'
+                    if geom.is_valid:
+                        logging.warning(" invalid geom %s/%s fixed", st, osm_id)
+                    else:
+                        logging.warning(" invalid geom %s/%s NOT fixed", st, osm_id)
+
                 # construct unique id
                 if t == 3 and o.from_way():
                     t = 2
@@ -225,7 +255,7 @@ class OsmFilter(osmium.SimpleHandler):
                     st = 'way'
                 else:
                     st = 'relation'
-                self.logger.error("   %s/%s: %s" % (st, osm_id, ex))
+                self.logger.error("   %s/%s: %s", st, osm_id, ex)
 
     def node(self, n):
         self.process(1, n)
@@ -311,32 +341,19 @@ def process_element(geom, tags, mapping, basemap=False):
 
     area = None
     label = None
-    new_geom = None
 
     if el_type or (mapping.get('label', False) and (not basemap or mapping.get('basemap-label', False))):
         if building is not None:
             label, area = polylabel(geom)
         else:
-            if geom.type == 'Polygon' or geom.type == 'MultiPolygon':
+            if geom.type in ('Polygon', 'MultiPolygon'):
                 area = geom.area
                 label = geom.centroid
                 if not geom.contains(label):
                     label = geom.representative_point()
-    if 'transform' in mapping:
-        if mapping.get('transform') == 'point':
-            if label:
-                if not area:
-                    area = geom.area
-                if isinstance(label, list):
-                    new_geom = label[0]
-                else:
-                    new_geom = label
-            else:
-                point, area = polylabel(geom)
-                if isinstance(point, list):
-                    new_geom = point[0]
-                else:
-                    new_geom = point
+
+    if area is None and 'transform' in mapping and mapping.get('transform') == 'point':
+        area = geom.area
 
     if area is None and (mapping.get('filter-area', None) or (basemap and mapping.get('basemap-filter-area', None))):
         area = geom.area
@@ -345,8 +362,6 @@ def process_element(geom, tags, mapping, basemap=False):
         # convert area to true meters
         if label:
             point = label
-        elif new_geom:
-            point = new_geom
         else:
             point = geom.representative_point()
         if isinstance(point, list):
@@ -355,7 +370,7 @@ def process_element(geom, tags, mapping, basemap=False):
         k = math.cosh(point.y / Tile.RADIUS)
         area = area / math.pow(k, 2)
 
-    return kind, el_type, new_geom, area, label, building
+    return kind, el_type, area, label, building
 
 
 # noinspection PyPep8Naming
@@ -398,7 +413,6 @@ class MapWriter:
             mappings.mapType = mappings.MapTypes.Base
 
         map_path = self.map_path(x, y)
-        start_time = datetime.utcnow()
         self.logger.info("Creating map: %s" % map_path)
 
         log_path = self.log_path(x, y)
@@ -423,6 +437,8 @@ class MapWriter:
                             source_pbf_path = self.generateIntermediateFile(source_pbf_path, x, y, 5, " middle")
                         self.generateIntermediateFile(source_pbf_path, x, y, 7, "")
 
+        start_time = datetime.utcnow()
+        # noinspection PyUnboundLocalVariable
         self.logger.info("  Processing file: %s" % pbf_path)
 
         elements = []
@@ -450,9 +466,9 @@ class MapWriter:
 
             self.db = MTilesDatabase(map_path)
             if self.basemap:
-                self.db.create("basemap", 'baselayer', '2', self.timestamp, 'maptrek')
+                self.db.create("basemap", 'baselayer', self.timestamp, 'maptrek')
             else:
-                self.db.create("%d-%d" % (x, y), 'baselayer', '2', self.timestamp, 'maptrek')
+                self.db.create("%d-%d" % (x, y), 'baselayer', self.timestamp, 'maptrek')
 
             used = process.memory_info().rss // 1048576
             self.logger.info("    memory used: {:,}M out of {:,}M".format(used, total))
@@ -461,7 +477,7 @@ class MapWriter:
                 self.multiprocessing = False
 
             if self.multiprocessing:
-                num_worker_threads = len(os.sched_getaffinity(0))
+                num_worker_threads = max(0, min(len(os.sched_getaffinity(0)), 6))
                 if self.basemap and not self.stubmap:
                     # temporary hack
                     num_worker_threads = 2
@@ -480,24 +496,22 @@ class MapWriter:
                 self.logger.info("    processing %d elements" % len(elements))
 
             results = []
-            places = []
+            places = defaultdict(list)
             # pre-process elements
             for idx, element in enumerate(elements):
                 def process_result(result, index=idx):
                     el = elements[index]
-                    el.kind, el.type, new_geom, el.area, el.label, el.building = result
-                    if new_geom:
-                        el.geom = new_geom
+                    el.kind, el.type, el.area, el.label, el.building = result
                     # remove overlapping places (point and polygon)
                     # due to file processing logic we assume that points go first, if not - introduce sort
                     if el.id and is_place(el.kind):
                         if el.geom.type == 'Point':
-                            places.append(el)
+                            key = '{}@{}'.format(el.tags.get('place', '---'), el.tags.get('name', '---').split(' (')[0])
+                            places[key].append(el)
                         elif len(places):
-                            for place in places:
-                                if el.tags.get('place', '---') == place.tags.get('place', '===') \
-                                   and el.tags.get('name', '---').split(' (')[0] == place.tags.get('name', '===').split(' (')[0] \
-                                   and el.geom.contains(place.geom):
+                            key = '{}@{}'.format(el.tags.get('place', '==='), el.tags.get('name', '===').split(' (')[0])
+                            for place in places[key]:
+                                if el.geom.contains(place.geom):
                                     # copy names to point and remove them from polygon
                                     if 'name:en' in el.tags:
                                         name = el.tags.pop('name:en', None)
@@ -512,7 +526,20 @@ class MapWriter:
                                         if 'name:ru' not in place.tags:
                                             place.tags['name:ru'] = name
                                     el.tags.pop('name', None)
+                                    el.tags.pop('place', None)
+                                    el.merged = True
                                     break
+
+                    if 'transform' in el.mapping:
+                        if el.mapping.get('transform') == 'point' and el.geom.type != 'Point':
+                            if el.label:
+                                if isinstance(el.label, list):
+                                    el.geom = el.label[0]
+                                else:
+                                    el.geom = el.label
+                            else:
+                                el.geom = el.geom.representative_point()
+
                     # if feature has type or name save it for future reference
                     if el.type or 'name' in el.tags:
                         self.db.putFeature(el.id, el.tags, el.kind, el.type, el.label, el.geom)
@@ -576,8 +603,13 @@ class MapWriter:
                             geom = shapely_wkb.loads(bytes(row['geometry']))
                             if data['srid'] != 3857:  # we support only 3857 and 4326 projections
                                 geom = transform(wgs84_to_mercator, geom)
-                            tags, mapping = data['mapper'](row)
-                            extra_elements.append(Element(None, geom, tags, mapping))
+                            kind, tags, mapping = data['mapper'](row)
+                            if mapping.pop('force-line', False) and geom.type in ['Polygon', 'MultiPolygon']:
+                                geom = geom.boundary
+                            element = Element(None, geom, tags, mapping)
+                            if kind:
+                                element.kind = kind
+                            extra_elements.append(element)
                     except (psycopg2.ProgrammingError, psycopg2.InternalError):
                         self.logger.exception("Query error: %s" % sql)
                     except shapely.errors.WKBReadingError:
@@ -592,32 +624,23 @@ class MapWriter:
                 del pool
                 del results
 
-            # add meta data to elements
-            if not self.interactive:
-                self.logger.info("      adding meta data")
-            with psycopg2.connect(configuration.DATA_DB_DSN) as c:
-                sql = "SELECT network FROM osm_features_meta WHERE id = %s"
-                for element in elements:
-                    if element.id and element.mapping.get('check-meta', False):
-                        try:
-                            cur = c.cursor(cursor_factory=psycopg2.extras.DictCursor)
-                            cur.execute(sql, (element.id,))
-                            row = cur.fetchone()
-                            if row:
-                                element.tags['route:network'] = row['network']
-                        except (psycopg2.ProgrammingError, psycopg2.InternalError):
-                            self.logger.exception("Query error: %s" % sql)
-                        finally:
-                            cur.close()
-
             if self.interactive:
                 self.proc_progress.close()
             else:
                 self.logger.info("    finished processing elements")
 
-            # remove elements without tags (due to tag cleaning)
+            # remove elements without tags (due to tag cleaning) and without renderable tags (due to place merging)
             def has_tags(el):
-                if len(el.tags):
+                if el.merged:
+                    for k, v in el.tags.items():
+                        em = mappings.tags[k].get('__any__', None)
+                        if em is None:
+                            em = mappings.tags[k].get(v, None)
+                        if em.get('render', True):
+                            return True
+                    logging.info("    stripped %s" % el.osm_id())
+                    return False
+                elif len(el.tags):
                     return True
                 else:
                     logging.warning(" missing tags in %s" % el.osm_id())
@@ -936,7 +959,7 @@ class MapWriter:
                 try:
                     subtile.elements.append(element.clone(clipCache[element.mapping.get('clip-buffer', 4)].intersection(element.geom)))
                 except Exception:
-                    self.logger.exception("Error clipping element for tile %s" % subtile)
+                    self.logger.error("Error clipping element for tile %s" % subtile)
                     self.logger.error("Element was: %s" % element)
         self.tile_queue.put(subtile)
 
@@ -1025,7 +1048,7 @@ if __name__ == "__main__":
         print("Invalid log level: %s" % args.log)
         exit(1)
 
-    logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s - %(message)s')
+    logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s - %(message)s', datefmt='%H:%M:%S')
     logging.getLogger("shapely").setLevel(logging.ERROR)
     logger = logging.getLogger(__name__)
     # during a dry run the console should receive all logs
@@ -1036,4 +1059,4 @@ if __name__ == "__main__":
         mapWriter = MapWriter(args.data_path, args.dry_run, args.noninteractive, args.single_thread)
         mapWriter.createMap(args.x, args.y, args.intermediate, args.keep, args.from_file)
     except Exception as e:
-        logger.exception("An error occurred:", e)
+        logger.exception("An error occurred")
