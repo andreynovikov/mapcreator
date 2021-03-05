@@ -17,7 +17,8 @@ kinds = {
     "transportation": 0x00008000,
     "hikebike":       0x00010000,
     "urban":          0x00020000,
-    "barrier":        0x00040000
+    "barrier":        0x00040000,
+    "route":          0x80000000
 }
 
 types = {
@@ -58,6 +59,7 @@ types = {
     "theme_park": 83,
     "picnic_site": 85,
     # "firepit": 86,
+    # "hunting_stand": 87,
     "theatre": 88,
     "cinema": 91,
     "library": 94,
@@ -104,6 +106,8 @@ types = {
     "statue": 188,
     "memorial": 189,
     "castle": 190,
+    "fort": 191,
+    "city_gate": 192,
     "monument": 193,
     "archaeological_site": 196,
     "wayside_shrine": 197,
@@ -123,12 +127,15 @@ types = {
     "car_repair": 232,
     "car_rental": 235,
     "fuel": 238,
+    "charging_station": 239,
     # "slipway": 241,
     # "parking": 244,
     "bus_station": 247,
     "bus_stop": 248,
     "tram_stop": 249,
     "bicycle_rental": 250,
+    "bicycle_repair_station": 251,
+    # "bicycle_parking": 252,
     "drinking_water": 253,
     "shelter": 256,
     "toilets": 259,
@@ -226,9 +233,10 @@ def _tag_kind(k, v):
             f_kind = kinds['food']
         elif value in ('theatre', 'cinema', 'library', 'boat_rental'):
             f_kind = kinds['entertainment']
-        elif value in ('parking', 'fuel', 'car_repair', 'car_rental'):
+        elif value in ('parking', 'fuel', 'charging_station', 'car_repair', 'car_rental'):
             f_kind = kinds['vehicles']
-        elif value in ('bicycle_rental', 'drinking_water', 'shelter', 'toilets'):
+        elif value in ('bicycle_rental', 'bicycle_repair_station', 'bicycle_parking', 'drinking_water',
+                       'shelter', 'toilets', 'hunting_stand'):
             f_kind = kinds['hikebike']
         elif value in ('bank', 'atm', 'bureau_de_change', 'post_office', 'post_box', 'shower'):
             f_kind = kinds['service']
@@ -281,7 +289,8 @@ def _tag_kind(k, v):
             f_kind = kinds['service']
 
     elif key == 'historic':
-        if value in ('memorial', 'castle', 'ruins', 'monument', 'archaeological_site', 'wayside_shrine'):
+        if value in ('memorial', 'castle', 'city_gate', 'fort', 'ruins', 'monument', 'archaeological_site',
+                     'wayside_shrine'):
             f_kind = kinds['attraction']
 
     elif key == 'leisure':
