@@ -72,6 +72,7 @@ class VectorTile:
         housenumber = None
         elevation = None
         depth = None
+        color = None
 
         for k, v in feature.tags.items():
             if v is None:
@@ -90,6 +91,10 @@ class VectorTile:
 
             if k == 'depth':
                 depth = v
+                continue
+
+            if k == 'colour':
+                color = v
                 continue
 
             # use unsigned int for layer. i.e. map to 0..10
@@ -242,6 +247,10 @@ class VectorTile:
 
             if feature.building.roof_across:
                 f.roof_across = feature.building.roof_across
+
+        # TODO rename proto field
+        elif feature.kind is not None and color is not None:
+            f.building_color = color
 
         # logging.debug('tags %d, indices %d' %(len(tags),len(f.indices)))
         self.num_features += 1
