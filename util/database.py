@@ -76,6 +76,17 @@ class MTilesDatabase:
         self.db.close()
         self.db = None
 
+    def isValid(self):
+        if self.db is None:
+            self.db = connect(self.filename, check_same_thread=False)
+        cursor = self.db.cursor()
+        cursor.execute("SELECT value FROM metadata WHERE name = 'timestamp'")
+        date = int(cursor.fetchone()[0])
+        cursor.execute("SELECT COUNT(*) FROM tiles")
+        count = int(cursor.fetchone()[0])
+        self.finish()
+        return date and count == 21844
+
     def putTile(self, zoom: int, x: int, y: int, content: bytes):
         self.db.execute(TILE_INSERT_QUERY, (zoom, x, y, memoryview(content)))
 

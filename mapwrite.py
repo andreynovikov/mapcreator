@@ -383,14 +383,16 @@ class MapWriter:
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
         self.interactive = not forbid_interactive and sys.__stdin__.isatty()
-        self.single_thread = single_thread
         self.stubmap = False
         self.basemap = False
         self.timestamp = None
         self.db = None
         self.tile_queue = None
         self.db_queue = None
-        self.multiprocessing = True
+        if single_thread:
+            self.worker_threads = 1
+        else:
+            self.worker_threads = 6  # hardcoded maximum, can be any positive value
         self.proc_progress = None
         self.gen_progress = None
 
@@ -449,15 +451,14 @@ class MapWriter:
         gc.collect()
 
         process = psutil.Process(os.getpid())
-        total = psutil.virtual_memory().total // 1048576
         used = process.memory_info().rss // 1048576
-        self.logger.info("    memory used: {:,}M out of {:,}M".format(used, total))
+        available = psutil.virtual_memory().available // 1048576 + used
+        self.worker_threads = max(1, min(self.worker_threads, int(available / used / 2), len(os.sched_getaffinity(0))))
+        self.logger.info("    memory used: {:,}M out of {:,}M".format(used, available))
 
         # process map only if it contains relevant data
         has_elements = bool(elements)
         if has_elements:
-            self.multiprocessing = total / used > 4 and not self.single_thread
-
             self.timestamp = int(self.timestamp / 3600 / 24)
 
             for processor in processors:
@@ -471,24 +472,21 @@ class MapWriter:
                 self.db.create("%d-%d" % (x, y), 'baselayer', self.timestamp, 'maptrek')
 
             used = process.memory_info().rss // 1048576
-            self.logger.info("    memory used: {:,}M out of {:,}M".format(used, total))
+            available = psutil.virtual_memory().available // 1048576 + used
+            self.worker_threads = min(self.worker_threads, max(1, int(available / used / 2)))
+            self.logger.info("    memory used: {:,}M out of {:,}M".format(used, available))
 
-            if self.multiprocessing and total / used < 4:
-                self.multiprocessing = False
-
-            if self.multiprocessing:
-                num_worker_threads = max(0, min(len(os.sched_getaffinity(0)), 6))
-                if self.basemap and not self.stubmap:
-                    # temporary hack
-                    num_worker_threads = 2
-                self.logger.info("    running in multiprocessing mode with %d workers" % num_worker_threads)
+            if self.basemap and not self.stubmap:
+                # temporary hack
+                self.worker_threads = min(2, self.worker_threads)
+            if self.worker_threads > 1:
+                self.logger.info("    running in multiprocessing mode with %d workers" % self.worker_threads)
             else:
-                num_worker_threads = 1
                 self.logger.info("    running in single threaded mode")
 
             pool = None
-            if self.multiprocessing and len(elements) > 100:
-                pool = multiprocessing.Pool(num_worker_threads)
+            if self.worker_threads > 1 and len(elements) > 100:
+                pool = multiprocessing.Pool(self.worker_threads)
 
             if self.interactive:
                 self.proc_progress = tqdm(total=len(elements), desc="Processed", maxinterval=1.0)
@@ -617,7 +615,7 @@ class MapWriter:
                     finally:
                         cur.close()
 
-            if self.multiprocessing:
+            if self.worker_threads > 1:
                 # wait for results, look for errors
                 for r in results:
                     r.get()
@@ -633,17 +631,19 @@ class MapWriter:
             def has_tags(el):
                 if el.merged:
                     for k, v in el.tags.items():
+                        if k == 'id':
+                            continue
                         em = mappings.tags[k].get('__any__', None)
                         if em is None:
                             em = mappings.tags[k].get(v, None)
                         if em.get('render', True):
                             return True
-                    logging.info("    stripped %s" % el.osm_id())
+                    self.logger.debug("   stripped %s" % el.osm_id())
                     return False
                 elif len(el.tags):
                     return True
                 else:
-                    logging.warning(" missing tags in %s" % el.osm_id())
+                    self.logger.warning(" missing tags in %s" % el.osm_id())
                     return False
 
             elements[:] = [el for el in elements if has_tags(el)]
@@ -655,12 +655,15 @@ class MapWriter:
                 elements += extra_elements
 
             used = process.memory_info().rss // 1048576
-            self.logger.info("    memory used: {:,}M out of {:,}M".format(used, total))
+            available = psutil.virtual_memory().available // 1048576 + used
+            self.worker_threads = min(self.worker_threads, max(1, int(available / used / 2)))
+            self.logger.info("    memory used: {:,}M out of {:,}M".format(used, available))
 
-            m = total / used > 4 and len(extra_elements) < 500000
-            if self.multiprocessing and not m:
-                self.multiprocessing = False
-                num_worker_threads = 1
+            if len(extra_elements) > 500000:
+                self.worker_threads = 1
+            if self.worker_threads > 1:
+                self.logger.info("    running in multiprocessing mode with %d workers" % self.worker_threads)
+            else:
                 self.logger.info("    running in single threaded mode")
 
             if self.interactive:
@@ -671,7 +674,7 @@ class MapWriter:
                     num_tiles = num_tiles + n
                 self.gen_progress = tqdm(total=num_tiles, desc="Generated")
 
-            if self.multiprocessing:
+            if self.worker_threads > 1:
                 tile_queue = multiprocessing.JoinableQueue()
                 db_queue = multiprocessing.JoinableQueue()
             else:
@@ -682,8 +685,8 @@ class MapWriter:
             db_thread.start()
 
             processes = []
-            if self.multiprocessing:
-                for i in range(num_worker_threads):
+            if self.worker_threads > 1:
+                for i in range(self.worker_threads):
                     p = multiprocessing.Process(target=self.tileWorker, args=(tile_queue, db_queue))
                     p.start()
                     processes.append(p)
@@ -705,14 +708,14 @@ class MapWriter:
             db_queue.join()
 
             # stop workers
-            for i in range(num_worker_threads):
+            for i in range(self.worker_threads):
                 tile_queue.put(None)
             for p in processes:
                 p.join()
             db_queue.put(None)
             db_thread.join()
 
-            if self.multiprocessing:
+            if self.worker_threads > 1:
                 tile_queue.close()
                 db_queue.close()
 
@@ -722,7 +725,8 @@ class MapWriter:
                 self.gen_progress.close()
 
             used = process.memory_info().rss // 1048576
-            self.logger.info("    memory used: {:,}M out of {:,}M".format(used, total))
+            available = psutil.virtual_memory().available // 1048576 + used
+            self.logger.info("    memory used: {:,}M out of {:,}M".format(used, available))
 
         elapsed_time = datetime.utcnow() - start_time
         elapsed_time = elapsed_time - timedelta(microseconds=elapsed_time.microseconds)
@@ -731,6 +735,9 @@ class MapWriter:
         if not self.dry_run and has_elements:
             if os.path.getsize(map_path) == 0:
                 raise Exception("Resulting map file size for %s is zero, keeping old map file" % map_path)
+
+        if not self.db.isValid():
+            raise Exception("There was an error generating map %s, keeping old map file" % map_path)
 
         # remove intermediate pbf file and log on success
         if intermediate and not keep:
@@ -952,15 +959,16 @@ class MapWriter:
         for element in tile.elements:
             if element.mapping.get('zoom-max', 14) < zoom:
                 continue
-            if prepared_clip.covers(element.geom):
-                subtile.elements.append(element)
-            elif prepared_clip.intersects(element.geom):
-                # noinspection PyBroadException
-                try:
+            # noinspection PyBroadException
+            try:
+                if prepared_clip.covers(element.geom):
+                    subtile.elements.append(element)
+                elif prepared_clip.intersects(element.geom):
                     subtile.elements.append(element.clone(clipCache[element.mapping.get('clip-buffer', 4)].intersection(element.geom)))
-                except Exception:
-                    self.logger.error("Error clipping element for tile %s" % subtile)
-                    self.logger.error("Element was: %s" % element)
+            except Exception as ex:
+                self.logger.error("Error preparing element for tile %s" % subtile)
+                self.logger.error(" element was: %s" % element)
+                self.logger.error(" error was: %s" % ex)
         self.tile_queue.put(subtile)
 
     def generateIntermediateFile(self, source_pbf_path, x, y, z, name):
@@ -1059,4 +1067,4 @@ if __name__ == "__main__":
         mapWriter = MapWriter(args.data_path, args.dry_run, args.noninteractive, args.single_thread)
         mapWriter.createMap(args.x, args.y, args.intermediate, args.keep, args.from_file)
     except Exception as e:
-        logger.exception("An error occurred")
+        logger.exception(e)
