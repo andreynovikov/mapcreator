@@ -324,6 +324,7 @@ class OsmFilter(osmium.SimpleHandler):
                     self.logger.exception("Insertion error: %s" % str(route))
             c.commit()
             cur.execute('CREATE INDEX ON osm_routes USING GIST ("geom")')
+            cur.execute('ANALYZE osm_routes')
 
 
 if __name__ == "__main__":
