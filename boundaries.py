@@ -15,7 +15,7 @@ from util import osm
 wktFactory = osmium.geom.WKTFactory()
 
 
-class Boundary():
+class Boundary:
     def __init__(self, wkt, admin_level, maritime):
         self.wkt = wkt
         self.admin_level = admin_level
@@ -41,7 +41,7 @@ class OsmFilter(osmium.SimpleHandler):
             for tag in w.tags:
                 if tag.k == 'boundary' and tag.v == 'administrative':
                     boundary = True
-                if tag.k == 'admin_level' and tag.v in ('1','2','3','4'):
+                if tag.k == 'admin_level' and tag.v in ('1', '2', '3', '4'):
                     admin_level = int(tag.v)
                 if tag.k == 'maritime':
                     maritime = osm.boolean(tag.v)
@@ -50,7 +50,6 @@ class OsmFilter(osmium.SimpleHandler):
             self.ways[w.id] = Boundary(wkt, admin_level, maritime)
         except Exception as e:
             self.logger.error("%s: %s" % (w.id, e))
-
 
     def relation(self, r):
         boundary = False
@@ -62,7 +61,7 @@ class OsmFilter(osmium.SimpleHandler):
                 boundary = True
             if tag.k == 'type':
                 t = tag.v
-            if tag.k == 'admin_level' and tag.v in ('1','2','3','4'):
+            if tag.k == 'admin_level' and tag.v in ('1', '2', '3', '4'):
                 admin_level = int(tag.v)
             if tag.k == 'maritime':
                 maritime = osm.boolean(tag.v)
@@ -92,10 +91,11 @@ class OsmFilter(osmium.SimpleHandler):
             for id, way in self.ways.items():
                 if way.admin_level:
                     cur.execute("""INSERT INTO osm_boundaries (id, admin_level, maritime, geom)
-                                   VALUES (%s, %s, %s, ST_Transform(ST_GeomFromText(%s, 4326), 3857))""", \
+                                   VALUES (%s, %s, %s, ST_Transform(ST_GeomFromText(%s, 4326), 3857))""",
                                 (id, way.admin_level, way.maritime, way.wkt))
             c.commit()
-            cur.execute('CREATE INDEX ON osm_boundaries USING GIST ("geom");')
+            cur.execute('CREATE INDEX ON osm_boundaries USING GIST ("geom")')
+            cur.execute('ANALYZE osm_boundaries')
 
 
 if __name__ == "__main__":
