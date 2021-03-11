@@ -1,6 +1,7 @@
 import logging
 from tqdm import tqdm
 from shapely.geometry import CAP_STYLE
+from shapely.prepared import prep
 from shapely.errors import ShapelyError
 
 from util.core import Element
@@ -25,7 +26,7 @@ def process(elements, interactive):
     for element in cutlines:
         elements.remove(element)
 
-    if not woods:
+    if not woods or not cutline_areas:
         return
 
     if interactive:
@@ -34,13 +35,15 @@ def process(elements, interactive):
         logging.info("      subtract cut lines")
 
     for wood in woods:
+        prepared_wood = prep(wood.geom)
         for cutline in cutline_areas:
             try:
-                geom = wood.geom.intersection(cutline)
-                if not geom.is_empty:
-                    wood.geom = wood.geom.difference(cutline)
-                    # this is not always true but makes map more readable
-                    elements.append(Element(None, geom, {'natural': 'grassland'}, {'zoom-min': 14}))
+                if prepared_wood.intersects(cutline):
+                    geom = wood.geom.intersection(cutline)
+                    if not geom.is_empty:
+                        wood.geom = wood.geom.difference(cutline)
+                        # this is not always true but makes map more readable
+                        elements.append(Element(None, geom, {'natural': 'grassland'}, {'zoom-min': 14}))
             except ShapelyError:
                 logging.error("failed to cut lines from %s", wood.osm_id())
         if interactive:
@@ -48,4 +51,3 @@ def process(elements, interactive):
             progress.update()
     if interactive:
         progress.close()
-
