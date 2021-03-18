@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import os
 import sys
 import gc
@@ -551,6 +550,10 @@ class MapWriter:
                         el.tags['id'] = el.id
                     if self.interactive:
                         self.proc_progress.update()
+                if element.geom.is_empty:
+                    self.logger.error("   got empty geom for %s" % element.osm_id())
+                    element.tags.clear()  # clean all tags to later remove element
+                    continue
                 if pool:
                     results.append(pool.apply_async(
                         process_element, [element.geom, element.tags, element.mapping, self.basemap],
@@ -736,7 +739,7 @@ class MapWriter:
             if os.path.getsize(map_path) == 0:
                 raise Exception("Resulting map file size for %s is zero, keeping old map file" % map_path)
 
-        if not self.db.isValid():
+        if self.db and not self.db.isValid():
             raise Exception("There was an error generating map %s, keeping old map file" % map_path)
 
         # remove intermediate pbf file and log on success

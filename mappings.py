@@ -418,6 +418,7 @@ tags = {
         },
         'wood': {
             'zoom-min': 8,
+            'filter-type': ['Polygon', 'MultiPolygon'],
             'transform': 'filter-rings',
             'keep-tags': 'natural',  # used to strip names
             'union': 'natural',

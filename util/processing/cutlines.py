@@ -45,7 +45,10 @@ def process(elements, interactive):
                         # this is not always true but makes map more readable
                         elements.append(Element(None, geom, {'natural': 'grassland'}, {'zoom-min': 14}))
             except ShapelyError:
-                logging.error("failed to cut lines from %s", wood.osm_id())
+                logging.error("   failed to cut lines from %s", wood.osm_id())
+        if wood.geom.is_empty:
+            logging.warning(" cutting produced empty geom for %s", wood.osm_id())
+
         if interactive:
             # noinspection PyUnboundLocalVariable
             progress.update()
