@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import os
 import sys
@@ -6,6 +6,7 @@ import time
 import argparse
 import subprocess
 import logging.config
+from datetime import timedelta
 
 import psycopg2
 
@@ -45,7 +46,7 @@ class MapCreator:
         query = "SELECT * FROM downloaded_map(interval '%s') LIMIT 1;"
         with psycopg2.connect(configuration.STATS_DB_DSN) as c:
             with c.cursor() as cur:
-                cur.execute(query % (period))
+                cur.execute(query % period)
                 self.logger.debug(cur.query)
                 if cur.rowcount > 0:
                     row = cur.fetchone()
@@ -57,7 +58,7 @@ class MapCreator:
         query = "SELECT * FROM any_map(interval '%s') LIMIT 1;"
         with psycopg2.connect(configuration.STATS_DB_DSN) as c:
             with c.cursor() as cur:
-                cur.execute(query % (period))
+                cur.execute(query % period)
                 self.logger.debug(cur.query)
                 if cur.rowcount > 0:
                     row = cur.fetchone()
@@ -69,7 +70,7 @@ class MapCreator:
         query = "SELECT * FROM empty_map(interval '%s') LIMIT 1;"
         with psycopg2.connect(configuration.STATS_DB_DSN) as c:
             with c.cursor() as cur:
-                cur.execute(query % (period))
+                cur.execute(query % period)
                 self.logger.debug(cur.query)
                 if cur.rowcount > 0:
                     row = cur.fetchone()
@@ -77,7 +78,19 @@ class MapCreator:
                     return row[0]
         return None
 
-    def loop(self, area):
+    def getCost(self, area):
+        query = "SELECT cost FROM maps WHERE area = '%s';"
+        with psycopg2.connect(configuration.STATS_DB_DSN) as c:
+            with c.cursor() as cur:
+                cur.execute(query % area)
+                self.logger.debug(cur.query)
+                if cur.rowcount > 0:
+                    row = cur.fetchone()
+                    self.logger.info("Map will generate in about %s" % timedelta(seconds=row[0]))
+                    return row[0]
+        return 0
+
+    def loop(self, area=None):
         date = int(os.path.getmtime(configuration.SOURCE_PBF) / 3600 / 24)
         today = int(time.time() / 3600 / 24)
         self.logger.debug("Source file is %d days old" % (today - date))
@@ -104,10 +117,11 @@ class MapCreator:
         self.writeIndex(area, x, y, None, None, None, True)
 
         cost = time.time()
+        timeout = max(self.getCost(area) * 1.5, 60)
         try:
-            map_path = self.mapWriter.createMap(x, y, True, False, True)
-        except Exception as e:
-            logger.exception("An error occurred")
+            map_path = self.mapWriter.createMap(x, y, timeout, True, False, True)
+        except Exception as ex:
+            logger.error(ex)
             if not self.dry_run:
                 self.writeIndex(area, x, y, None, None, None, True)
             return 1

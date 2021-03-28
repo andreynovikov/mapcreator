@@ -3,6 +3,7 @@ import os
 import sys
 import gc
 import math
+import time
 import queue
 import threading
 import multiprocessing
@@ -10,6 +11,7 @@ import argparse
 import subprocess
 import logging.config
 import psutil
+import setproctitle
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta
 
@@ -331,6 +333,12 @@ class BBoxCache(defaultdict):
         return bbox
 
 
+def element_processing_initializer(proc_name):
+    name = "{} element processor {}".format(proc_name, multiprocessing.current_process().name.split('-')[1])
+    multiprocessing.current_process().name = name
+    setproctitle.setproctitle(name)
+
+
 def process_element(geom, tags, mapping, basemap=False):
     kind, el_type = get_kind_and_type(tags)
     if is_building(kind):
@@ -388,6 +396,7 @@ class MapWriter:
         self.db = None
         self.tile_queue = None
         self.db_queue = None
+        self.proc_name = "mapwrite"
         if single_thread:
             self.worker_threads = 1
         else:
@@ -404,24 +413,30 @@ class MapWriter:
         except ImportError:
             self.logger.warning("Upgrade Shapely for performance improvements")
 
-    def createMap(self, x, y, intermediate=False, keep=False, from_file=False):
+    def createMap(self, x, y, timeout=0, intermediate=False, keep=False, from_file=False):
         self.stubmap = x == -2 and y == -2
         self.basemap = self.stubmap or (x == -1 and y == -1)
 
         if self.stubmap:
             mappings.mapType = mappings.MapTypes.Stub
+            self.proc_name = "mapwrite stub"
         elif self.basemap:
             mappings.mapType = mappings.MapTypes.Base
+            self.proc_name = "mapwrite base"
+        else:
+            self.proc_name = "mapwrite {} {}".format(x, y)
+        setproctitle.setproctitle(self.proc_name)
+
+        log_path = self.log_path(x, y)
+        log_file_handler = logging.FileHandler(log_path)
+        log_file_handler.setFormatter(logging.getLogger().handlers[0].formatter)
+        logging.getLogger().addHandler(log_file_handler)
 
         map_path = self.map_path(x, y)
         self.logger.info("Creating map: %s" % map_path)
 
-        log_path = self.log_path(x, y)
-        # TODO redirect logger to file
-        logfile = open(log_path, 'a')
-
         if not from_file:
-            logfile.close()
+            logging.getLogger().removeHandler(log_file_handler)
             raise NotImplementedError('Loading data from database is not implemented yet')
         if intermediate or from_file:
             pbf_path = self.pbf_path(x, y)
@@ -485,7 +500,7 @@ class MapWriter:
 
             pool = None
             if self.worker_threads > 1 and len(elements) > 100:
-                pool = multiprocessing.Pool(self.worker_threads)
+                pool = multiprocessing.Pool(self.worker_threads, initializer=element_processing_initializer, initargs=(self.proc_name,))
 
             if self.interactive:
                 self.proc_progress = tqdm(total=len(elements), desc="Processed", maxinterval=1.0)
@@ -684,17 +699,17 @@ class MapWriter:
                 tile_queue = queue.Queue()
                 db_queue = queue.Queue()
 
-            db_thread = threading.Thread(target=self.dbWorker, args=(db_queue,))
+            db_thread = threading.Thread(target=self.dbWorker, args=(db_queue,), name="{} db worker".format(self.proc_name))
             db_thread.start()
 
             processes = []
             if self.worker_threads > 1:
                 for i in range(self.worker_threads):
-                    p = multiprocessing.Process(target=self.tileWorker, args=(tile_queue, db_queue))
+                    p = multiprocessing.Process(target=self.tileWorker, args=(tile_queue, db_queue, True), name="{} tile worker {}".format(self.proc_name, i + 1))
                     p.start()
                     processes.append(p)
             else:
-                t = threading.Thread(target=self.tileWorker, args=(tile_queue, db_queue))
+                t = threading.Thread(target=self.tileWorker, args=(tile_queue, db_queue), name="{} tile worker".format(self.proc_name))
                 t.start()
                 processes.append(t)
 
@@ -706,15 +721,47 @@ class MapWriter:
 
             self.db.commit()
 
-            # block until all tasks are done
-            tile_queue.join()
-            db_queue.join()
+            if timeout:
+                time.sleep(5)  # give tile queue time to settle
+                start = time.time()
+                while time.time() - start <= timeout:
+                    if tile_queue.empty():
+                        # block until all tasks are done
+                        tile_queue.join()
+                        # stop workers
+                        for i in range(self.worker_threads):
+                            tile_queue.put(None)
+                        for p in processes:
+                            p.join()
+                        timeout = 0
+                        break
+                    else:
+                        time.sleep(1)  # just to avoid hogging the CPU
+                else:
+                    self.logger.error("   timed out, killing all processes")
+                    for p in processes:
+                        if p.is_alive():
+                            if isinstance(p, multiprocessing.Process):
+                                p.terminate()
+                            else:
+                                tile_queue.put(None)
+                        p.join()
+                    if self.worker_threads > 1:
+                        tile_queue.close()
+                        tile_queue.join_thread()
+                    while db_queue.qsize() > 0:
+                        db_queue.get_nowait()
+            else:
+                # block until all tasks are done
+                tile_queue.join()
+                # stop workers
+                for i in range(self.worker_threads):
+                    tile_queue.put(None)
+                for p in processes:
+                    p.join()
 
-            # stop workers
-            for i in range(self.worker_threads):
-                tile_queue.put(None)
-            for p in processes:
-                p.join()
+            # block until all tasks are done
+            db_queue.join()
             db_queue.put(None)
             db_thread.join()
 
@@ -733,7 +780,10 @@ class MapWriter:
 
         elapsed_time = datetime.utcnow() - start_time
         elapsed_time = elapsed_time - timedelta(microseconds=elapsed_time.microseconds)
-        self.logger.info("Finished map: %s in %s" % (map_path, elapsed_time))
+        if has_elements and timeout:
+            raise Exception("Timed out map: %s in %s (timeout was %s)" % (map_path, elapsed_time, timedelta(seconds=timeout)))
+        else:
+            self.logger.info("Finished map: %s in %s" % (map_path, elapsed_time))
 
         if not self.dry_run and has_elements:
             if os.path.getsize(map_path) == 0:
@@ -741,6 +791,8 @@ class MapWriter:
 
         if self.db and not self.db.isValid():
             raise Exception("There was an error generating map %s, keeping old map file" % map_path)
+
+        logging.getLogger().removeHandler(log_file_handler)
 
         # remove intermediate pbf file and log on success
         if intermediate and not keep:
@@ -765,7 +817,9 @@ class MapWriter:
             if self.interactive:
                 self.gen_progress.update()
 
-    def tileWorker(self, tile_queue, db_queue):
+    def tileWorker(self, tile_queue, db_queue, process=False):
+        if process:
+            setproctitle.setproctitle(multiprocessing.current_process().name)
         self.tile_queue = tile_queue
         self.db_queue = db_queue
         while True:
@@ -1039,6 +1093,7 @@ class MapWriter:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='MapTrek map writer')
     parser.add_argument('-p', '--data-path', default='data', help='base path for data files')
+    parser.add_argument('-t', '--timeout', default=0, type=int, help='timeout, seconds')
     parser.add_argument('-d', '--dry-run', action='store_true', help='do not generate any files')
     parser.add_argument('-l', '--log', default='ERROR', help='set logging verbosity')
     parser.add_argument('-n', '--noninteractive', action='store_true', help='forbid interactive mode')
@@ -1068,6 +1123,6 @@ if __name__ == "__main__":
 
     try:
         mapWriter = MapWriter(args.data_path, args.dry_run, args.noninteractive, args.single_thread)
-        mapWriter.createMap(args.x, args.y, args.intermediate, args.keep, args.from_file)
+        mapWriter.createMap(args.x, args.y, args.timeout, args.intermediate, args.keep, args.from_file)
     except Exception as e:
-        logger.exception(e)
+        logger.error(e)
