@@ -52,5 +52,5 @@ do
     done
 done
 
-psql -q gis "DELETE FROM contours WHERE elevation IS NULL"
-psql -q gis "ANALYZE contours"
+psql -q gis -c "DELETE FROM contours WHERE elevation IS NULL"
+psql -q gis -c "ANALYZE contours"

@@ -1,6 +1,7 @@
 import re
 import numbers
 import logging
+from typing import Optional
 
 from collections import namedtuple
 
@@ -139,7 +140,7 @@ color_aliases = {
 }
 
 
-def _get_color(color, roof):
+def get_color(color: str, roof: bool) -> Optional[int]:
     if len(color) == 0:
         return None
 
@@ -204,7 +205,7 @@ def _get_material_color(material, roof):
 
 def _building_color(color, material, roof):
     if color is not None:
-        return _get_color(color, roof)
+        return get_color(color, roof)
     if material is not None:
         return _get_material_color(material, roof)
     return None

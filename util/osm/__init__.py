@@ -121,7 +121,7 @@ def is_area(tags):
         if k in ['building', 'building:part']:
             return True
         # as specified by http://wiki.openstreetmap.org/wiki/Key:area
-        if k in ['aeroway', 'building', 'landuse', 'leisure', 'natural', 'amenity']:
+        if k in ['aeroway', 'landuse', 'leisure', 'natural', 'amenity']:
             return True
         if k == 'highway':
             if v not in ['services', 'rest_area']:

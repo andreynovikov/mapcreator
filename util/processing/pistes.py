@@ -26,16 +26,16 @@ labeled_piste_mapping = {'zoom-min': 13, 'label': True}
 border_mapping = {'zoom-min': 12}
 
 
-def multidimentiondict(n, type):
+def multidimentiondict(n, leaf_type):
     """ Creates an n-dimension dictionary where the n-th dimension is of type 'type' """
     if n <= 1:
-        return type()
-    return defaultdict(lambda: multidimentiondict(n-1, type))
+        return leaf_type()
+    return defaultdict(lambda: multidimentiondict(n-1, leaf_type))
 
 
-class Piste():
-    def __init__(self, id, area, geom, difficulty=None, grooming=None):
-        self.id = id
+class Piste:
+    def __init__(self, el_id, area, geom, difficulty=None, grooming=None):
+        self.id = el_id
         self.area = area
         if not area:
             geom = geom.buffer(10, resolution=BUFFER_RESOLUTION)
@@ -45,12 +45,11 @@ class Piste():
         self.point = geom.representative_point()
         self.borders = None
 
-
     def __str__(self):
         return "%d %s %s" % (self.id, self.difficulty, self.grooming)
 
 
-class Resort():
+class Resort:
     def __init__(self, piste):
         # union of all pistes
         self.geom = Polygon()
@@ -62,10 +61,10 @@ class Resort():
         self.areas = multidimentiondict(3, Polygon)
         # united piste borders combined by difficulty, used in post-processing
         self.borders = multidimentiondict(3, LineString)
+        self.prepared = None
 
         self.add(piste)
         self.point = piste.point
-
 
     def add(self, piste):
         if piste.area:
@@ -74,14 +73,12 @@ class Resort():
         self.geom = cascaded_union([self.geom, piste.geom])
         self.prepared = prep(self.geom)
 
-
     def check(self, piste):
-        if self.point.distance(piste.point) > 100000: # do not consider pistes more then 100km away
+        if self.point.distance(piste.point) > 100000:  # do not consider pistes more then 100km away
             return False
         if self.geom.distance(piste.geom) < 10:
             return True
-        return self.prepared.contains(piste.geom) or self.prepared.intersects(piste.geom) # 'contains' is much faster
-
+        return self.prepared.contains(piste.geom) or self.prepared.intersects(piste.geom)  # 'contains' is much faster
 
     def combine(self, resort):
         for difficulty in resort.pistes:
@@ -97,14 +94,14 @@ def process(elements, interactive):
     resorts = []
     areas = []
     for element in elements:
-        if not 'piste:type' in element.tags:
+        if 'piste:type' not in element.tags:
             continue
         if 'lit' in element.tags and 'piste:lit' not in element.tags:
             element.tags['piste:lit'] = element.tags['lit']
-        if element.tags['piste:type'] not in ['downhill','snow_park','playground']:
+        if element.tags['piste:type'] not in ['downhill', 'snow_park', 'playground']:
             continue
         difficulty = element.tags.get('piste:difficulty', 'unknown')
-        if element.tags['piste:type'] in ['snow_park','playground']:
+        if element.tags['piste:type'] in ['snow_park', 'playground']:
             difficulty = element.tags['piste:type']
         grooming = element.tags.get('piste:grooming', 'unknown')
         if difficulty not in difficulties:
@@ -123,7 +120,7 @@ def process(elements, interactive):
     if interactive:
         progress = tqdm(total=len(pistes), desc="Pistes")
     else:
-        logging.info("      group pistes")
+        logging.info("      group %d pistes", len(pistes))
     for piste in pistes:
         piste_resorts = []
         for resort in resorts:
@@ -137,6 +134,7 @@ def process(elements, interactive):
         else:
             resorts.append(Resort(piste))
         if interactive:
+            # noinspection PyUnboundLocalVariable
             progress.update()
     if interactive:
         progress.close()
@@ -144,10 +142,9 @@ def process(elements, interactive):
     if interactive:
         progress = tqdm(total=len(resorts) * len(difficulties) * len(groomings), desc="Resorts")
     else:
-        logging.info("      process resorts")
+        logging.info("      process %d resorts", len(resorts))
     for resort in resorts:
         resort.geom = resort.geom.buffer(1.7, resolution=BUFFER_RESOLUTION)
-        areas = Polygon()
         geoms = []
         for difficulty in difficulties:
             if not resort.pistes[difficulty]:
@@ -166,20 +163,22 @@ def process(elements, interactive):
                     if piste.geom.is_empty:
                         continue
                     pistes.append(piste.geom)
+                # noinspection PyBroadException
                 try:
                     resort.areas[difficulty][grooming] = cascaded_union(pistes)
-                except Exception as e:
+                except Exception:
                     logging.error("-------------------------------------------------------")
                     for piste in pistes:
+                        # noinspection PyBroadException
                         try:
                             if resort.areas[difficulty][grooming]:
                                 resort.areas[difficulty][grooming] = resort.areas[difficulty][grooming].union(piste.buffer(1))
-                                #piste = piste.buffer(2)
-                                #resort.areas[difficulty][grooming] = cascaded_union([ resort.areas[difficulty][grooming], piste])
-                                #resort.areas[difficulty][grooming] = resort.areas[difficulty][grooming].buffer(-2)
+                                # piste = piste.buffer(2)
+                                # resort.areas[difficulty][grooming] = cascaded_union([ resort.areas[difficulty][grooming], piste])
+                                # resort.areas[difficulty][grooming] = resort.areas[difficulty][grooming].buffer(-2)
                             else:
                                 resort.areas[difficulty][grooming] = piste.buffer(1)
-                        except Exception as e:
+                        except Exception:
                             geom = transform(mercator_to_wgs84, resort.areas[difficulty][grooming])
                             logging.error("---------------")
                             print(json.dumps(geom_mapping(geom)))
@@ -216,7 +215,7 @@ def process(elements, interactive):
             for grooming in resort.areas[difficulty]:
                 if resort.areas[difficulty][grooming].is_empty:
                     continue
-                if difficulty in ['snow_park','playground']:
+                if difficulty in ['snow_park', 'playground']:
                     tags = {'piste:type': difficulty}
                     mapping = labeled_piste_mapping
                 else:
@@ -227,7 +226,7 @@ def process(elements, interactive):
                 elements.append(Element(None, resort.areas[difficulty][grooming], tags, mapping))
                 if resort.borders[difficulty][grooming].is_empty:
                     continue
-                if difficulty in ['snow_park','playground']:
+                if difficulty in ['snow_park', 'playground']:
                     tags = {'piste:border': difficulty}
                 else:
                     tags = {'piste:border': 'downhill', 'piste:difficulty': difficulty}
