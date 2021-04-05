@@ -32,7 +32,7 @@ def process(elements, interactive):
     if interactive:
         progress = tqdm(total=len(woods), desc="Woods")
     else:
-        logging.info("      subtract cut lines")
+        logging.info("      subtract %d cut lines from %d woods", len(cutline_areas), len(woods))
 
     for wood in woods:
         prepared_wood = prep(wood.geom)

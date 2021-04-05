@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import re
 import argparse
 import logging.config
 from typing import Dict, List, Optional
@@ -13,82 +12,11 @@ import shapely.wkb as shapely_wkb
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import transform, linemerge
 
-from webcolors import name_to_rgb
-
 import configuration
 from util.geometry import wgs84_to_mercator
+from util.osm.buildings import get_color
 
 wkbFactory = osmium.geom.WKBFactory()
-
-
-def _color(r, g, b):
-    return (r << 16) + (g << 8) + b
-
-
-colors = {
-    "white": _color(240, 240, 240),
-    "black": _color(86, 86, 86),
-    "gray": _color(120, 120, 120),
-    "red": _color(255, 190, 190),
-    "green": _color(190, 255, 190),
-    "blue": _color(190, 190, 255),
-    "yellow": _color(255, 255, 175),
-    "darkbrown": _color(101, 67, 33),
-    "darkgray": 0x444444,
-    "lightgray": 0xcccccc
-}
-
-color_aliases = {
-    "peach": "peachpuff",  # css color
-    "peachpuf": "peachpuff",
-    "rose": "mistyrose",  # css color
-    "grey": "gray",
-    "darkgrey": "darkgray",
-    "lightgrey": "lightgray",
-}
-
-
-def _get_color(color: str) -> Optional[int]:
-    if len(color) == 0:
-        return None
-
-    # process RGB hex color code
-    if color[0] == '#':
-        try:
-            c = int(color[1:], 16)
-            if c.bit_length() > 24:
-                raise ValueError
-            return c
-        except ValueError:
-            logging.warning("Invalid hex color: %s" % color)
-            return None
-
-    # clean all delimiters
-    color = re.sub(r'[\-_\s]', '', color)
-
-    # check aliases
-    if color in color_aliases:
-        color = color_aliases[color]
-
-    if color in colors:
-        return colors[color]
-
-    try:
-        # try to get color by name
-        r, g, b = name_to_rgb(color)
-        # return ColorUtil.modHsv(css, 1.0, HSV_S, HSV_V, true);
-        return _color(r, g, b)
-    except ValueError:
-        # if failed try to treat as a RGB hex without prefix
-        if len(color) == 6:
-            try:
-                c = int(color, 16)
-                return c
-            except ValueError:
-                pass
-
-    logging.debug("Unknown color: %s" % color)
-    return None
 
 
 class Relation:
@@ -169,7 +97,7 @@ class OsmFilter(osmium.SimpleHandler):
                 if tag.k == 'osmc:symbol':
                     osmc_symbol = tag.v[:60]
                 if tag.k == 'colour':
-                    colour = _get_color(tag.v)
+                    colour = get_color(tag.v, False)
                 if tag.k == 'state':
                     state = tag.v[:255]
                 if tag.k == 'ref':
@@ -215,7 +143,7 @@ class OsmFilter(osmium.SimpleHandler):
             if tag.k == 'osmc:symbol':
                 relation.osmc_symbol = tag.v[:60]
             if tag.k == 'colour':
-                relation.colour = _get_color(tag.v)
+                relation.colour = 0x00ffffff & get_color(tag.v, False)
             if tag.k == 'state':
                 relation.state = tag.v[:255]
             if tag.k == 'ref':
@@ -310,20 +238,37 @@ class OsmFilter(osmium.SimpleHandler):
             c.commit()
             cur.execute('DROP TABLE IF EXISTS osm_routes')
             c.commit()
-            cur.execute("""CREATE TABLE osm_routes (id bigint PRIMARY KEY, route varchar(10), network varchar(10),
-                            osmc_symbol varchar(60), colour int, state varchar(255), ref varchar(20),
-                            name varchar(255), name_en varchar(255), name_de varchar(255), name_ru varchar(255))""")
-            cur.execute("SELECT AddGeometryColumn('osm_routes','geom','3857','GEOMETRY',2)")
+            cur.execute("CREATE TABLE osm_routes (relation_id bigint PRIMARY KEY, type varchar(10), tags hstore")
+            cur.execute("SELECT AddGeometryColumn('osm_routes','geom','3857','MULTILINESTRING',2)")
             for element_id, route in self.routes.items():
                 try:
-                    cur.execute("""INSERT INTO osm_routes (id, route, network, osmc_symbol, colour, state, ref, name, name_en, name_de, name_ru, geom)
-                                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 3857))""",
-                                (element_id, route.route, route.network, route.osmc_symbol, route.colour, route.state, route.ref,
-                                 route.name, route.name_en, route.name_de, route.name_ru, route.geom.wkt))
+                    hstore = []
+                    if route.network:
+                        hstore.append('"network" => "%s"'.format(route.network))
+                    if route.osmc_symbol:
+                        hstore.append('"osmc:symbol" => "%s"'.format(route.osmc_symbol))
+                    if route.colour:
+                        hstore.append('"colour" => "%s"'.format(route.colour))
+                    if route.state:
+                        hstore.append('"state" => "%s"'.format(route.state))
+                    if route.ref:
+                        hstore.append('"ref" => "%s"'.format(route.ref))
+                    if route.name:
+                        hstore.append('"name" => "%s"'.format(route.name))
+                    if route.name_en:
+                        hstore.append('"name:en" => "%s"'.format(route.name_en))
+                    if route.name_de:
+                        hstore.append('"name:de" => "%s"'.format(route.name_de))
+                    if route.name_ru:
+                        hstore.append('"name:ru" => "%s"'.format(route.name_ru))
+                    cur.execute("""INSERT INTO osm_routes (relation_id, type, tags, geom)
+                                   VALUES (%s, %s, %s, ST_GeomFromText(%s, 3857))""",
+                                (element_id, route.route, ', '.join(hstore), route.geom.wkt))
                 except psycopg2.DataError:
                     self.logger.exception("Insertion error: %s" % str(route))
             c.commit()
             cur.execute('CREATE INDEX ON osm_routes USING GIST ("geom")')
+            cur.execute('CREATE INDEX ON osm_routes USING BTREE ("relation_id")')
             cur.execute('ANALYZE osm_routes')
 
 

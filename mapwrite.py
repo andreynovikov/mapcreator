@@ -22,11 +22,11 @@ import psycopg2.extras
 import osmium
 import mercantile
 import shapely.wkb as shapely_wkb
-import shapely.speedups
 from shapely.geometry import MultiLineString, Polygon
 from shapely.prepared import prep
 from shapely.ops import transform, linemerge, cascaded_union
 from shapely.affinity import affine_transform
+from shapely.errors import WKBReadingError
 
 import configuration
 import mappings
@@ -58,15 +58,16 @@ def deep_get(dictionary, *keys):
     return dictionary
 
 
-class OsmFilter(osmium.SimpleHandler):
+class OsmFilter:
     def __init__(self, elements, basemap, logger):
-        super(OsmFilter, self).__init__()
         self.elements = elements
         self.processors = set()
-        self.outlines = set()
         self.logger = logger
         self.basemap = basemap
         self.ignorable = 0
+
+    def tag_iterator(self, tags):
+        return tags.items()
 
     def filter(self, tags):
         filtered_tags = {}
@@ -74,53 +75,53 @@ class OsmFilter(osmium.SimpleHandler):
         renderable = False
         ignorable = True
         modifiers = set()
-        for tag in tags:
-            if tag.k in mappings.tags.keys():
-                m = mappings.tags[tag.k].get('__any__', None)
+        for key, value in self.tag_iterator(tags):
+            key = key.strip().lower()
+            if key in mappings.tags:
+                m = mappings.tags[key].get('__any__', None)
                 if m is None:
-                    m = mappings.tags[tag.k].get(tag.v, None)
+                    m = mappings.tags[key].get(value, None)
                 if m is not None:  # empty dictionaries should be also accounted
-                    k = tag.k.strip().lower()
-                    v = tag.v
                     if 'rewrite-key' in m or 'rewrite-value' in m:
-                        k = m.get('rewrite-key', k)
-                        if m.get('rewrite-if-missing', False) and filtered_tags.get(k, None):
+                        key = m.get('rewrite-key', key)
+                        if m.get('rewrite-if-missing', False) and filtered_tags.get(key, None):
                             continue
-                        v = m.get('rewrite-value', v)
+                        value = m.get('rewrite-value', value)
                         if 'add-tags' in m and 'rewrite-key' in m:  # preserve original setting
                             add = mapping.get('add-tags', {})
                             mapping['add-tags'] = {**add, **m['add-tags']}
                         if 'keep-for' in m and 'rewrite-key' in m:  # preserve original setting
                             keep = mapping.get('keep-for', {})
-                            keep[k] = m['keep-for']
+                            keep[key] = m['keep-for']
                             mapping['keep-for'] = keep
                         if 'zoom-min' in m:  # account original setting
                             if 'zoom-min' not in mapping or m['zoom-min'] < mapping['zoom-min']:
                                 mapping['zoom-min'] = m['zoom-min']
                         render = m.get('render', False)  # account original render flag if it is explicitly set
                         renderable = renderable or render
-                        m = mappings.tags[k].get(v, mappings.tags[k].get('__any__', {}))
+                        m = mappings.tags[key].get(value, mappings.tags[key].get('__any__', {}))
                     if 'one-of' in m:
-                        if v not in m['one-of']:
+                        if value not in m['one-of']:
                             continue
                     if 'adjust' in m:
-                        v = m['adjust'](v)
-                    if v is None:
-                        if k in mapping.get('keep-for', {}):
-                            del mapping['keep-for'][k]
+                        value = m['adjust'](value)
+                    if value is None:
+                        if key in mapping.get('keep-for', {}):
+                            del mapping['keep-for'][key]
                         continue
-                    if isinstance(v, str) and k not in ('name', 'name:en', 'name:de', 'name:ru', 'ref', 'icao', 'iata',
-                                                        'addr:housenumber', 'opening_hours', 'wikipedia', 'website'):
-                        v = v.strip().lower()
-                        if ';' in v:
-                            v = v.split(';')[0]
-                    filtered_tags[k] = v
+                    if isinstance(value, str) and key not in ('name', 'name:en', 'name:de', 'name:ru',
+                                                              'ref', 'icao', 'iata', 'addr:housenumber',
+                                                              'opening_hours', 'wikipedia', 'website'):
+                        value = value.strip().lower()
+                        if ';' in value:
+                            value = value.split(';')[0]
+                    filtered_tags[key] = value
                     render = m.get('render', True)
                     renderable = renderable or render
                     ignorable = ignorable and (m.get('ignore', not render))
                     if 'keep-for' in m:
                         keep = mapping.get('keep-for', {})
-                        keep[k] = m['keep-for']
+                        keep[key] = m['keep-for']
                         mapping['keep-for'] = keep
                     for k in ('filter-area', 'buffer', 'enlarge', 'simplify', 'force-line', 'label',
                               'filter-type', 'clip-buffer', 'keep-tags', 'basemap-label',
@@ -201,71 +202,138 @@ class OsmFilter(osmium.SimpleHandler):
                 self.ignorable += 1
         return renderable, filtered_tags, mapping
 
-    def process(self, t, o):
+    def get_osm_id(self, t, o):
+        return abs(o.id)
+
+    def get_osm_ref(self, t, o):
+        if t == 1:
+            st = 'node'
+        elif t == 2 or self.from_way(o):
+            st = 'way'
+        else:
+            st = 'relation'
+        osm_id = self.get_osm_id(t, o)
+        return '{}/{}'.format(st, osm_id)
+
+    def skip(self, t, o, tags):
+        return False
+
+    def wkb(self, t, o):
+        return o.wkb
+
+    def simplify(self, t, o, geom):
+        if geom.geom_type == 'MultiPolygon' and len(geom.geoms) == 1:
+            return geom[0]
+        return geom
+
+    def validate(self, t, o, geom):
+        return geom
+
+    def from_way(self, o):
+        return o.id > 0
+
+    def process(self, srid, t, o):
         if len(o.tags) == 0:
             return
+        if o.names:
+            for k, v in o.names.items():
+                o.tags['name:{}'.format(k) if k else 'name'] = v
         renderable, tags, mapping = self.filter(o.tags)
         if renderable:
-            if t > 1:
-                area = is_area(tags)
-                if t == 2 and o.is_closed() and area:
-                    return  # will get it later in area handler
-                if t == 3 and o.from_way() and not area:
-                    return  # have added it already in ways handler
-            osm_id = o.id
+            if self.skip(t, o, tags):
+                return
             try:
-                if t == 1:
-                    wkb = wkbFactory.create_point(o)
-                elif t == 2:
-                    wkb = wkbFactory.create_linestring(o)
-                elif t == 3:
-                    osm_id = o.orig_id()
-                    wkb = wkbFactory.create_multipolygon(o)
-                else:  # can not happen but is required by lint
-                    return
-                geom = transform(wgs84_to_mercator, shapely_wkb.loads(wkb, hex=True))
-                if t == 3 and not o.is_multipolygon():
-                    geom = geom[0]  # simplify geometry
+                geom = shapely_wkb.loads(self.wkb(t, o), hex=True)
+                if srid != 3857:  # we support only 3857 and 4326 projections
+                    geom = transform(wgs84_to_mercator, geom)
+                geom = self.simplify(t, o, geom)
                 if mapping.pop('force-line', False) and geom.type in ['Polygon', 'MultiPolygon']:
                     geom = geom.boundary
                 if 'filter-type' in mapping and geom.type not in mapping.pop('filter-type', []):
                     return
                 geom = clockwise(geom)
-                if not geom.is_valid:
-                    geom = geom.buffer(0)
-                    if t == 1:
-                        st = 'node'
-                    elif t == 2 or o.from_way():
-                        st = 'way'
-                    else:
-                        st = 'relation'
-                    if geom.is_valid:
-                        logging.warning(" invalid geom %s/%s fixed", st, osm_id)
-                    else:
-                        logging.warning(" invalid geom %s/%s NOT fixed", st, osm_id)
-
+                geom = self.validate(t, o, geom)
                 # construct unique id
-                if t == 3 and o.from_way():
+                if t == 3 and self.from_way(o):
                     t = 2
+                osm_id = self.get_osm_id(t, o)
                 el_id = (osm_id << 2) + t
                 self.elements.append(Element(el_id, geom, tags, mapping))
             except Exception as ex:
-                if t == 1:
-                    st = 'node'
-                elif t == 2 or o.from_way():
-                    st = 'way'
-                else:
-                    st = 'relation'
-                self.logger.error("   %s/%s: %s", st, osm_id, ex)
+                ref = self.get_osm_ref(t, o)
+                self.logger.error("   %s: %s", ref, ex)
+
+    def finish(self):
+        if self.ignorable:
+            if len(self.elements) < self.ignorable:  # it can be less as closed ways are processed twice
+                self.elements.clear()
+                self.logger.debug("    all elements are ignored")
+                return
+        return self.processors
+
+
+class OsmFileFilter(osmium.SimpleHandler, OsmFilter):
+    def __init__(self, elements, basemap, logger):
+        osmium.SimpleHandler.__init__(self)
+        OsmFilter.__init__(self, elements, basemap, logger)
+        self.outlines = set()
+
+    def tag_iterator(self, tags):
+        for tag in tags:
+            yield tag.k, tag.v
+
+    def get_osm_id(self, t, o):
+        if t == 3:
+            return o.orig_id()
+        else:
+            return o.id
+
+    def skip(self, t, o, tags):
+        if t > 1:
+            area = is_area(tags)
+            if t == 2 and o.is_closed() and area:
+                return True  # will get it later in area handler
+            if t == 3 and o.from_way() and not area:
+                return True  # have added it already in ways handler
+        return False
+
+    def wkb(self, t, o):
+        if t == 1:
+            return wkbFactory.create_point(o)
+        elif t == 2:
+            return wkbFactory.create_linestring(o)
+        elif t == 3:
+            return wkbFactory.create_multipolygon(o)
+        else:  # can not happen but is required by lint
+            return None
+
+    def simplify(self, t, o, geom):
+        if t == 3 and not o.is_multipolygon():
+            return geom[0]  # simplify geometry
+        else:
+            return geom
+
+    def validate(self, t, o, geom):
+        if not geom.is_valid:
+            geom = geom.buffer(0)
+            ref = self.get_osm_ref(t, o)
+            if geom.is_valid:
+                logging.warning(" invalid geom %s fixed", ref)
+            else:
+                logging.warning(" invalid geom %s NOT fixed", ref)
+        return geom
+
+    def from_way(self, o):
+        return o.from_way()
 
     def node(self, n):
-        self.process(1, n)
+        self.process(4326, 1, n)
 
     def way(self, w):
-        self.process(2, w)
+        self.process(4326, 2, w)
 
     def area(self, a):
-        self.process(3, a)
+        self.process(4326, 3, a)
 
     def relation(self, r):
         t = None
@@ -278,19 +346,15 @@ class OsmFilter(osmium.SimpleHandler):
                     self.outlines.add(member.ref)
 
     def finish(self):
-        if self.ignorable:
-            if len(self.elements) < self.ignorable:  # it can be less as closed ways are processed twice
-                self.elements.clear()
-                self.logger.debug("    all elements are ignored")
-                return
-        if self.outlines:
+        result = super(OsmFileFilter, self).finish()
+        if result and self.outlines:
             found = 0
             for element in self.elements:
                 if element.id in self.outlines:
                     found = found + 1
                     element.tags['building:outline'] = 1
             self.logger.debug("    outlined %d of %d buildings" % (found, len(self.outlines)))
-        return self.processors
+        return result
 
 
 class Tile:
@@ -382,7 +446,6 @@ def process_element(geom, tags, mapping, basemap=False):
 
 # noinspection PyPep8Naming
 class MapWriter:
-
     def __init__(self, data_dir, dry_run=False, forbid_interactive=False, single_thread=False):
         self.dry_run = dry_run
         self.logger = logging.getLogger(__name__)
@@ -413,7 +476,7 @@ class MapWriter:
         except ImportError:
             self.logger.warning("Upgrade Shapely for performance improvements")
 
-    def createMap(self, x, y, timeout=0, intermediate=False, keep=False, from_file=False):
+    def createMap(self, x, y, timeout=0, intermediate=False, keep=False, from_file=False, bbox_override=None):
         self.stubmap = x == -2 and y == -2
         self.basemap = self.stubmap or (x == -1 and y == -1)
 
@@ -435,10 +498,7 @@ class MapWriter:
         map_path = self.map_path(x, y)
         self.logger.info("Creating map: %s" % map_path)
 
-        if not from_file:
-            logging.getLogger().removeHandler(log_file_handler)
-            raise NotImplementedError('Loading data from database is not implemented yet')
-        if intermediate or from_file:
+        if from_file:
             pbf_path = self.pbf_path(x, y)
             self.timestamp = os.path.getmtime(configuration.SOURCE_PBF)
             if not os.path.exists(pbf_path) or os.path.getmtime(pbf_path) < self.timestamp:
@@ -454,14 +514,66 @@ class MapWriter:
                         self.generateIntermediateFile(source_pbf_path, x, y, 7, "")
 
         start_time = datetime.utcnow()
-        # noinspection PyUnboundLocalVariable
-        self.logger.info("  Processing file: %s" % pbf_path)
 
         elements = []
-        handler = OsmFilter(elements, self.basemap, self.logger)
-        handler.apply_file(pbf_path)
-        processors = handler.finish()
-        del handler
+        if from_file:
+            # noinspection PyUnboundLocalVariable
+            self.logger.info("  Processing file: %s" % pbf_path)
+            handler = OsmFileFilter(elements, self.basemap, self.logger)
+            handler.apply_file(pbf_path)
+            processors = handler.finish()
+            del handler
+        else:
+            self.logger.info("  Processing elements from database")
+            handler = OsmFilter(elements, self.basemap, self.logger)
+            with psycopg2.connect(configuration.DATA_DB_DSN, cursor_factory=psycopg2.extras.NamedTupleCursor) as c:
+                psycopg2.extras.register_hstore(c)
+                self.timestamp = os.path.getmtime(configuration.FLAT_NODES_FILE)
+                if self.stubmap:
+                    queries = mappings.stubmap_queries
+                elif self.basemap:
+                    queries = mappings.basemap_queries
+                else:
+                    queries = mappings.queries
+                    if bbox_override:
+                        bbox = "ST_MakeEnvelope({}, {}, {}, {}, 3857)".format(*bbox_override.split(','))
+                    else:
+                        bounds = mercantile.xy_bounds(x, y, 7)
+                        expand = 1.194 * 4
+                        left_expand = 0
+                        right_expand = 0
+                        if x > 0:
+                            left_expand = expand
+                        if x < 127:
+                            right_expand = expand
+                        bbox = "ST_MakeEnvelope({left}, {bottom}, {right}, {top}, 3857)" \
+                            .format(left=(bounds.left - left_expand), bottom=(bounds.bottom - expand),
+                                    right=(bounds.right + right_expand), top=(bounds.top + expand))
+                for data in queries:
+                    if self.basemap:
+                        sql = "SELECT ST_AsBinary(geom) AS geometry, * FROM ({query}) AS data".format(query=data['query'])
+                    else:
+                        if data['srid'] != 3857:
+                            qbbox = "ST_Transform({bbox}, {srid})".format(bbox=bbox, srid=data['srid'])
+                        else:
+                            qbbox = bbox
+                        sql = "{query} WHERE ST_Intersects(geom, {bbox})" \
+                            .format(query=data['query'], bbox=qbbox)
+                    with c.cursor('large') as cur:
+                        try:
+                            n = 0
+                            cur.itersize = 1000
+                            cur.execute(sql)
+                            self.logger.debug("   %s", cur.query.decode())
+                            for row in cur:
+                                handler.process(data['srid'], data['type'], row)
+                                n += 1
+                            self.logger.debug("   fetched %d elements", n)
+                        except (psycopg2.ProgrammingError, psycopg2.InternalError):
+                            self.logger.exception("Query error: %s" % sql)
+            processors = handler.finish()
+            del handler
+
         gc.collect()
 
         process = psutil.Process(os.getpid())
@@ -515,7 +627,7 @@ class MapWriter:
                     el = elements[index]
                     el.kind, el.type, el.area, el.label, el.building = result
                     # remove overlapping places (point and polygon)
-                    # due to file processing logic we assume that points go first, if not - introduce sort
+                    # we assume that points go first, if not - introduce sort
                     if el.id and is_place(el.kind):
                         if el.geom.type == 'Point':
                             key = '{}@{}'.format(el.tags.get('place', '---'), el.tags.get('name', '---').split(' (')[0])
@@ -587,36 +699,39 @@ class MapWriter:
                 elif self.basemap:
                     queries = mappings.basemap_queries
                 else:
-                    queries = mappings.queries
-                    bounds = mercantile.xy_bounds(x, y, 7)
-                    expand = 1.194 * 4
-                    left_expand = 0
-                    right_expand = 0
-                    if x > 0:
-                        left_expand = expand
-                    if x < 127:
-                        right_expand = expand
-                    bbox = "ST_MakeEnvelope({left}, {bottom}, {right}, {top}, 3857)" \
-                           .format(left=(bounds.left - left_expand), bottom=(bounds.bottom - expand),
-                                   right=(bounds.right + right_expand), top=(bounds.top + expand))
+                    queries = mappings.supplementary_queries
+                    if bbox_override:
+                        bbox = "ST_MakeEnvelope({}, {}, {}, {}, 3857)".format(*bbox_override.split(','))
+                    else:
+                        bounds = mercantile.xy_bounds(x, y, 7)
+                        expand = 1.194 * 4
+                        left_expand = 0
+                        right_expand = 0
+                        if x > 0:
+                            left_expand = expand
+                        if x < 127:
+                            right_expand = expand
+                        bbox = "ST_MakeEnvelope({left}, {bottom}, {right}, {top}, 3857)" \
+                               .format(left=(bounds.left - left_expand), bottom=(bounds.bottom - expand),
+                                       right=(bounds.right + right_expand), top=(bounds.top + expand))
                 for data in queries:
+                    # encapsulate query as it can contain its own WHERE clause
                     if self.basemap:
-                        sql = "SELECT ST_AsBinary(geom) AS geometry, * FROM ({query}) AS data".format(query=data['query'])
+                        sql = "SELECT * FROM ({query}) AS data".format(query=data['query'])
                     else:
                         if data['srid'] != 3857:
                             qbbox = "ST_Transform({bbox}, {srid})".format(bbox=bbox, srid=data['srid'])
                         else:
                             qbbox = bbox
-                        sql = "SELECT ST_AsBinary(geom) AS geometry, * FROM ({query}) AS data WHERE ST_Intersects(geom, {bbox})" \
-                              .format(query=data['query'], bbox=qbbox)
+                        sql = "SELECT * FROM ({query}) AS data WHERE ST_Intersects(geom, {bbox})".format(query=data['query'], bbox=qbbox)
                     try:
                         cur = c.cursor(cursor_factory=psycopg2.extras.DictCursor)
-                        cur.execute(str(sql))  # if str() is not used 'where' is lost for some weird reason
+                        cur.execute(sql)
+                        self.logger.debug("     %s", cur.query.decode())
                         rows = cur.fetchall()
-                        self.logger.debug("      %s", cur.query)
-                        self.logger.debug("      fetched %d elements", len(rows))
+                        self.logger.debug("     fetched %d elements", len(rows))
                         for row in rows:
-                            geom = shapely_wkb.loads(bytes(row['geometry']))
+                            geom = shapely_wkb.loads(row['geom'], hex=True)
                             if data['srid'] != 3857:  # we support only 3857 and 4326 projections
                                 geom = transform(wgs84_to_mercator, geom)
                             kind, tags, mapping = data['mapper'](row)
@@ -628,8 +743,8 @@ class MapWriter:
                             extra_elements.append(element)
                     except (psycopg2.ProgrammingError, psycopg2.InternalError):
                         self.logger.exception("Query error: %s" % sql)
-                    except shapely.errors.WKBReadingError:
-                        self.logger.error("Geometry error: %s" % bytes(row['geometry']).hex())
+                    except WKBReadingError:
+                        self.logger.error("Geometry error: %s" % row['geom'])
                     finally:
                         cur.close()
 
@@ -930,9 +1045,9 @@ class MapWriter:
 
             # TODO combine union and merge to one logical block
             for union in unions:
+                first = unions[union][0]
                 # noinspection PyBroadException
                 try:
-                    first = unions[union][0]
                     # create united geometry
                     united_geom = cascaded_union([el.geometry for el in unions[union]])
                     if type(first.mapping['union']) is dict:
@@ -1050,6 +1165,31 @@ class MapWriter:
                 subprocess.check_call(['touch', target_pbf_path])
         return target_pbf_path
 
+    def generateBasemapFile(self, source_pbf_path):
+        target_pbf_path = self.pbf_path(0, 0, 0)
+        if not os.path.exists(target_pbf_path) or os.path.getmtime(target_pbf_path) < self.timestamp:
+            self.logger.info("  Creating basemap file: %s" % target_pbf_path)
+            pbf_dir = os.path.dirname(target_pbf_path)
+            if not os.path.exists(pbf_dir):
+                os.makedirs(pbf_dir)
+            if os.path.exists(target_pbf_path):
+                os.remove(target_pbf_path)
+
+            if self.stubmap:
+                filter_name = 'stubmap'
+            else:
+                filter_name = 'basemap'
+
+            osmfilter_call = [configuration.OSMFILTER_PATH, source_pbf_path]
+            osmfilter_call += ['--parameter-file=%s/%s.filter' % (configuration.FILTERS_PATH, filter_name)]
+            osmfilter_call += ['-o=%s' % target_pbf_path]
+            self.logger.debug("    calling: %s", " ".join(osmfilter_call))
+            if not self.dry_run:
+                subprocess.check_call(osmfilter_call)
+            else:
+                subprocess.check_call(['touch', target_pbf_path])
+        return target_pbf_path
+
     def map_path_base(self, x, y, zoom=7):
         """
         returns path to map file but without extension
@@ -1095,6 +1235,7 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--data-path', default='data', help='base path for data files')
     parser.add_argument('-t', '--timeout', default=0, type=int, help='timeout, seconds')
     parser.add_argument('-d', '--dry-run', action='store_true', help='do not generate any files')
+    parser.add_argument('-b', '--bbox', help='bbox override: left,bottom,right,top (for testing purposes, in EPSG:3857)')
     parser.add_argument('-l', '--log', default='ERROR', help='set logging verbosity')
     parser.add_argument('-n', '--noninteractive', action='store_true', help='forbid interactive mode')
     parser.add_argument('-s', '--single-thread', action='store_true', help='do not use multi-threading')
@@ -1105,10 +1246,6 @@ if __name__ == "__main__":
     parser.add_argument('y', type=int, help='tile Y')
     args = parser.parse_args()
 
-    if not args.from_file:
-        print("Database source is currently not supported")
-        exit(1)
-
     log_level = getattr(logging, args.log.upper(), None)
     if not isinstance(log_level, int):
         print("Invalid log level: %s" % args.log)
@@ -1116,13 +1253,13 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s - %(message)s', datefmt='%H:%M:%S')
     logging.getLogger("shapely").setLevel(logging.ERROR)
-    logger = logging.getLogger(__name__)
+    app_logger = logging.getLogger(__name__)
     # during a dry run the console should receive all logs
     if args.dry_run:
-        logger.setLevel(logging.DEBUG)
+        app_logger.setLevel(logging.DEBUG)
 
     try:
         mapWriter = MapWriter(args.data_path, args.dry_run, args.noninteractive, args.single_thread)
-        mapWriter.createMap(args.x, args.y, args.timeout, args.intermediate, args.keep, args.from_file)
+        mapWriter.createMap(args.x, args.y, args.timeout, args.intermediate, args.keep, args.from_file, args.bbox)
     except Exception as e:
-        logger.error(e)
+        app_logger.exception(e)

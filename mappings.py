@@ -1,5 +1,6 @@
 from util import osm
 from util.osm.kind import kinds
+from util.osm.buildings import get_color
 from util.processing import cutlines, pistes
 
 
@@ -117,6 +118,13 @@ def _underground_mapper(element_tags: dict, renderable: bool, ignorable: bool, m
 def _indoor_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
     if any(k in ('highway', 'railway', 'barrier') for k in element_tags.keys()):
         renderable = False
+    return renderable, ignorable, mapping
+
+
+def _seasonal_mapper(element_tags: dict, renderable: bool, ignorable: bool, mapping: dict):
+    if element_tags.get('natural', None) == 'water' or 'waterway' in element_tags:
+        if 'intermittent' not in element_tags:
+            element_tags['intermittent'] = 'yes'
     return renderable, ignorable, mapping
 
 
@@ -1505,6 +1513,14 @@ tags = {
         },
         '__strip__': True
     },
+    'seasonal': {
+        '__any__': {
+            'modify-mapping': _seasonal_mapper,
+            'adjust': osm.boolean,
+            'render': False,
+        },
+        '__strip__': True
+    },
     'intermittent': {'yes': {'render': False}},
     'iata': {'__any__': {'render': False}},
     'icao': {'__any__': {'render': False}},
@@ -1517,6 +1533,8 @@ tags = {
     'building:min_level': {'__any__': {'render': False}, '__strip__': True},
     'building:colour': {'__any__': {'render': False}, '__strip__': True},
     'building:material': {'__any__': {'render': False}, '__strip__': True},
+    'building:cladding': {'__any__': {'rewrite-key': 'building:material', 'rewrite-if-missing': True}},
+    'building:walls': {'__any__': {'rewrite-key': 'building:material', 'rewrite-if-missing': True}},
     'roof:height': {'__any__': {'render': False}, '__strip__': True},
     'roof:levels': {'__any__': {'render': False}, '__strip__': True},
     'roof:colour': {'__any__': {'render': False}, '__strip__': True},
@@ -1627,15 +1645,29 @@ def _boundaries_mapper(row):
         zoom = 2
     if admin_level in ('3', '4'):
         zoom = 5
-    if row['maritime'] and row['maritime'] == 'yes':
+    if row['maritime']:
         zoom = 8
-        element_tags['maritime'] = row['maritime']
-    return None, element_tags, {'zoom-min': zoom, 'union': 'boundary,admin_level,maritime', 'simplify': 2}
+        element_tags['maritime'] = 'yes'
+    if row['disputed']:
+        element_tags['disputed'] = 'yes'
+    return None, element_tags, {'zoom-min': zoom, 'union': 'boundary,admin_level,maritime,disputed', 'simplify': 2}
 
 
 def _routes_mapper(row):
-    element_tags = {'route': row['route'], 'network': row['network'], 'osmc:symbol': row['osmc_symbol'],
-                    'ref': row['ref'], 'colour': row['colour']}
+    if row['type'] == 'foot':
+        row['type'] = 'hiking'
+    if row['network'] not in ('iwn', 'nwn', 'rwn', 'lwn', 'icn', 'ncn', 'rcn', 'lcn'):
+        row['network'] = None
+    if row['colour'] and row['type'] in ('bicycle', 'mtb'):
+        colour = 0x00ffffff & get_color(row['colour'], False)
+    else:
+        colour = None
+    if row['ref'] and row['ref'] == row['name'] and len(row['ref']) > 10:
+        row['ref'] = None
+    if row['ref'] and len(row['ref']) > 20:
+        row['ref'] = row['ref'][:20]
+    element_tags = {'route': row['type'], 'network': row['network'], 'osmc:symbol': row['osmc_symbol'],
+                    'ref': row['ref'], 'colour': colour}
     zoom = 11
     if row['network'] in ['iwn', 'icn']:
         zoom = 8
@@ -1648,6 +1680,29 @@ def _routes_mapper(row):
 
 queries = [
     {
+        'query': 'SELECT geom AS wkb, node_id AS id, tags, names FROM osm_points',
+        'type': 1,
+        'srid': 3857
+    },
+    {
+        'query': 'SELECT geom AS wkb, way_id AS id, tags, names FROM osm_lines',
+        'type': 2,
+        'srid': 3857
+    },
+    {
+        'query': 'SELECT geom AS wkb, area_id AS id, tags, names FROM osm_polygons',
+        'type': 3,
+        'srid': 3857
+    },
+    {
+        'query': "SELECT geom AS wkb, area_id AS id, tags || CASE WHEN relation_id IS NOT NULL THEN hstore('building:outline', 'yes') ELSE '' END AS tags, names FROM osm_buildings LEFT JOIN osm_building_outlines ON area_id = ref_id",
+        'type': 3,
+        'srid': 3857
+    }
+]
+
+supplementary_queries = [
+    {
         'query': 'SELECT geom FROM osmd_water_z8',
         'srid': 3857,
         'mapper': _water_z8_mapper
@@ -1658,12 +1713,14 @@ queries = [
         'mapper': _water_mapper
     },
     {
-        'query': 'SELECT geom, admin_level, maritime FROM osm_boundaries',
+        'query': 'SELECT geom, admin_level, maritime, disputed FROM osm_boundaries',
         'srid': 3857,
         'mapper': _boundaries_mapper
     },
     {
-        'query': 'SELECT geom, id, route, network, osmc_symbol, colour, state, ref FROM osm_routes',
+        'query': "SELECT geom, relation_id AS osm_id, type, tags->'network' AS network, tags->'ref' AS ref,"
+                 " tags->'name' AS name, tags->'osmc:symbol' AS osmc_symbol, tags->'colour' AS colour,"
+                 "tags->'state' AS state FROM osm_routes WHERE type IN ('hiking', 'foot', 'bicycle', 'mtb')",
         'srid': 3857,
         'mapper': _routes_mapper
     },
@@ -1784,7 +1841,7 @@ stubmap_queries = [
         'mapper': _lakes_50m_mapper
     },
     {
-        'query': 'SELECT geom, admin_level, maritime FROM osm_boundaries WHERE admin_level = \'2\'',
+        'query': "SELECT geom, admin_level, maritime FROM osm_boundaries WHERE admin_level = '2'",
         'srid': 3857,
         'mapper': _boundaries_mapper
     },
