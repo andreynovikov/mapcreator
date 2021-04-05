@@ -197,6 +197,8 @@ def _tag_kind(k, v):
         return 0, 0
 
     key = k.lower()
+    if key in ('building:material', 'roof:material'):
+        return 0, 0
     value = v.lower()
 
     f_kind = 0
@@ -205,7 +207,7 @@ def _tag_kind(k, v):
     if key == 'place':
         f_kind = kinds['place']
 
-    elif key == 'building' or key == 'building:part':
+    elif key in ('building', 'building:part'):
         f_kind = kinds['building']
 
     elif key == 'highway':
