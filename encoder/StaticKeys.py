@@ -80,7 +80,8 @@ _strings = [
     'mtb:scale',
     'mtb:scale:uphill',
     'mtb:scale:imba',
-    'artwork_type'
+    'artwork_type',
+    'disputed'
 ]
 
 staticKeys = dict(zip(_strings, range(0, len(_strings))))
