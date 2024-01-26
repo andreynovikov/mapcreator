@@ -2,7 +2,7 @@ import logging
 import json
 from collections import defaultdict
 
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import LineString, Polygon, MultiPolygon
 from shapely.geometry import mapping as geom_mapping
 from shapely.ops import cascaded_union
 from shapely.ops import transform
@@ -192,6 +192,11 @@ def process(elements, interactive):
                 resort.borders[difficulty][grooming] = resort.areas[difficulty][grooming].boundary
                 for geom in geoms:
                     resort.areas[difficulty][grooming] = resort.areas[difficulty][grooming].difference(geom)
+                    # filter out bits and bobs
+                    if type(resort.areas[difficulty][grooming]) == MultiPolygon:
+                        resort.areas[difficulty][grooming] = MultiPolygon([
+                            polygon for polygon in resort.areas[difficulty][grooming].geoms if polygon.area > 0.1
+                        ])
                 geoms.append(resort.areas[difficulty][grooming])
         for difficulty in resort.areas:
             for grooming in resort.areas[difficulty]:
