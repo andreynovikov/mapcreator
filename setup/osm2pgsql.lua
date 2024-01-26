@@ -1,4 +1,5 @@
 -- Useful queries:
+-- DROP TABLE osm_boundaries, osm_buildings, osm_highways, osm_lines, osm_points, osm_polygons, osm_rels, osm_ways, osm_building_outlines, osm_routes;
 -- SELECT key, COUNT(key) AS count FROM (SELECT skeys(tags) AS key FROM osm_polygons) AS keys GROUP BY key ORDER BY count;
 
 inspect = require('inspect')
@@ -44,7 +45,7 @@ tables.polygons = osm2pgsql.define_area_table(prefix .. 'polygons', {
 tables.buildings = osm2pgsql.define_area_table(prefix .. 'buildings', {
     { column = 'tags', type = 'hstore' },
     { column = 'names', type = 'hstore' },
-    { column = 'label', type = 'point', projection = srid, create_only = true },
+    { column = 'label', sql_type = 'GEOMETRY(Point, ' .. srid .. ')', create_only = true },
     { column = 'geom', type = 'geometry', projection = srid },
 })
 
@@ -103,6 +104,8 @@ local delete_keys = {
     'legal:*',
     'description',
     'description:*',
+    'contact',
+    'contact:*',
 
     'seamark:*',
     'railway:*',
@@ -375,6 +378,7 @@ function osm2pgsql.process_node(object)
     end
 
     object.tags.layer = layer(object.tags.layer)
+    object.tags.population = number(object.tags.population)
     local names = names(object.tags)
 
     tables.points:add_row({
@@ -432,6 +436,7 @@ function osm2pgsql.process_way(object)
     end
 
     object.tags.layer = layer(object.tags.layer)
+    object.tags.population = number(object.tags.population)
 
     if object.is_closed and has_area_tags(object.tags) then
         if is_building(object.tags) then
@@ -613,6 +618,13 @@ end
 --- @return number An integer for the layer tag
 function layer(v)
     return v and string.find(v, "^-?%d+$") and tonumber(v) < 100 and tonumber(v) > -100 and v or nil
+end
+
+--- Normalizes number tags
+--- @param v string The number tag value
+--- @return number An integer for the layer tag
+function number(v)
+    return v and string.find(v, "^-?[%.,%s%d]+$") and tonumber((string.gsub(v, "[%.,%s]+", ""))) or nil
 end
 
 --- Put all name:* tags in their own substructure
