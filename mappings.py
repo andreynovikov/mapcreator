@@ -453,12 +453,14 @@ tags = {
             'zoom-min': 8,
             'filter-area': 512,
             'transform': 'point',
+            'ignore': True,
             'label': True
         },
         'strait': {
             'zoom-min': 8,
             'filter-area': 512,
             'transform': 'point',
+            'ignore': True,
             'label': True
         },
         'grassland': DEFAULT_AREA,
@@ -527,11 +529,11 @@ tags = {
     },
     'water': {  # natural=water supplement (not always true)
         'river': {
-            'keep-tags': 'natural,intermittent,waterway',  # used to strip names
+            'keep-tags': 'natural,intermittent,waterway,landuse',  # used to strip names
             'render': False
         },
         'canal': {
-            'keep-tags': 'natural,intermittent,waterway',  # used to strip names
+            'keep-tags': 'natural,intermittent,waterway,landuse',  # used to strip names
             'render': False
         },
     },
@@ -1193,6 +1195,12 @@ tags = {
             'render': False
         },
     },
+    'disputed': {
+        '__any__': {
+            'adjust': osm.boolean,
+            'render': False
+        },
+    },
     'oneway': {
         '__any__': {
             'adjust': osm.direction,
@@ -1495,6 +1503,13 @@ tags = {
             'rewrite-value': 'yes'
         }
     },
+    'station': {
+        '__any__': {
+            'one-of': ['subway'],
+            'keep-for': 'railway',
+            'render': False
+        }
+    },
     'location': {
         'underwater': {
             'modify-mapping': _underwater_mapper,
@@ -1524,7 +1539,6 @@ tags = {
     'intermittent': {'yes': {'render': False}},
     'iata': {'__any__': {'render': False}},
     'icao': {'__any__': {'render': False}},
-    'station': {'__any__': {'render': False}},
     'religion': {'__any__': {'render': False}},
     'osmc:symbol': {'__any__': {'render': False}},
     'generator:source': {'__any__': {'render': False}},
@@ -1659,7 +1673,9 @@ def _routes_mapper(row):
     if row['network'] not in ('iwn', 'nwn', 'rwn', 'lwn', 'icn', 'ncn', 'rcn', 'lcn'):
         row['network'] = None
     if row['colour'] and row['type'] in ('bicycle', 'mtb'):
-        colour = 0x00ffffff & get_color(row['colour'], False)
+        colour = get_color(row['colour'], False)
+        if colour:
+            colour = 0x00ffffff & colour
     else:
         colour = None
     if row['ref'] and row['ref'] == row['name'] and len(row['ref']) > 10:
@@ -1701,6 +1717,58 @@ queries = [
     }
 ]
 
+basemap_queries = [
+    {
+        'query': """SELECT geom AS wkb, node_id AS id, tags, names FROM osm_points
+                      WHERE tags->'place' IN ('ocean', 'sea', 'country', 'state', 'region', 'city', 'town')
+                         OR tags->'aerodrome' = 'international'
+                         OR tags->'aerodrome:type' = 'international'
+        """,
+        'type': 1,
+        'srid': 3857
+    },
+    {
+        'query': """SELECT geom AS wkb, way_id AS id, tags, names FROM osm_lines
+                      WHERE tags->'route' = 'ferry'
+                         OR tags->'highway' IN ('motorway', 'trunk', 'primary', 'secondary')
+        """,
+        'type': 2,
+        'srid': 3857
+    },
+    {
+        'query': """SELECT geom AS wkb, area_id AS id, tags, names FROM osm_polygons
+                      WHERE tags->'landuse' = 'military'
+                         OR tags->'leisure' = 'nature_reserve'
+                         OR tags->'boundary' IN ('national_park', 'aboriginal_lands', 'protected_area')
+                         OR tags->'aerodrome' = 'international'
+                         OR tags->'aerodrome:type' = 'international'
+        """,
+        'type': 3,
+        'srid': 3857
+    }
+]
+
+# TODO: preprocess population in data importer
+stubmap_queries = [
+    {
+        'query': """SELECT geom AS wkb, node_id AS id, tags, names FROM osm_points
+                      WHERE tags->'admin_level' = '2'
+                         OR tags->'capital' = '2'
+                         OR NULLIF(REGEXP_REPLACE(tags->'population', '[^0-9]', '', 'g'), '')::bigint >= 800000
+                         OR tags->'place' IN ('ocean', 'sea', 'country')
+        """,
+        'type': 1,
+        'srid': 3857
+    },
+    {
+        'query': """SELECT geom AS wkb, area_id AS id, tags, names FROM osm_polygons
+                      WHERE tags->'place' IN ('ocean', 'sea', 'country')
+        """,
+        'type': 3,
+        'srid': 3857
+    }
+]
+
 supplementary_queries = [
     {
         'query': 'SELECT geom FROM osmd_water_z8',
@@ -1731,9 +1799,9 @@ supplementary_queries = [
     }
 ]
 
-basemap_queries = [
+basemap_supplementary_queries = [
     {
-        'query': 'SELECT geom FROM osmd_water_z2',
+        'query': "SELECT geom, hstore('natural', 'sea') as tags FROM osmd_water_z2",
         'srid': 3857,
         'mapper': _water_z2_mapper
     },
@@ -1797,52 +1865,60 @@ basemap_queries = [
         'srid': 3857,
         'mapper': _urban_areas
     },
-    {
-        'query': 'SELECT geom, admin_level, maritime FROM osm_boundaries',
-        'srid': 3857,
-        'mapper': _boundaries_mapper
-    },
+    # {
+    #     'query': 'SELECT geom, admin_level, maritime, disputed FROM osm_boundaries',
+    #     'srid': 3857,
+    #     'mapper': _boundaries_mapper
+    # },
 ]
 
-stubmap_queries = [
+stubmap_supplementary_queries = [
     {
         'query': 'SELECT geom FROM osmd_water_z2',
+        'type': 3,
         'srid': 3857,
         'mapper': _water_z2_mapper
     },
     {
         'query': 'SELECT geom FROM osmd_water_z3',
+        'type': 3,
         'srid': 3857,
         'mapper': _water_z3_mapper
     },
     {
         'query': 'SELECT geom FROM osmd_water_z4',
+        'type': 3,
         'srid': 3857,
         'mapper': _water_z4_mapper
     },
     {
         'query': 'SELECT geom FROM osmd_water_z5',
+        'type': 3,
         'srid': 3857,
         'mapper': _water_z5_mapper
     },
     {
         'query': 'SELECT geom FROM osmd_water_z6',
+        'type': 3,
         'srid': 3857,
         'mapper': _water_z6_mapper
     },
     {
         'query': 'SELECT geom FROM osmd_water_z7',
+        'type': 3,
         'srid': 3857,
         'mapper': _water_z7_mapper
     },
     {
         'query': 'SELECT geom FROM ne_50m_lakes',
+        'type': 3,
         'srid': 3857,
         'mapper': _lakes_50m_mapper
     },
-    {
-        'query': "SELECT geom, admin_level, maritime FROM osm_boundaries WHERE admin_level = '2'",
-        'srid': 3857,
-        'mapper': _boundaries_mapper
-    },
+    # {
+    #     'query': "SELECT geom, admin_level, maritime, disputed FROM osm_boundaries WHERE admin_level = '2'",
+    #     'type': 2,
+    #     'srid': 3857,
+    #     'mapper': _boundaries_mapper
+    # },
 ]

@@ -1,8 +1,14 @@
 DATADIR ?= /gis/data
 MAPCREATORDIR ?= /gis/mapcreator
+FLAT_NODES ?= $(DATADIR)/osm_nodes.bin
 PLANETFILE ?= $(DATADIR)/planet-latest.o5m
 TIMEOUT ?= 6h
 LOGLEVEL ?= INFO
+FROM_FILES ?=
+
+define create-file
+[ ! -f $1 ] && touch $1 || true
+endef
 
 define remove-file
 [ -f $1 ] && rm $1 || true
@@ -28,17 +34,25 @@ $(DATADIR)/%.o5m : $(PLANETFILE)
 	$(call remove-file,$@)
 	osmfilter $< --parameter-file=$(MAPCREATORDIR)/filters/$*.filter >$@
 
-%.mtiles: $(PLANETFILE)
+%.mtiles: $(if $(FROM_FILES), $(PLANETFILE))
 	# /usr/bin/timeout --kill-after=60s $(TIMEOUT) $(MAPCREATORDIR)/mapcreator.py -l $(LOGLEVEL) --area "$*"
 	$(MAPCREATORDIR)/mapcreator.py -l $(LOGLEVEL) --area "$*"
 
-basemap : % : $(DATADIR)/%.o5m
+basemap : % : $(if $(FROM_FILES), $(DATADIR)/%.o5m)
 	$(call remove-file,$(DATADIR)/$*.mtiles)
-	$(MAPCREATORDIR)/mapwrite.py -l $(LOGLEVEL) -k -f -p $(DATADIR) -1 -1
+	if [ -n "$(FROM_FILES)" ]; then \
+		$(MAPCREATORDIR)/mapwrite.py -l $(LOGLEVEL) -k -f -p $(DATADIR) -1 -1 ; \
+	else \
+		$(MAPCREATORDIR)/mapwrite.py -l $(LOGLEVEL) -p $(DATADIR) -1 -1 ; \
+	fi
 
-stubmap : % : $(DATADIR)/%.o5m
+stubmap : % : $(if $(FROM_FILES), $(DATADIR)/%.o5m)
 	$(call remove-file,$(DATADIR)/$*.mtiles)
-	$(MAPCREATORDIR)/mapwrite.py -l $(LOGLEVEL) -k -f -p $(DATADIR) -2 -2
+	if [ -n "$(FROM_FILES)" ]; then \
+		$(MAPCREATORDIR)/mapwrite.py -l $(LOGLEVEL) -k -f -p $(DATADIR) -2 -2 ; \
+	else \
+		$(MAPCREATORDIR)/mapwrite.py -l $(LOGLEVEL) -p $(DATADIR) -2 -2 ; \
+	fi
 
 boundaries : % : $(DATADIR)/%.o5m
 	$(MAPCREATORDIR)/boundaries.py -l $(LOGLEVEL) -p $(DATADIR)
@@ -46,9 +60,12 @@ boundaries : % : $(DATADIR)/%.o5m
 routes : % : $(DATADIR)/%.o5m
 	$(MAPCREATORDIR)/routes.py -l $(LOGLEVEL) -p $(DATADIR)
 
-maps : $(PLANETFILE)
+maps : $(if $(FROM_FILES), $(PLANETFILE))
 	@while [ ! -f $(MAPCREATORDIR)/stop ] ; do \
-		/usr/bin/timeout --kill-after=60s $(TIMEOUT) $(MAPCREATORDIR)/mapcreator.py -l $(LOGLEVEL) ; \
+		while [ -f $(MAPCREATORDIR)/pause ] ; do \
+			sleep 60 ; \
+		done ; \
+		$(MAPCREATORDIR)/mapcreator.py -l $(LOGLEVEL) ; \
 	done ; \
 	true
 
@@ -71,11 +88,11 @@ world : $(PLANETFILE)
 	true
 
 publish :
-	rsync -vru --exclude='nativeindex' --exclude='lost+found' --exclude='index' --delete-after /gis/maps/* tanya.newf.ru:/gis/maps/
-	ssh tanya.newf.ru /gis/mapcreator/index.py
+	rsync -vru --exclude='nativeindex' --exclude='lost+found' --exclude='index' --delete-after /gis/maps/* pets.newf.ru:/gis/maps/
+	ssh pets.newf.ru /gis/mapcreator/index.py
 
 downloads :
-	ssh tanya.newf.ru pg_dump -c -t map_downloads gis > /tmp/downloads.sql
+	ssh pets.newf.ru pg_dump -c -t map_downloads gis > /tmp/downloads.sql
 	cat /tmp/downloads.sql | psql gis
 
 update-file : $(PLANETFILE)
@@ -84,11 +101,15 @@ update-file : $(PLANETFILE)
 	mv $(DATADIR)/planet-updated.o5m $<
 
 init-db : $(PLANETFILE)
-    /gis/bin/osm2pgsql -d gis --prefix osm --create --slim --output=flex --style $(MAPCREATORDIR)/setup/osm2pgsql.lua --flat-nodes /mnt/maps/osm_nodes.bin --middle-way-node-index-id-shift 5 --disable-parallel-indexing --cache 0 $<
-    $(MAPCREATORDIR)/setup/osm2pgsql-replication.py init --database gis --prefix osm --server https://planet.osm.org/replication/day
+	osm2pgsql -d gis --prefix osm --create --slim --output=flex --style $(MAPCREATORDIR)/setup/osm2pgsql.lua --flat-nodes $(FLAT_NODES) --disable-parallel-indexing --cache 0 $<
+	osm2pgsql-replication init --database gis --prefix osm --server https://planet.osm.org/replication/day
 
 update-db :
-    $(MAPCREATORDIR)/setup/osm2pgsql-replication.py update --osm2pgsql-cmd /gis/bin/osm2pgsql --database gis --prefix osm -- --output=flex --style $(MAPCREATORDIR)/setup/osm2pgsql.lua --flat-nodes /mnt/maps/osm_nodes.bin --middle-way-node-index-id-shift 5
+	$(call create-file,$(MAPCREATORDIR)/pause)
+	osm2pgsql-replication update --database gis --prefix osm -- --output=flex --style $(MAPCREATORDIR)/setup/osm2pgsql.lua --flat-nodes $(FLAT_NODES)
+	$(call remove-file,$(MAPCREATORDIR)/pause)
+
+update : $(if $(FROM_FILES), update-file, update-db)
 
 water :
 	$(call remove-file,$(DATADIR)/water-polygons-split-3857.zip)
@@ -111,4 +132,4 @@ naturalearth :
 	unzip -u $(DATADIR)/ne_50m_rivers_lake_centerlines.zip -d $(DATADIR)/ne_50m_rivers_lake_centerlines
 	$(call run-in-dir,$(DATADIR),$(MAPCREATORDIR)/setup/naturalearthdata2pgsql.sh)
 
-.PHONY: basemap stubmap boundaries maps world publish downloads update-file update-db water naturalearth
+.PHONY: basemap stubmap boundaries maps world publish downloads update water naturalearth

@@ -79,7 +79,7 @@ class MapCreator:
         return None
 
     def getCost(self, area):
-        query = "SELECT cost FROM maps WHERE area = '%s';"
+        query = "SELECT cost FROM maps WHERE area = '%s'"
         with psycopg2.connect(configuration.STATS_DB_DSN) as c:
             with c.cursor() as cur:
                 cur.execute(query % area)
@@ -90,21 +90,36 @@ class MapCreator:
                     return row[0]
         return 0
 
-    def loop(self, area=None):
-        date = int(os.path.getmtime(configuration.SOURCE_PBF) / 3600 / 24)
-        today = int(time.time() / 3600 / 24)
-        self.logger.debug("Source file is %d days old" % (today - date))
+    def get_last_replication(self):
+        query = "SELECT extract(epoch from importdate) FROM osm_replication_status"
+        with psycopg2.connect(configuration.STATS_DB_DSN) as c:
+            with c.cursor() as cur:
+                cur.execute(query)
+                self.logger.debug(cur.query)
+                if cur.rowcount > 0:
+                    row = cur.fetchone()
+                    return row[0]
+        return 0
 
-        if not area and today - date < 2:
-            area = self.selectPopularMap(0.05, '2 days')
-        if not area and today - date < 4:
-            area = self.selectPopularMap(0.1, '4 days')
+    def loop(self, area=None):
+        today = int(time.time() / 3600 / 24)
+        if configuration.FROM_FILE:
+            date = int(os.path.getmtime(configuration.SOURCE_PBF) / 3600 / 24)
+            self.logger.debug("Source file is %d days old" % (today - date))
+        else:
+            date = int(self.get_last_replication() / 3600 / 24)
+            self.logger.debug("OSM data is %d days old" % (today - date))
+
         if not area and today - date < 7:
-            area = self.selectPopularMap(0.5, '1 week')
+            area = self.selectPopularMap(0.05, '7 days')
         if not area and today - date < 14:
-            area = self.selectDownloadedMap('2 weeks')
+            area = self.selectPopularMap(0.1, '14 days')
         if not area and today - date < 21:
-            area = self.selectAnyMap('3 weeks')
+            area = self.selectPopularMap(0.5, '3 weeks')
+        if not area and today - date < 28:
+            area = self.selectDownloadedMap('4 weeks')
+        if not area and today - date < 42:
+            area = self.selectAnyMap('6 weeks')
         if not area:
             area = self.selectEmptyMap('2 months')
 
@@ -119,7 +134,7 @@ class MapCreator:
         cost = time.time()
         timeout = max(self.getCost(area) * 1.5, 60)
         try:
-            map_path = self.mapWriter.createMap(x, y, timeout, True, False, True)
+            map_path = self.mapWriter.createMap(x, y, timeout, configuration.FROM_FILE, False, configuration.FROM_FILE)
         except Exception as ex:
             logger.error(ex)
             if not self.dry_run:
@@ -169,8 +184,8 @@ class MapCreator:
         else:
             with open(configuration.MAP_TARGET_PATH + '/nativeindex', 'r+b') as index:
                 index.seek((x * 128 + y) * 6)
-                index.write((date).to_bytes(2, byteorder='big', signed=False))
-                index.write((size).to_bytes(4, byteorder='big', signed=False))
+                index.write(date.to_bytes(2, byteorder='big', signed=False))
+                index.write(size.to_bytes(4, byteorder='big', signed=False))
             with psycopg2.connect(configuration.STATS_DB_DSN) as c:
                 with c.cursor() as cur:
                     cur.execute("UPDATE maps SET size = %s, cost = %s, created = %s, error = %s WHERE area = %s", (size, cost, date, error, area))

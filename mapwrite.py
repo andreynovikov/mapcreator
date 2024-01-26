@@ -265,7 +265,7 @@ class OsmFilter:
 
     def finish(self):
         if self.ignorable:
-            if len(self.elements) < self.ignorable:  # it can be less as closed ways are processed twice
+            if len(self.elements) <= self.ignorable:  # it can be less as closed ways from file are processed twice
                 self.elements.clear()
                 self.logger.debug("    all elements are ignored")
                 return
@@ -528,7 +528,13 @@ class MapWriter:
             handler = OsmFilter(elements, self.basemap, self.logger)
             with psycopg2.connect(configuration.DATA_DB_DSN, cursor_factory=psycopg2.extras.NamedTupleCursor) as c:
                 psycopg2.extras.register_hstore(c)
-                self.timestamp = os.path.getmtime(configuration.FLAT_NODES_FILE)
+                with c.cursor() as cur:
+                    cur.execute("SELECT extract(epoch from importdate) FROM osm_replication_status")
+                    self.logger.debug(cur.query)
+                    if cur.rowcount > 0:
+                        self.timestamp = cur.fetchone()[0]
+                    else:
+                        raise RuntimeError("Database has no replication data")
                 if self.stubmap:
                     queries = mappings.stubmap_queries
                 elif self.basemap:
@@ -551,7 +557,7 @@ class MapWriter:
                                     right=(bounds.right + right_expand), top=(bounds.top + expand))
                 for data in queries:
                     if self.basemap:
-                        sql = "SELECT ST_AsBinary(geom) AS geometry, * FROM ({query}) AS data".format(query=data['query'])
+                        sql = data['query']
                     else:
                         if data['srid'] != 3857:
                             qbbox = "ST_Transform({bbox}, {srid})".format(bbox=bbox, srid=data['srid'])
@@ -695,9 +701,9 @@ class MapWriter:
             # get supplementary data while elements are processed
             with psycopg2.connect(configuration.DATA_DB_DSN) as c:
                 if self.stubmap:
-                    queries = mappings.stubmap_queries
+                    queries = mappings.stubmap_supplementary_queries
                 elif self.basemap:
-                    queries = mappings.basemap_queries
+                    queries = mappings.basemap_supplementary_queries
                 else:
                     queries = mappings.supplementary_queries
                     if bbox_override:
