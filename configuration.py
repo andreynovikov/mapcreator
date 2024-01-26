@@ -9,8 +9,8 @@ MAP_TARGET_PATH = '/gis/maps'
 LOGGING_PATH = '/var/log/mapcreator'
 DATA_PATH = '/gis/data'
 DATA_DB_DSN = 'dbname=gis'
-FLAT_NODES_FILE = '/mnt/maps/osm_nodes.bin'  # used for last update calculation
 FILTERS_PATH = '/gis/mapcreator/filters'
+FROM_FILE = False
 
 MAP_DOWNLOAD_LOG = '/var/log/nginx/maps.log'
 STATS_DB_DSN = 'dbname=gis'
