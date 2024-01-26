@@ -31,6 +31,13 @@ def direction(value):
     return None
 
 
+def sane(value, limit):
+    if abs(value) > limit:
+        return None
+    else:
+        return value
+
+
 meter_pattern = re.compile('([+-]?[0-9.]+)\s*m')
 feet_pattern = re.compile('([+-]?[0-9.]+)\s*ft')
 feet_or_inch_pattern = re.compile('([+-]?[0-9.]+)\'(?: *([+-]?[0-9.]+)")?')
@@ -44,15 +51,17 @@ def height(value):
     if value is None:
         return None
 
+    limit = 15000  # Mount Everest: 8849 m, Mariana Trench: 10985 m, Kola Superdeep Borehole: 12262 m
+
     if isinstance(value, numbers.Number):
-        return value
+        return sane(value, limit)
 
     # trim whitespace to simplify further matching
     value = value.strip()
     # normalize punctuation
     value = value.replace(',', '.')
     try:
-        return float(value)
+        return sane(float(value), limit)
     except ValueError:
         pass
 
@@ -61,7 +70,7 @@ def height(value):
     if meters_match is not None:
         meters = meters_match.group(1)
         try:
-            return float(meters)
+            return sane(float(meters), limit)
         except ValueError:
             pass
 
@@ -70,7 +79,7 @@ def height(value):
     if feet_match is not None:
         feet = feet_match.group(1)
         try:
-            return float(feet) * 0.3048
+            return sane(float(feet) * 0.3048, limit)
         except ValueError:
             pass
 
@@ -97,13 +106,13 @@ def height(value):
             parsed_feet_or_inches = True
         if parsed_feet_or_inches:
             meters = total_inches * 0.02544
-            return meters
+            return sane(meters, limit)
 
     # try and match the first number that can be parsed
     for number_match in number_pattern.finditer(value):
         potential_number = number_match.group(1)
         try:
-            return float(potential_number)
+            return sane(float(potential_number), limit)
         except ValueError:
             pass
 
