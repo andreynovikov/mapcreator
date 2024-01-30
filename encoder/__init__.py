@@ -138,8 +138,8 @@ class VectorTile:
             f = self.out.points.add()
             # add number of points (for multi-point)
             if len(geom.coordinates) > 2:
-                logging.info('points %s' % len(geom.coordinates))
-                f.indices.add(geom.coordinates / 2)
+                logging.warning('point has %s coordinates' % len(geom.coordinates))
+                del geom.coordinates[2:]
         else:
             # empty geometry
             if len(geom.index) == 0:
