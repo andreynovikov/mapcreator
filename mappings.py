@@ -1,7 +1,7 @@
 from util import osm
 from util.osm.kind import kinds
 from util.osm.buildings import get_color
-from util.processing import cutlines, pistes
+from util.processing import bridges, cutlines, pistes
 
 
 class MapTypes:
@@ -575,6 +575,13 @@ tags = {
         'locality': {'zoom-min': 13},
         'isolated_dwelling': {'zoom-min': 13},
         'allotments': {'zoom-min': 14},
+        'square': {
+            'filter-type': ['Point', 'Polygon', 'MultiPolygon'],
+            'zoom-min': 14,
+            'transform': 'point',
+            'transform-exclusive': True,
+            'label': True
+        },
     },
     'leisure': {
         'nature_reserve': {'rewrite-key': 'boundary', 'rewrite-value': 'national_park'},
@@ -842,7 +849,7 @@ tags = {
         'pier': {'zoom-min': 14},
         'embankment': {'zoom-min': 14},
         'pipeline': {'zoom-min': 14},
-        'bridge': DEFAULT_PLACE,
+        'bridge': {'zoom-min': 14, 'label': True, 'pre-process': bridges.process},
         'tower': {'zoom-min': 14},
         'lighthouse': DEFAULT_PLACE,
         'watermill': DEFAULT_PLACE,
