@@ -635,7 +635,8 @@ _strings = [
     'aboriginal_lands',
     'ridge',
     'arete',
-    'goods'
+    'goods',
+    'square'
 ]
 
 staticValues = dict(zip(_strings, range(0, len(_strings))))
